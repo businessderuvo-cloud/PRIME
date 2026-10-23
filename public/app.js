@@ -169,6 +169,12 @@ const navigation = [
 function shell() {
   document.documentElement.dataset.theme = state.me.theme;
   app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><div class="avatar">${esc(state.me.tenant.slice(0, 2).toUpperCase())}</div><div><strong>${esc(state.me.tenant)}</strong><small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off"><span class="key-hint">/</span><div id="global-results" class="search-results" hidden></div></div><button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button><span class="workspace-badge">AMBIENTE LOCALE</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><span>Versione 0.2 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
+  const compactBrand = document.createElement("div");
+  compactBrand.className = "compact-brand";
+  compactBrand.innerHTML = logo();
+  document.querySelector(".global-search").before(compactBrand);
+  if (innerWidth < 850)
+    document.querySelector("#global-search").placeholder = "Cerca…";
   document.querySelector(".workspace-badge").textContent =
     state.me.environment === "demo"
       ? "DEMO · DATI DI ESEMPIO"
