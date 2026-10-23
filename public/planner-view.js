@@ -36,12 +36,47 @@ export function renderPlanner({
     `<section class="planner panel"><div class="planner-toolbar"><div class="planner-date-nav"><button class="icon-button" id="planner-prev" aria-label="Periodo precedente">‹</button><button class="secondary" id="planner-today">Oggi</button><button class="icon-button" id="planner-next" aria-label="Periodo successivo">›</button><h2 id="planner-period"></h2></div><div class="planner-view-toggle" aria-label="Vista calendario"><button data-view="day" class="${view === "day" ? "selected" : ""}">Giorno</button><button data-view="week" class="${view === "week" ? "selected" : ""}">Settimana</button></div></div><div class="planner-filters">${searchBox(isWps ? "Cerca attività, tipo o risultato…" : "Cerca appuntamenti…")}<label class="sr-only" for="planner-date">Data da visualizzare</label><input type="date" id="planner-date" value="${state.day}"><select id="planner-agent" aria-label="Filtra per agente"><option value="">Tutti gli agenti</option>${state.members.map((r) => `<option value="${r.id}">${esc(r.title)}</option>`).join("")}</select><span id="planner-count" class="muted"></span></div><div class="planner-legend"><span class="legend-item"><i class="legend-swatch planned"></i>${isWps ? "Pianificata" : "Da confermare"}</span><span class="legend-item"><i class="legend-swatch confirmed"></i>${isWps ? "In corso" : "Confermato"}</span><span class="legend-item"><i class="legend-swatch done"></i>${isWps ? "Completata" : "Effettuato"}</span><span class="legend-item"><i class="legend-swatch missed"></i>${isWps ? "Non completata" : "Saltato / annullato"}</span></div><div id="planner-grid"></div><p class="small-note">${isWps ? "Seleziona una fascia vuota per pianificare un compito. Il timer segue le tue attività, anche mentre consulti altre sezioni." : "Seleziona una fascia vuota per aggiungere un appuntamento. Gli eventi collegati al WPS sono gli stessi presenti nella scheda dell’attività."}</p></section>`;
   const agent = document.querySelector("#planner-agent");
   agent.value = state.plannerAgents?.[entity] ?? (isWps ? state.me.id : "");
-  function newBlock(start = new Date(), end = new Date(+start + 3600000)) {
+  function newBlock(
+    start = new Date(),
+    end = new Date(+start + 3600000),
+    extra = {},
+  ) {
     openEditor(entity, null, {
       agent_id: agent.value || state.me.id,
       starts_at: start.toISOString(),
       [isWps ? "due_at" : "ends_at"]: end.toISOString(),
+      ...extra,
     });
+  }
+  if (!isWps) {
+    const quick = document.createElement("div");
+    quick.className = "appointment-quick-actions";
+    quick.innerHTML = [
+      ["1ª visita immobile", "+ 1ª visita"],
+      ["2ª visita immobile", "+ 2ª visita"],
+      ["servizio fotografico immobile", "+ Servizio fotografico"],
+      ["appuntamento con proprietario", "+ Con proprietario"],
+    ]
+      .map(
+        ([value, label]) =>
+          `<button data-appointment-type="${value}">${label}</button>`,
+      )
+      .join("");
+    main.querySelector(".planner-filters").after(quick);
+    quick.querySelectorAll("button").forEach(
+      (b) =>
+        (b.onclick = () => {
+          const start = new Date(state.day + "T09:00:00");
+          if (state.day === dayKey()) {
+            const now = new Date();
+            start.setHours(now.getHours() + 1, 0, 0, 0);
+          }
+          newBlock(start, new Date(+start + 3600000), {
+            appointment_type: b.dataset.appointmentType,
+            title: "",
+          });
+        }),
+    );
   }
   document.querySelector("#planner-create").onclick = () => {
     const start = new Date(state.day + "T09:00:00");

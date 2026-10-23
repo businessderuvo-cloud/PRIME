@@ -2,6 +2,7 @@ import { schema, roleLabels } from "./schema.js";
 import { renderPlanner } from "./planner-view.js";
 import { startWpsClock } from "./wps-clock.js";
 import { finishedStatuses } from "./planner.js";
+import { renderTerritory } from "./territory.js";
 let stopWpsClock;
 const app = document.querySelector("#app");
 const state = {
@@ -24,6 +25,7 @@ const esc = (x) =>
       ],
   );
 const icons = {
+  territory: "M4 21 9 3m6 0 5 18M12 5v3m0 4v3m0 4v2",
   dashboard: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
   streets: "M4 21 9 3m6 0 5 18M12 5v3m0 4v3m0 4v2",
   buildings: "M4 21V7h10v14M14 11h6v10M7 10h4m-4 4h4m-4 4h4",
@@ -158,12 +160,32 @@ async function loadData() {
   );
   state.data = Object.fromEntries(entries);
   state.members = await api("/api/members");
+  state.media = await api("/api/media");
+}
+function focusTerritoryRow(entity, row) {
+  const selection = (state.territory ??= {});
+  selection.restored = true;
+  selection.tab = "scheda";
+  if (entity === "streets") {
+    selection.streetId = row.id;
+    selection.buildingId = null;
+    selection.unitId = null;
+  }
+  if (entity === "buildings") {
+    selection.streetId = row.street_id;
+    selection.buildingId = row.id;
+    selection.unitId = null;
+  }
+  if (entity === "units") {
+    const building = state.data.buildings.find((b) => b.id === row.building_id);
+    selection.streetId = building?.street_id || null;
+    selection.buildingId = row.building_id;
+    selection.unitId = row.id;
+  }
 }
 const navigation = [
   ["dashboard", "Panoramica"],
-  ["streets", "Vie e territorio"],
-  ["buildings", "Civici e stabili"],
-  ["units", "Appartamenti censiti"],
+  ["territory", "Vie e territorio"],
   ["contacts", "CRM · Persone"],
   ["properties", "Immobili in gestione"],
   ["activities", "WPS"],
@@ -174,7 +196,7 @@ const navigation = [
 function shell() {
   stopWpsClock?.();
   document.documentElement.dataset.theme = state.me.theme;
-  app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><div class="avatar">${esc(state.me.tenant.slice(0, 2).toUpperCase())}</div><div><strong>${esc(state.me.tenant)}</strong><small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off"><span class="key-hint">/</span><div id="global-results" class="search-results" hidden></div></div><button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button><span class="workspace-badge">AMBIENTE LOCALE</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><span>Versione 0.3 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
+  app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><div class="avatar">${esc(state.me.tenant.slice(0, 2).toUpperCase())}</div><div><strong>${esc(state.me.tenant)}</strong><small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off"><span class="key-hint">/</span><div id="global-results" class="search-results" hidden></div></div><button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button><span class="workspace-badge">AMBIENTE LOCALE</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><span>Versione 0.4 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
   const compactBrand = document.createElement("div");
   compactBrand.className = "compact-brand";
   compactBrand.innerHTML = logo();
@@ -258,8 +280,21 @@ function shell() {
         out.hidden = false;
         out.querySelectorAll("button").forEach(
           (b) =>
-            (b.onclick = () => {
+            (b.onclick = async () => {
               out.hidden = true;
+              if (
+                ["streets", "buildings", "units"].includes(b.dataset.entity)
+              ) {
+                await loadData();
+                focusTerritoryRow(
+                  b.dataset.entity,
+                  state.data[b.dataset.entity].find(
+                    (r) => r.id === b.dataset.id,
+                  ),
+                );
+                await navigate("territory");
+                return;
+              }
               openEditor(
                 b.dataset.entity,
                 state.data[b.dataset.entity].find((r) => r.id === b.dataset.id),
@@ -283,6 +318,7 @@ function shell() {
     });
 }
 async function navigate(page) {
+  if (["streets", "buildings", "units"].includes(page)) page = "territory";
   state.page = page;
   state.query = "";
   state.status = "";
@@ -358,6 +394,25 @@ async function renderPage() {
     "has-planner",
     ["activities", "appointments"].includes(page),
   );
+  main.classList.toggle("has-territory", page === "territory");
+  if (page === "territory") {
+    renderTerritory({
+      state,
+      main,
+      pageHeader,
+      searchBox,
+      bindSearch,
+      esc,
+      icon,
+      openEditor,
+      api,
+      loadData,
+      renderPage,
+      toast,
+      date,
+    });
+    return;
+  }
   if (["activities", "appointments"].includes(page)) {
     renderPlanner({
       state,
@@ -687,6 +742,48 @@ async function openEditor(entity, record = null, prefill = {}) {
       "",
     )}</div>${entity === "activities" ? '<p class="small-note">Completa il lavoro registrando l’esito. Usa “Collega appuntamento” per definire quando incontrare il cliente in agenda.</p>' : ""}${record ? `<p class="small-note">Aggiornato il ${date(record.updated_at)} · Versione ${record.version}</p><div id="history-content"></div>` : ""}</div><footer class="dialog-footer">${canDelete ? '<button type="button" class="danger" id="delete-record">Elimina</button>' : ""}${record ? '<button type="button" class="secondary" id="history">Cronologia</button>' : ""}${entity === "activities" && record ? '<button type="button" class="secondary" id="schedule">Collega appuntamento</button>' : ""}<button type="submit" class="primary">Salva</button></footer></form>`;
   if (!dialog.open) dialog.showModal();
+  if (entity === "appointments") {
+    const quick = document.createElement("div");
+    quick.className = "appointment-type-shortcuts";
+    quick.innerHTML = `<span class="eyebrow">TIPO RAPIDO</span><div>${[
+      ["1ª visita immobile", "1ª visita"],
+      ["2ª visita immobile", "2ª visita"],
+      ["servizio fotografico immobile", "Servizio fotografico"],
+      ["appuntamento con proprietario", "Con proprietario"],
+    ]
+      .map(
+        ([value, label]) =>
+          `<button type="button" data-quick-type="${value}" class="${dialog.querySelector("[name=appointment_type]").value === value ? "selected" : ""}">${label}</button>`,
+      )
+      .join(
+        "",
+      )}</div><p>Il titolo è facoltativo: se lo lasci vuoto, viene usato il tipo di appuntamento.</p>`;
+    dialog.querySelector(".form-grid").before(quick);
+    const select = dialog.querySelector("[name=appointment_type]");
+    const refresh = () =>
+      quick
+        .querySelectorAll("button")
+        .forEach((b) =>
+          b.classList.toggle("selected", b.dataset.quickType === select.value),
+        );
+    quick.querySelectorAll("button").forEach(
+      (b) =>
+        (b.onclick = () => {
+          const title = dialog.querySelector("[name=title]");
+          if (title.value === select.value) title.value = "";
+          select.value = b.dataset.quickType;
+          refresh();
+        }),
+    );
+    select.addEventListener("change", refresh);
+  }
+  if (entity === "contacts") {
+    const hint = document.createElement("p");
+    hint.className = "small-note";
+    hint.textContent =
+      "Preferenze e informazioni personali sono facoltative: annota dati pertinenti e forniti dal contatto.";
+    dialog.querySelector(".dialog-body").append(hint);
+  }
   if (
     entity === "activities" &&
     record &&
@@ -726,11 +823,16 @@ async function openEditor(entity, record = null, prefill = {}) {
         data[key] = new Date(data[key]).toISOString();
     }
     try {
-      await api("/api/entities/" + entity + (record ? "/" + record.id : ""), {
-        method: record ? "PUT" : "POST",
-        body: JSON.stringify({ data, version: record?.version }),
-      });
+      const saved = await api(
+        "/api/entities/" + entity + (record ? "/" + record.id : ""),
+        {
+          method: record ? "PUT" : "POST",
+          body: JSON.stringify({ data, version: record?.version }),
+        },
+      );
       await loadData();
+      if (["streets", "buildings", "units"].includes(entity))
+        focusTerritoryRow(entity, saved);
       dialog.close();
       await renderPage();
       toast("Salvataggio completato.");

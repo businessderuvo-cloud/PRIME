@@ -4,11 +4,13 @@ Repository indipendente per il gestionale immobiliare PRIME. Nessuna dipendenza 
 
 ## Stato attuale
 
-Incremento 0.3: applicazione web locale avviabile con database persistente e migrazioni, registrazione/login/logout, isolamento tra agenzie, ruoli lato server, audit e doppio tema con loghi ufficiali. CRUD collegati per vie, stabili, interni, persone e immobili. Primo flusso operativo WPS con obiettivi/esiti/prossime azioni e appuntamenti condivisi con l'agenda, senza duplicazioni. Ricerche globali e dedicate, prevenzione duplicati e controllo delle modifiche concorrenti.
+Incremento 0.4: applicazione web locale avviabile con database persistente e migrazioni, registrazione/login/logout, isolamento tra agenzie, ruoli lato server, audit e doppio tema con loghi ufficiali. CRUD collegati per vie, stabili, interni, persone e immobili. Primo flusso operativo WPS con obiettivi/esiti/prossime azioni e appuntamenti condivisi con l'agenda, senza duplicazioni. Ricerche globali e dedicate, prevenzione duplicati e controllo delle modifiche concorrenti.
 
 La specifica ufficiale completa è in [docs/SPECIFICA-UFFICIALE.md](docs/SPECIFICA-UFFICIALE.md). Il piano e le scelte sono in [docs/ARCHITETTURA.md](docs/ARCHITETTURA.md). Consultare [docs/STATO.md](docs/STATO.md) per funzionalità operative, parziali, mancanti e risultati delle verifiche. La fase 1 è ancora in corso; non è un SaaS pronto per la produzione.
 
 L’Agenda appuntamenti ora presenta una griglia giorno/settimana; il WPS suddivide la giornata in blocchi orari e richiede l’esito alla scadenza del timer. Dettagli e limiti in [docs/AGENDA-WPS.md](docs/AGENDA-WPS.md).
+
+Il territorio è raccolto in una scheda unica via → civico → appartamento, con persone collegate, recapiti aggiuntivi e social, preferenze di contatto, storico telemarketing e foto private. L’agenda offre quattro tipi rapidi e titolo facoltativo. Dettagli in [docs/TERRITORIO.md](docs/TERRITORIO.md).
 
 ## Avvio del server
 
@@ -18,7 +20,7 @@ Aprire il sito e scegliere “Crea il tuo spazio” per registrare la propria ag
 
 ## Verifica
 
-Eseguire `node --run check` e `node --run test` (oppure `node --test tests.mjs`). I test creano database temporanei separati, non modificano data/ e rimuovono solo i propri file temporanei. L'ultima verifica comprende 26 test superati e controlli browser desktop/mobile. Per un ambiente di esempio separato impostare PRIME_DEMO=1 e PRIME_DB su un percorso dedicato: PRIME_DEMO mostra l'avviso demo, non inserisce dati e non abilita accessi speciali.
+Eseguire `node --run check` e `node --run test` (oppure `node --test tests.mjs`). I test creano database temporanei separati, non modificano data/ e rimuovono solo i propri file temporanei. L'ultima verifica comprende 31 test superati e controlli browser desktop/mobile. Per un ambiente di esempio separato impostare PRIME_DEMO=1 e PRIME_DB su un percorso dedicato: PRIME_DEMO mostra l'avviso demo, non inserisce dati e non abilita accessi speciali.
 
 ## Limiti attuali
 

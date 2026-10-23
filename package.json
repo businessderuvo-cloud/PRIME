@@ -1,12 +1,12 @@
 {
   "name": "prime",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test tests.mjs",
-    "check": "node --check server.mjs && node --check public/app.js && node --check public/schema.js && node --check public/planner.js && node --check public/planner-view.js && node --check public/wps-clock.js"
+    "check": "node --check server.mjs && node --check public/app.js && node --check public/schema.js && node --check public/planner.js && node --check public/planner-view.js && node --check public/wps-clock.js && node --check public/territory.js && node --check src/territory-api.mjs"
   },
   "engines": {
     "node": ">=24"

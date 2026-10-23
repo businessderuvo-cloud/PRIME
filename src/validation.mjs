@@ -57,6 +57,12 @@ export function validate(entity, input) {
       if (f.type === "email" && value && !/^\S+@\S+\.\S+$/.test(value))
         throw new ApiError(400, `${f.label}: email non valida`);
       if (f.type === "email") value = value.toLowerCase();
+      if (
+        f.type === "time" &&
+        value &&
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)
+      )
+        throw new ApiError(400, `${f.label}: orario non valido`);
       if (f.type === "date" && value && !/^\d{4}-\d{2}-\d{2}$/.test(value))
         throw new ApiError(400, `${f.label}: data non valida`);
       if (f.type === "datetime-local" && value) {
@@ -72,6 +78,49 @@ export function validate(entity, input) {
   }
   if (entity === "contacts")
     output.phone = output.phone.replace(/[\s().-]/g, "");
+  if (
+    entity === "contacts" &&
+    (Boolean(output.preferred_time_from) !==
+      Boolean(output.preferred_time_to) ||
+      (output.preferred_time_from &&
+        output.preferred_time_to <= output.preferred_time_from))
+  )
+    throw new ApiError(
+      400,
+      "Indica una fascia di contatto valida, con inizio e fine",
+    );
+  if (entity === "unit_contacts" && !output.title)
+    output.title = output.relationship;
+  if (entity === "contact_methods") {
+    if (!output.title) output.title = output.method_type;
+    if (["telefono", "WhatsApp"].includes(output.method_type))
+      output.value = output.value.replace(/[\s().-]/g, "");
+    if (output.method_type === "email") {
+      output.value = output.value.toLowerCase();
+      if (!/^\S+@\S+\.\S+$/.test(output.value))
+        throw new ApiError(400, "Indirizzo email non valido");
+    }
+    if (
+      /^[a-z][a-z0-9+.-]*:/i.test(output.value) &&
+      !/^https?:\/\//i.test(output.value)
+    )
+      throw new ApiError(
+        400,
+        "Il profilo deve usare un indirizzo http/https o un nome utente",
+      );
+  }
+  if (entity === "contact_interactions") {
+    if (
+      !["street_id", "building_id", "unit_id", "contact_id"].some(
+        (k) => output[k],
+      )
+    )
+      throw new ApiError(
+        400,
+        "Collega il contatto a una via, un civico, un appartamento o una persona",
+      );
+    if (!output.title) output.title = output.channel + " · " + output.outcome;
+  }
   if (entity === "activities") {
     if (output.due_at <= output.starts_at)
       throw new ApiError(
@@ -90,6 +139,7 @@ export function validate(entity, input) {
       );
   }
   if (entity === "appointments") {
+    if (!output.title) output.title = output.appointment_type;
     if (output.ends_at <= output.starts_at)
       throw new ApiError(400, "La fine deve essere successiva all’inizio");
     if (output.commercial_outcome && output.status !== "effettuato")

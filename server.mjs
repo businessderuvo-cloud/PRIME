@@ -13,6 +13,7 @@ import { promisify } from "node:util";
 import { openDatabase, root, transaction } from "./src/database.mjs";
 import { ApiError, validate } from "./src/validation.mjs";
 import { schema } from "./public/schema.js";
+import { territoryApi } from "./src/territory-api.mjs";
 const scrypt = promisify(scryptCallback),
   hash = (x) => createHash("sha256").update(x).digest("hex");
 const dummySalt = randomBytes(16).toString("hex");
@@ -76,6 +77,18 @@ export function createApp({
 } = {}) {
   const db = openDatabase(database),
     attempts = new Map();
+  const handleTerritory = territoryApi({
+    db,
+    uploadsDirectory: path.join(
+      database && database !== ":memory:"
+        ? path.dirname(path.resolve(database))
+        : path.join(root, "data"),
+      "uploads",
+    ),
+    audit,
+    json,
+    readBody,
+  });
   function currentSession(req) {
     const token = /prime_session=([a-f0-9]{64})(?:;|$)/.exec(
       req.headers.cookie || "",
@@ -245,6 +258,29 @@ export function createApp({
           "L’orario è condiviso: modificalo dall’Agenda appuntamenti",
         );
     }
+    if (entity === "contact_interactions") {
+      const unit =
+        b.unit_id &&
+        db
+          .prepare("SELECT building_id FROM units WHERE tenant_id=? AND id=?")
+          .get(s.tenant_id, b.unit_id);
+      if (unit && b.building_id && unit.building_id !== b.building_id)
+        throw new ApiError(
+          400,
+          "L’appartamento non appartiene al civico selezionato",
+        );
+      const buildingId = b.building_id || unit?.building_id;
+      const building =
+        buildingId &&
+        db
+          .prepare("SELECT street_id FROM buildings WHERE tenant_id=? AND id=?")
+          .get(s.tenant_id, buildingId);
+      if (building && b.street_id && building.street_id !== b.street_id)
+        throw new ApiError(
+          400,
+          "Il civico non appartiene alla via selezionata",
+        );
+    }
     if (entity === "appointments") {
       if (b.activity_id) {
         const task = db
@@ -299,7 +335,7 @@ export function createApp({
       res.setHeader("Referrer-Policy", "same-origin");
       res.setHeader(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       );
       if (production)
         res.setHeader("Strict-Transport-Security", "max-age=31536000");
@@ -430,6 +466,7 @@ export function createApp({
           return json(res, 200, { theme: b.theme });
         }
         authorize(s);
+        if (await handleTerritory(req, res, url, s)) return;
         if (url.pathname === "/api/integrations" && method === "GET")
           return json(res, 200, integrations);
         if (url.pathname === "/api/members" && method === "GET")
@@ -479,7 +516,7 @@ export function createApp({
           return json(res, 200, found.slice(0, 60));
         }
         const match =
-          /^\/api\/entities\/([a-z]+)(?:\/([a-f0-9-]+))?(?:\/(history))?$/.exec(
+          /^\/api\/entities\/([a-z_]+)(?:\/([a-f0-9-]+))?(?:\/(history))?$/.exec(
             url.pathname,
           );
         if (match) {
@@ -672,6 +709,8 @@ export function createApp({
         "/wps-clock.js": "wps-clock.js",
         "/style.css": "style.css",
         "/planner.css": "planner.css",
+        "/territory.js": "territory.js",
+        "/territory.css": "territory.css",
         "/assets/logo-light.png": "assets/logo-light.png",
         "/assets/logo-dark.png": "assets/logo-dark.png",
       };

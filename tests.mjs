@@ -111,7 +111,7 @@ after(async () => {
 });
 test("migrazioni idempotenti e dati persistenti su disco", () => {
   const second = openDatabase(database);
-  assert.equal(second.prepare("SELECT count(*) n FROM migrations").get().n, 3);
+  assert.equal(second.prepare("SELECT count(*) n FROM migrations").get().n, 4);
   assert.equal(
     second.prepare("SELECT name FROM tenants WHERE id=?").get(a.tenant_id).name,
     "Agenzia A",
@@ -347,6 +347,8 @@ test("asset della schermata iniziale presenti e policy di sicurezza", async () =
     "/planner-view.js",
     "/wps-clock.js",
     "/planner.css",
+    "/territory.js",
+    "/territory.css",
     "/assets/logo-dark.png",
     "/assets/logo-light.png",
   ]) {
@@ -985,6 +987,301 @@ test("riprogrammare l’appuntamento sposta atomicamente il blocco WPS senza cre
     (await request(a, "/api/entities/activities/" + task.id)).value.starts_at,
     synced.starts_at,
   );
+});
+test("tipi rapidi appuntamento: titolo facoltativo e valori validati", async () => {
+  for (const [i, type] of [
+    "1ª visita immobile",
+    "2ª visita immobile",
+    "servizio fotografico immobile",
+    "appuntamento con proprietario",
+  ].entries()) {
+    const row = await create("appointments", {
+      appointment_type: type,
+      agent_id: a.id,
+      starts_at: `2026-12-${String(i + 1).padStart(2, "0")}T09:00:00Z`,
+      ends_at: `2026-12-${String(i + 1).padStart(2, "0")}T10:00:00Z`,
+    });
+    assert.equal(row.title, type);
+    assert.equal(row.appointment_type, type);
+  }
+  assert.equal(
+    (
+      await request(a, "/api/entities/appointments", "POST", {
+        data: {
+          appointment_type: "tipo inventato",
+          agent_id: a.id,
+          starts_at: "2026-12-07T09:00:00Z",
+          ends_at: "2026-12-07T10:00:00Z",
+        },
+      })
+    ).status,
+    400,
+  );
+});
+test("persona e appartamento: inserimento atomico, riuso CRM, più relazioni senza duplicati", async () => {
+  const created = await request(a, "/api/territory/people", "POST", {
+    unit_id: unit.id,
+    relationship: "comproprietario",
+    contact: {
+      title: "Comproprietario test",
+      phone: "+39 333 555 111",
+      marital_status: "coniugato/a",
+      has_children: "sì",
+      preferred_channel: "WhatsApp",
+      preferred_days: "lunedì e giovedì",
+      preferred_time_from: "18:00",
+      preferred_time_to: "20:00",
+    },
+  });
+  assert.equal(created.status, 201);
+  const person = created.value.person;
+  assert.equal(person.phone, "+39333555111");
+  assert.equal(person.has_children, "sì");
+  const other = await create("units", {
+    title: "8",
+    building_id: building.id,
+    floor: "3",
+  });
+  const linked = await request(a, "/api/territory/people", "POST", {
+    unit_id: other.id,
+    contact_id: person.id,
+    relationship: "proprietario",
+  });
+  assert.equal(linked.status, 201);
+  assert.equal(linked.value.person.id, person.id);
+  assert.equal(
+    app.db
+      .prepare("SELECT count(*) n FROM contacts WHERE tenant_id=? AND phone=?")
+      .get(a.tenant_id, person.phone).n,
+    1,
+  );
+  assert.equal(
+    (
+      await request(a, "/api/territory/people", "POST", {
+        unit_id: other.id,
+        contact_id: person.id,
+        relationship: "proprietario",
+      })
+    ).status,
+    409,
+  );
+  const before = app.db
+    .prepare("SELECT count(*) n FROM contacts WHERE tenant_id=?")
+    .get(a.tenant_id).n;
+  assert.equal(
+    (
+      await request(a, "/api/territory/people", "POST", {
+        unit_id: unit.id,
+        relationship: "non valida",
+        contact: { title: "Persona da non salvare" },
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    app.db
+      .prepare("SELECT count(*) n FROM contacts WHERE tenant_id=?")
+      .get(a.tenant_id).n,
+    before,
+  );
+  assert.equal(
+    (
+      await request(b, "/api/territory/people", "POST", {
+        unit_id: unit.id,
+        contact_id: person.id,
+      })
+    ).status,
+    404,
+  );
+});
+test("recapiti aggiuntivi e social: isolamento e URL attivi non consentiti", async () => {
+  const method = await create("contact_methods", {
+    contact_id: contact.id,
+    method_type: "Instagram",
+    value: "https://www.instagram.com/esempio_test/",
+  });
+  assert.equal(method.title, "Instagram");
+  assert.equal(
+    (
+      await request(b, "/api/entities/contact_methods", "POST", {
+        data: { contact_id: contact.id, method_type: "telefono", value: "333" },
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request(a, "/api/entities/contact_methods", "POST", {
+        data: {
+          contact_id: contact.id,
+          method_type: "altro social",
+          value: "javascript:alert(1)",
+        },
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request(a, "/api/entities/contacts", "POST", {
+        data: {
+          title: "Orari errati",
+          preferred_time_from: "20:00",
+          preferred_time_to: "18:00",
+        },
+      })
+    ).status,
+    400,
+  );
+});
+test("storico telemarketing: registrazione e aggiornamento commerciale esplicito in transazione", async () => {
+  const current = (await request(a, "/api/entities/units/" + unit.id)).value;
+  const data = {
+    street_id: street.id,
+    building_id: building.id,
+    unit_id: unit.id,
+    contact_id: contact.id,
+    channel: "telemarketing",
+    occurred_at: "2026-11-08T09:00:00Z",
+    outcome: "in vendita",
+    notes: "Proprietario disponibile a valutare",
+    next_action: "Organizzare valutazione",
+    follow_up_at: "2026-11-09T09:00:00Z",
+  };
+  let result = await request(a, "/api/territory/interactions", "POST", {
+    data,
+    update_unit_status: true,
+    unit_version: current.version,
+  });
+  assert.equal(result.status, 201);
+  assert.equal(result.value.title, "telemarketing · in vendita");
+  const changed = (await request(a, "/api/entities/units/" + unit.id)).value;
+  assert.equal(changed.commercial_status, "in vendita");
+  assert.equal(changed.occupancy_status, current.occupancy_status);
+  assert.equal(changed.version, current.version + 1);
+  const count = app.db
+    .prepare("SELECT count(*) n FROM contact_interactions WHERE tenant_id=?")
+    .get(a.tenant_id).n;
+  result = await request(a, "/api/territory/interactions", "POST", {
+    data,
+    update_unit_status: true,
+    unit_version: current.version,
+  });
+  assert.equal(result.status, 409);
+  assert.equal(
+    app.db
+      .prepare("SELECT count(*) n FROM contact_interactions WHERE tenant_id=?")
+      .get(a.tenant_id).n,
+    count,
+  );
+  assert.equal(
+    (await request(b, "/api/territory/interactions", "POST", { data })).status,
+    400,
+  );
+  assert.equal(
+    (await request(b, "/api/entities/contact_interactions")).value.length,
+    0,
+  );
+  const another = await create("streets", {
+    title: "Via diversa",
+    city: "Milano",
+  });
+  assert.equal(
+    (
+      await request(a, "/api/territory/interactions", "POST", {
+        data: { ...data, street_id: another.id },
+      })
+    ).status,
+    400,
+  );
+});
+test("foto citofono e appartamento: file privati, tipi validati, permessi e rimozione", async () => {
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII=",
+    "base64",
+  );
+  const upload = async (user, target, mime, bytes) => {
+    const r = await fetch(base + "/api/media?" + target, {
+      method: "POST",
+      headers: {
+        Cookie: user.cookie,
+        "X-CSRF-Token": user.csrf,
+        "Content-Type": mime,
+      },
+      body: bytes,
+    });
+    return { status: r.status, value: await r.json() };
+  };
+  const buildingPhoto = await upload(
+    a,
+    "building_id=" + building.id,
+    "image/png",
+    png,
+  );
+  assert.equal(buildingPhoto.status, 201);
+  const unitPhoto = await upload(a, "unit_id=" + unit.id, "image/png", png);
+  assert.equal(unitPhoto.status, 201);
+  let response = await fetch(base + buildingPhoto.value.url, {
+    headers: { Cookie: a.cookie },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "private, no-store");
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), png);
+  assert.equal(
+    (
+      await fetch(base + buildingPhoto.value.url, {
+        headers: { Cookie: b.cookie },
+      })
+    ).status,
+    404,
+  );
+  assert.equal((await fetch(base + buildingPhoto.value.url)).status, 401);
+  assert.equal((await request(external, "/api/media")).status, 403);
+  assert.equal(
+    (await upload(b, "building_id=" + building.id, "image/png", png)).status,
+    404,
+  );
+  assert.equal(
+    (
+      await upload(
+        a,
+        "unit_id=" + unit.id,
+        "image/jpeg",
+        Buffer.from("<html>not a photo</html>"),
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await upload(
+        a,
+        "unit_id=" + unit.id,
+        "image/svg+xml",
+        Buffer.from("<svg/>"),
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (await request(agent, "/api/media/" + buildingPhoto.value.id, "DELETE", {}))
+      .status,
+    403,
+  );
+  assert.equal(
+    (await request(a, "/api/media/" + buildingPhoto.value.id, "DELETE", {}))
+      .status,
+    200,
+  );
+  assert.equal(
+    (
+      await fetch(base + buildingPhoto.value.url, {
+        headers: { Cookie: a.cookie },
+      })
+    ).status,
+    404,
+  );
+  assert.equal((await request(b, "/api/media")).value.length, 0);
 });
 test("input malformati e sessione revocata", async () => {
   const malformed = await fetch(base + "/api/entities/streets", {
