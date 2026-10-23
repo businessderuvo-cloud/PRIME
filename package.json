@@ -1,12 +1,12 @@
 {
   "name": "prime",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test tests.mjs",
-    "check": "node --check server.mjs && node --check public/app.js && node --check public/schema.js"
+    "check": "node --check server.mjs && node --check public/app.js && node --check public/schema.js && node --check public/planner.js && node --check public/planner-view.js && node --check public/wps-clock.js"
   },
   "engines": {
     "node": ">=24"

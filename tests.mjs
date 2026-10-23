@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { createApp } from "./server.mjs";
 import { openDatabase } from "./src/database.mjs";
+import { clockState, countdown, daysFor, layoutDay } from "./public/planner.js";
 const temporary = mkdtempSync(path.join(tmpdir(), "prime-tests-"));
 const database = path.join(temporary, "test.sqlite");
 const testPassword = randomBytes(24).toString("hex");
@@ -68,6 +69,11 @@ function testMember(role, tenant) {
   return { id, csrf, cookie: "prime_session=" + token };
 }
 async function create(entity, data, user = a) {
+  if (entity === "activities" && !data.starts_at)
+    data = {
+      ...data,
+      starts_at: new Date(Date.parse(data.due_at) - 3600000).toISOString(),
+    };
   const r = await request(user, "/api/entities/" + entity, "POST", { data });
   assert.equal(r.status, 201, JSON.stringify(r.value));
   return r.value;
@@ -105,12 +111,192 @@ after(async () => {
 });
 test("migrazioni idempotenti e dati persistenti su disco", () => {
   const second = openDatabase(database);
-  assert.equal(second.prepare("SELECT count(*) n FROM migrations").get().n, 2);
+  assert.equal(second.prepare("SELECT count(*) n FROM migrations").get().n, 3);
   assert.equal(
     second.prepare("SELECT name FROM tenants WHERE id=?").get(a.tenant_id).name,
     "Agenzia A",
   );
   second.close();
+});
+test("migrazione WPS conserva appuntamenti collegati e adotta l’orario dell’incontro", () => {
+  const filename = path.join(temporary, "v2.sqlite"),
+    legacy = new DatabaseSync(filename),
+    now = new Date().toISOString();
+  for (const name of ["001_foundation.sql", "002_relational_workspace.sql"])
+    legacy.exec(
+      readFileSync(new URL("./migrations/" + name, import.meta.url), "utf8"),
+    );
+  legacy.prepare("INSERT INTO tenants VALUES (?,?)").run("t", "Agenzia");
+  legacy
+    .prepare("INSERT INTO users(id,email,password) VALUES (?,?,?)")
+    .run("u", "u@tests.invalid", "disabled");
+  legacy
+    .prepare("INSERT INTO memberships VALUES (?,?,?)")
+    .run("u", "t", "owner");
+  legacy
+    .prepare(
+      "INSERT INTO activities(id,tenant_id,title,agent_id,activity_type,due_at,created_by,updated_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+    )
+    .run(
+      "a",
+      "t",
+      "Incontro",
+      "u",
+      "appuntamento proprietario",
+      "2026-11-02T09:00:00.000Z",
+      "u",
+      "u",
+      now,
+      now,
+    );
+  legacy
+    .prepare(
+      "INSERT INTO appointments(id,tenant_id,title,agent_id,activity_id,starts_at,ends_at,created_by,updated_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+    )
+    .run(
+      "p",
+      "t",
+      "Incontro",
+      "u",
+      "a",
+      "2026-11-02T10:00:00.000Z",
+      "2026-11-02T11:00:00.000Z",
+      "u",
+      "u",
+      now,
+      now,
+    );
+  legacy.close();
+  const marker = new DatabaseSync(filename);
+  marker.exec(
+    "CREATE TABLE migrations(name TEXT PRIMARY KEY,applied_at TEXT NOT NULL)",
+  );
+  for (const name of ["001_foundation.sql", "002_relational_workspace.sql"])
+    marker.prepare("INSERT INTO migrations VALUES (?,?)").run(name, now);
+  marker.close();
+  const migrated = openDatabase(filename);
+  assert.equal(
+    migrated.prepare("SELECT activity_id FROM appointments").get().activity_id,
+    "a",
+  );
+  assert.equal(
+    migrated.prepare("SELECT starts_at,due_at FROM activities").get().starts_at,
+    "2026-11-02T10:00:00.000Z",
+  );
+  assert.equal(migrated.prepare("PRAGMA foreign_key_check").get(), undefined);
+  assert.equal(migrated.prepare("PRAGMA foreign_keys").get().foreign_keys, 1);
+  migrated.close();
+});
+test("timer WPS: attesa, blocco in corso, scadenza, riapertura e conferme terminali", () => {
+  const task = {
+    id: "a",
+    agent_id: "u",
+    starts_at: "2026-11-02T09:00:00Z",
+    due_at: "2026-11-02T10:00:00Z",
+    status: "pianificata",
+  };
+  assert.equal(
+    clockState([task], "u", Date.parse("2026-11-02T08:59:30Z")).phase,
+    "waiting",
+  );
+  assert.equal(
+    clockState([task], "u", Date.parse("2026-11-02T08:59:30Z")).seconds,
+    30,
+  );
+  assert.equal(
+    clockState([task], "u", Date.parse(task.starts_at)).phase,
+    "running",
+  );
+  assert.equal(
+    clockState([task], "u", Date.parse(task.due_at)).phase,
+    "review",
+  );
+  assert.equal(
+    clockState([task], "u", Date.parse("2026-11-05T08:00:00Z")).phase,
+    "review",
+  );
+  for (const status of ["completata", "non completata", "annullata"])
+    assert.equal(
+      clockState([{ ...task, status }], "u", Date.parse("2026-11-05T08:00:00Z"))
+        .phase,
+      "free",
+    );
+  assert.equal(
+    clockState([task], "another", Date.parse(task.due_at)).phase,
+    "free",
+  );
+  assert.equal(countdown(3661), "01:01:01");
+  assert.equal(countdown(-2), "00:00:00");
+});
+test("timer usa l’ora assoluta e mette in coda le attività scadute prima della prossima", () => {
+  const tasks = [
+    {
+      id: "new",
+      agent_id: "u",
+      starts_at: "2026-11-02T11:00:00Z",
+      due_at: "2026-11-02T12:00:00Z",
+      status: "pianificata",
+    },
+    {
+      id: "old",
+      agent_id: "u",
+      starts_at: "2026-11-02T09:00:00Z",
+      due_at: "2026-11-02T10:00:00Z",
+      status: "in corso",
+    },
+  ];
+  assert.equal(
+    clockState(tasks, "u", Date.parse("2026-11-02T10:30:00Z")).activity.id,
+    "old",
+  );
+  assert.equal(
+    clockState(
+      tasks.map((r) =>
+        r.id === "old" ? { ...r, status: "non completata" } : r,
+      ),
+      "u",
+      Date.parse("2026-11-02T10:30:00Z"),
+    ).seconds,
+    1800,
+  );
+});
+test("griglia calendario: settimana da lunedì, durata, sovrapposizioni e passaggio a mezzanotte", () => {
+  assert.deepEqual(daysFor("2026-11-04", "week"), [
+    "2026-11-02",
+    "2026-11-03",
+    "2026-11-04",
+    "2026-11-05",
+    "2026-11-06",
+    "2026-11-07",
+    "2026-11-08",
+  ]);
+  assert.deepEqual(daysFor("2026-11-04", "day"), ["2026-11-04"]);
+  const event = (id, start, end) => ({
+    id,
+    starts_at: "2026-11-04T" + start,
+    ends_at: "2026-11-04T" + end,
+  });
+  const items = layoutDay(
+    [
+      event("a", "09:00:00", "10:00:00"),
+      event("b", "09:30:00", "10:30:00"),
+      event("c", "11:00:00", "12:00:00"),
+    ],
+    "2026-11-04",
+  );
+  assert.equal(items[0].top, 540);
+  assert.equal(items[0].minutes, 60);
+  assert.equal(items[0].lanes, 2);
+  assert.notEqual(items[0].lane, items[1].lane);
+  assert.equal(items[2].lanes, 1);
+  const overnight = {
+    id: "night",
+    starts_at: "2026-11-04T23:30:00",
+    ends_at: "2026-11-05T00:30:00",
+  };
+  assert.equal(layoutDay([overnight], "2026-11-04")[0].minutes, 30);
+  assert.equal(layoutDay([overnight], "2026-11-05")[0].top, 0);
+  assert.equal(layoutDay([overnight], "2026-11-05")[0].minutes, 30);
 });
 test("migrazione del database precedente conserva utenti e record legacy", () => {
   const filename = path.join(temporary, "legacy.sqlite");
@@ -157,6 +343,10 @@ test("asset della schermata iniziale presenti e policy di sicurezza", async () =
     "/app.js",
     "/schema.js",
     "/style.css",
+    "/planner.js",
+    "/planner-view.js",
+    "/wps-clock.js",
+    "/planner.css",
     "/assets/logo-dark.png",
     "/assets/logo-light.png",
   ]) {
@@ -577,6 +767,7 @@ test("contatto da non ricontattare blocca chiamate e richiami nel WPS", async ()
           title: "Richiamo",
           agent_id: a.id,
           activity_type: "richiamo",
+          starts_at: "2026-11-04T09:00:00Z",
           contact_id: blocked.id,
           due_at: "2026-11-04T10:00:00Z",
         },
@@ -631,6 +822,168 @@ test("eliminazione protetta dalle relazioni, delete reale e cronologia conservat
       .prepare("SELECT count(*) n FROM record_history WHERE record_id=?")
       .get(disposable.id).n,
     1,
+  );
+});
+test("WPS orario: fine valida, assenza di sovrapposizioni e fasce adiacenti", async () => {
+  const block = {
+    title: "Blocco orario",
+    agent_id: a.id,
+    activity_type: "censimento",
+    starts_at: "2026-11-06T09:00:00Z",
+    due_at: "2026-11-06T10:00:00Z",
+  };
+  assert.equal(
+    (
+      await request(a, "/api/entities/activities", "POST", {
+        data: { ...block, due_at: block.starts_at },
+      })
+    ).status,
+    400,
+  );
+  await create("activities", block);
+  assert.equal(
+    (
+      await request(a, "/api/entities/activities", "POST", {
+        data: {
+          ...block,
+          title: "Sovrapposto",
+          starts_at: "2026-11-06T09:30:00Z",
+        },
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    (
+      await request(a, "/api/entities/activities", "POST", {
+        data: {
+          ...block,
+          title: "Adiacente",
+          starts_at: "2026-11-06T10:00:00Z",
+          due_at: "2026-11-06T11:00:00Z",
+        },
+      })
+    ).status,
+    201,
+  );
+});
+test("scadenza non completa automaticamente il lavoro e non completata richiede un esito persistente", async () => {
+  const task = await create("activities", {
+    title: "Attività scaduta",
+    agent_id: a.id,
+    activity_type: "porta a porta",
+    starts_at: "2020-01-02T09:00:00Z",
+    due_at: "2020-01-02T10:00:00Z",
+  });
+  let row = (await request(a, "/api/entities/activities/" + task.id)).value;
+  assert.equal(row.status, "pianificata");
+  assert.equal(clockState([row], a.id).phase, "review");
+  assert.equal(
+    (
+      await request(a, "/api/entities/activities/" + task.id, "PUT", {
+        version: row.version,
+        data: { ...dataOf(row), status: "non completata" },
+      })
+    ).status,
+    400,
+  );
+  const saved = await request(a, "/api/entities/activities/" + task.id, "PUT", {
+    version: row.version,
+    data: {
+      ...dataOf(row),
+      status: "non completata",
+      outcome: "Interlocutore assente",
+      next_action: "Pianificare un nuovo blocco",
+    },
+  });
+  assert.equal(saved.status, 200);
+  row = (await request(a, "/api/entities/activities/" + task.id)).value;
+  assert.equal(row.status, "non completata");
+  assert.equal(row.outcome, "Interlocutore assente");
+  assert.equal(clockState([row], a.id).phase, "free");
+  assert.equal(
+    (await request(a, `/api/entities/activities/${task.id}/history`)).value
+      .length,
+    2,
+  );
+});
+test("riprogrammare l’appuntamento sposta atomicamente il blocco WPS senza creare eventi duplicati", async () => {
+  const task = await create("activities", {
+    title: "Incontro condiviso",
+    agent_id: a.id,
+    activity_type: "appuntamento proprietario",
+    starts_at: "2026-11-07T09:00:00Z",
+    due_at: "2026-11-07T10:00:00Z",
+  });
+  let meeting = await create("appointments", {
+    title: task.title,
+    agent_id: a.id,
+    activity_id: task.id,
+    starts_at: task.starts_at,
+    ends_at: task.due_at,
+  });
+  const moved = await request(
+    a,
+    "/api/entities/appointments/" + meeting.id,
+    "PUT",
+    {
+      version: meeting.version,
+      data: {
+        ...dataOf(meeting),
+        starts_at: "2026-11-07T11:00:00Z",
+        ends_at: "2026-11-07T12:00:00Z",
+      },
+    },
+  );
+  assert.equal(moved.status, 200);
+  meeting = moved.value;
+  const synced = (await request(a, "/api/entities/activities/" + task.id))
+    .value;
+  assert.equal(synced.starts_at, meeting.starts_at);
+  assert.equal(synced.due_at, meeting.ends_at);
+  assert.equal(synced.version, 2);
+  assert.equal(
+    (
+      await request(a, "/api/entities/activities/" + task.id, "PUT", {
+        version: synced.version,
+        data: {
+          ...dataOf(synced),
+          starts_at: "2026-11-07T12:00:00Z",
+          due_at: "2026-11-07T13:00:00Z",
+        },
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    (await request(a, "/api/entities/appointments")).value.filter(
+      (x) => x.activity_id === task.id,
+    ).length,
+    1,
+  );
+  const other = await create("activities", {
+    title: "Blocco protetto",
+    agent_id: a.id,
+    activity_type: "censimento",
+    starts_at: "2026-11-07T13:00:00Z",
+    due_at: "2026-11-07T14:00:00Z",
+  });
+  assert.equal(
+    (
+      await request(a, "/api/entities/appointments/" + meeting.id, "PUT", {
+        version: meeting.version,
+        data: {
+          ...dataOf(meeting),
+          starts_at: other.starts_at,
+          ends_at: other.due_at,
+        },
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    (await request(a, "/api/entities/activities/" + task.id)).value.starts_at,
+    synced.starts_at,
   );
 });
 test("input malformati e sessione revocata", async () => {

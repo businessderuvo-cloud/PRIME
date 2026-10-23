@@ -129,11 +129,21 @@ export const schema = {
         "follow-up",
       ]),
       priority: select("Priorità", ["normale", "bassa", "alta", "urgente"]),
-      due_at: { label: "Scadenza", type: "datetime-local", required: true },
+      starts_at: {
+        label: "Inizio attività",
+        type: "datetime-local",
+        required: true,
+      },
+      due_at: {
+        label: "Fine attività",
+        type: "datetime-local",
+        required: true,
+      },
       status: select("Avanzamento", [
         "pianificata",
         "in corso",
         "completata",
+        "non completata",
         "annullata",
       ]),
       goal: {
@@ -159,7 +169,7 @@ export const schema = {
     },
   },
   appointments: {
-    label: "Agenda",
+    label: "Agenda appuntamenti",
     singular: "appuntamento",
     fields: {
       ...common,

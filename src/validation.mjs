@@ -73,9 +73,17 @@ export function validate(entity, input) {
   if (entity === "contacts")
     output.phone = output.phone.replace(/[\s().-]/g, "");
   if (entity === "activities") {
+    if (output.due_at <= output.starts_at)
+      throw new ApiError(
+        400,
+        "La fine dell’attività deve essere successiva all’inizio",
+      );
     if (output.progress > output.goal)
       throw new ApiError(400, "L’avanzamento non può superare l’obiettivo");
-    if (output.status === "completata" && !output.outcome)
+    if (
+      ["completata", "non completata"].includes(output.status) &&
+      !output.outcome
+    )
       throw new ApiError(
         400,
         "Registra l’esito prima di completare l’attività",

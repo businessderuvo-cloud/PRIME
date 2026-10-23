@@ -1,4 +1,8 @@
 import { schema, roleLabels } from "./schema.js";
+import { renderPlanner } from "./planner-view.js";
+import { startWpsClock } from "./wps-clock.js";
+import { finishedStatuses } from "./planner.js";
+let stopWpsClock;
 const app = document.querySelector("#app");
 const state = {
   me: null,
@@ -119,6 +123,7 @@ function displayValue(entity, key, value) {
   return value || "—";
 }
 function auth(mode = "login", error = "") {
+  stopWpsClock?.();
   state.me = null;
   document.documentElement.dataset.theme = "dark";
   app.innerHTML = `<main class="auth"><section class="auth-story"><div class="auth-brand">${logo()}</div><div><p class="eyebrow">IL TUO LAVORO. UNA NUOVA PROSPETTIVA.</p><h1>Il territorio diventa<br>opportunità.</h1><p class="lead">Persone, immobili e attività.<br>Uno spazio per farli crescere insieme.</p></div><footer>PRIME <span>GESTIONE IMMOBILIARE</span></footer></section><section class="auth-panel"><div class="auth-form"><span class="eyebrow">IL TUO SPAZIO OPERATIVO</span><h2>${mode === "register" ? "Benvenuto in PRIME." : "Bentornato."}</h2><p class="muted">${mode === "register" ? "Crea l’ambiente indipendente della tua agenzia." : "Accedi al workspace della tua agenzia."}</p><form id="auth-form"><div class="error" role="alert" ${error ? "" : "hidden"}>${esc(error)}</div>${mode === "register" ? '<label>Nome agenzia<input name="agency" required maxlength="120" autocomplete="organization"></label>' : ""}<label>Email<input name="email" type="email" autocomplete="username" required maxlength="254"></label><label>Password<input name="password" type="password" autocomplete="${mode === "register" ? "new-password" : "current-password"}" minlength="12" maxlength="128" required></label><small>Da 12 a 128 caratteri.</small><button class="primary wide" type="submit">${mode === "register" ? "Crea la tua agenzia" : "Accedi"} ${icon("arrow")}</button></form><p class="auth-switch">${mode === "register" ? "Hai già un account?" : "Nuova agenzia?"} <button id="auth-toggle" class="text-button">${mode === "register" ? "Accedi" : "Crea il tuo spazio"}</button></p><p class="setup-note">Versione di sviluppo locale. Verifica email, recupero password, 2FA e verifica aziendale Didit non ancora configurati.</p></div></section></main>`;
@@ -162,13 +167,14 @@ const navigation = [
   ["contacts", "CRM · Persone"],
   ["properties", "Immobili in gestione"],
   ["activities", "WPS"],
-  ["appointments", "Agenda"],
+  ["appointments", "Agenda appuntamenti"],
   ["connect", "PRIME Connect"],
   ["roadmap", "Stato sviluppo"],
 ];
 function shell() {
+  stopWpsClock?.();
   document.documentElement.dataset.theme = state.me.theme;
-  app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><div class="avatar">${esc(state.me.tenant.slice(0, 2).toUpperCase())}</div><div><strong>${esc(state.me.tenant)}</strong><small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off"><span class="key-hint">/</span><div id="global-results" class="search-results" hidden></div></div><button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button><span class="workspace-badge">AMBIENTE LOCALE</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><span>Versione 0.2 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
+  app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><div class="avatar">${esc(state.me.tenant.slice(0, 2).toUpperCase())}</div><div><strong>${esc(state.me.tenant)}</strong><small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off"><span class="key-hint">/</span><div id="global-results" class="search-results" hidden></div></div><button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button><span class="workspace-badge">AMBIENTE LOCALE</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><span>Versione 0.3 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
   const compactBrand = document.createElement("div");
   compactBrand.className = "compact-brand";
   compactBrand.innerHTML = logo();
@@ -265,6 +271,16 @@ function shell() {
       }
     }, 180);
   };
+  if (state.me.role !== "external")
+    stopWpsClock = startWpsClock({
+      state,
+      api,
+      loadData,
+      renderPage,
+      esc,
+      openEditor,
+      toast,
+    });
 }
 async function navigate(page) {
   state.page = page;
@@ -338,6 +354,25 @@ function bindPeriod(callback) {
 async function renderPage() {
   const main = document.querySelector("#main"),
     page = state.page;
+  main.classList.toggle(
+    "has-planner",
+    ["activities", "appointments"].includes(page),
+  );
+  if (["activities", "appointments"].includes(page)) {
+    renderPlanner({
+      state,
+      main,
+      pageHeader,
+      searchBox,
+      bindSearch,
+      matches,
+      esc,
+      icon,
+      openEditor,
+      refLabel,
+    });
+    return;
+  }
   if (page === "dashboard") {
     const d = state.data;
     main.innerHTML =
@@ -352,9 +387,7 @@ async function renderPage() {
         ["Appartamenti censiti", d.units.length, "units"],
         [
           "Attività WPS aperte",
-          d.activities.filter(
-            (x) => !["completata", "annullata"].includes(x.status),
-          ).length,
+          d.activities.filter((x) => !finishedStatuses.has(x.status)).length,
           "activities",
         ],
         ["Contatti in rubrica", d.contacts.length, "contacts"],
@@ -379,9 +412,7 @@ async function renderPage() {
         )}</div><p class="small-note">I contatori mostrano solo dati reali della tua agenzia.</p></section></div>`;
     const draw = () => {
       const upcoming = d.activities
-        .filter(
-          (x) => !["completata", "annullata"].includes(x.status) && matches(x),
-        )
+        .filter((x) => !finishedStatuses.has(x.status) && matches(x))
         .sort((a, b) => a.due_at.localeCompare(b.due_at));
       document.querySelector("#overview-list").innerHTML = upcoming.length
         ? upcoming
@@ -604,6 +635,16 @@ function drawRecords() {
   );
 }
 async function openEditor(entity, record = null, prefill = {}) {
+  if (entity === "activities" && !record) {
+    const start = new Date();
+    start.setMinutes(0, 0, 0);
+    start.setHours(start.getHours() + 1);
+    prefill = {
+      starts_at: start.toISOString(),
+      due_at: new Date(+start + 3600000).toISOString(),
+      ...prefill,
+    };
+  }
   const def = schema[entity],
     dialog = document.querySelector("#editor"),
     values = record || prefill;
@@ -646,6 +687,19 @@ async function openEditor(entity, record = null, prefill = {}) {
       "",
     )}</div>${entity === "activities" ? '<p class="small-note">Completa il lavoro registrando l’esito. Usa “Collega appuntamento” per definire quando incontrare il cliente in agenda.</p>' : ""}${record ? `<p class="small-note">Aggiornato il ${date(record.updated_at)} · Versione ${record.version}</p><div id="history-content"></div>` : ""}</div><footer class="dialog-footer">${canDelete ? '<button type="button" class="danger" id="delete-record">Elimina</button>' : ""}${record ? '<button type="button" class="secondary" id="history">Cronologia</button>' : ""}${entity === "activities" && record ? '<button type="button" class="secondary" id="schedule">Collega appuntamento</button>' : ""}<button type="submit" class="primary">Salva</button></footer></form>`;
   if (!dialog.open) dialog.showModal();
+  if (
+    entity === "activities" &&
+    record &&
+    state.data.appointments.some((a) => a.activity_id === record.id)
+  ) {
+    dialog.querySelector("[name=starts_at]").disabled = true;
+    dialog.querySelector("[name=due_at]").disabled = true;
+    const hint = document.createElement("p");
+    hint.className = "small-note";
+    hint.textContent =
+      "Orario condiviso con l’Agenda appuntamenti: usa “Collega appuntamento” per modificarlo.";
+    dialog.querySelector(".dialog-body").append(hint);
+  }
   document.querySelector("#close-editor").onclick = () => dialog.close();
   function showError(message) {
     const el = dialog.querySelector(".form-error");
@@ -739,8 +793,8 @@ async function openEditor(entity, record = null, prefill = {}) {
         openEditor("appointments", existing);
         return;
       }
-      const start = new Date(record.due_at),
-        end = new Date(start.getTime() + 3600000);
+      const start = new Date(record.starts_at),
+        end = new Date(record.due_at);
       openEditor("appointments", null, {
         title: record.title,
         activity_id: record.id,
@@ -768,6 +822,7 @@ document.addEventListener("keydown", (e) => {
 async function boot() {
   try {
     state.me = await api("/api/me");
+    state.clockOffset = (state.me.server_now || Date.now()) - Date.now();
     document.documentElement.dataset.theme = state.me.theme;
     if (state.me.role === "external") {
       shell();

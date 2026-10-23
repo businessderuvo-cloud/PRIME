@@ -14,14 +14,18 @@ export function openDatabase(filename = path.join(root, "data/prime.sqlite")) {
     .filter((n) => n.endsWith(".sql"))
     .sort()) {
     if (db.prepare("SELECT 1 FROM migrations WHERE name=?").get(name)) continue;
-    db.exec("BEGIN IMMEDIATE");
+    // Table rebuilds preserve dependent foreign keys by retaining table names.
+    // Enforcement is restored after each migration; integrity is checked before commit.
+    db.exec("PRAGMA foreign_keys=OFF; BEGIN IMMEDIATE");
     try {
       db.exec(readFileSync(path.join(root, "migrations", name), "utf8"));
+      if (db.prepare("PRAGMA foreign_key_check").get())
+        throw new Error(`Relazioni non valide nella migrazione ${name}`);
       db.prepare("INSERT INTO migrations VALUES (?,?)").run(
         name,
         new Date().toISOString(),
       );
-      db.exec("COMMIT");
+      db.exec("COMMIT; PRAGMA foreign_keys=ON");
     } catch (e) {
       db.exec("ROLLBACK");
       db.close();

@@ -170,6 +170,28 @@ export function createApp({
         "Solo titolare o responsabile possono assegnare ad altri agenti",
       );
     if (entity === "activities") {
+      const original =
+        id &&
+        db
+          .prepare("SELECT * FROM activities WHERE tenant_id=? AND id=?")
+          .get(s.tenant_id, id);
+      const moved =
+        !original ||
+        original.starts_at !== b.starts_at ||
+        original.due_at !== b.due_at ||
+        original.agent_id !== b.agent_id;
+      if (b.status !== "annullata" && moved) {
+        const clash = db
+          .prepare(
+            "SELECT id FROM activities WHERE tenant_id=? AND agent_id=? AND id<>? AND status<>'annullata' AND starts_at<? AND due_at>?",
+          )
+          .get(s.tenant_id, b.agent_id, id || "", b.due_at, b.starts_at);
+        if (clash)
+          throw new ApiError(
+            409,
+            "L’agente ha già un’attività WPS in questa fascia oraria",
+          );
+      }
       const unit =
         b.unit_id &&
         db
@@ -200,7 +222,7 @@ export function createApp({
         );
       const appointment = db
         .prepare(
-          "SELECT agent_id,contact_id,property_id FROM appointments WHERE tenant_id=? AND activity_id=?",
+          "SELECT agent_id,contact_id,property_id,starts_at,ends_at FROM appointments WHERE tenant_id=? AND activity_id=?",
         )
         .get(s.tenant_id, id || "");
       if (
@@ -212,6 +234,15 @@ export function createApp({
         throw new ApiError(
           409,
           "Aggiorna prima il collegamento nell’agenda: agente e riferimenti devono coincidere",
+        );
+      if (
+        appointment &&
+        (appointment.starts_at !== b.starts_at ||
+          appointment.ends_at !== b.due_at)
+      )
+        throw new ApiError(
+          409,
+          "L’orario è condiviso: modificalo dall’Agenda appuntamenti",
         );
     }
     if (entity === "appointments") {
@@ -227,6 +258,16 @@ export function createApp({
           throw new ApiError(
             400,
             "Agente, persona e immobile devono coincidere con l’attività WPS",
+          );
+        const blocked = db
+          .prepare(
+            "SELECT id FROM activities WHERE tenant_id=? AND agent_id=? AND id<>? AND status<>'annullata' AND starts_at<? AND due_at>?",
+          )
+          .get(s.tenant_id, b.agent_id, b.activity_id, b.ends_at, b.starts_at);
+        if (blocked)
+          throw new ApiError(
+            409,
+            "La nuova fascia si sovrappone a un’altra attività WPS dell’agente",
           );
       }
       if (!["annullato", "saltato", "riprogrammato"].includes(b.status)) {
@@ -368,6 +409,7 @@ export function createApp({
             theme: s.theme,
             csrf: s.csrf,
             environment: demo ? "demo" : "local",
+            server_now: Date.now(),
           });
         if (url.pathname === "/api/logout" && method === "POST") {
           db.prepare("DELETE FROM sessions WHERE token=?").run(s.token);
@@ -540,6 +582,45 @@ export function createApp({
                 now,
               );
               audit(s, `${entity}.${id ? "update" : "create"}`, rid);
+              if (entity === "appointments" && b.activity_id) {
+                const task = db
+                  .prepare(
+                    "SELECT * FROM activities WHERE tenant_id=? AND id=?",
+                  )
+                  .get(s.tenant_id, b.activity_id);
+                if (
+                  task.starts_at !== b.starts_at ||
+                  task.due_at !== b.ends_at
+                ) {
+                  db.prepare(
+                    "UPDATE activities SET starts_at=?,due_at=?,version=version+1,updated_by=?,updated_at=? WHERE tenant_id=? AND id=?",
+                  ).run(
+                    b.starts_at,
+                    b.ends_at,
+                    s.user_id,
+                    now,
+                    s.tenant_id,
+                    task.id,
+                  );
+                  const updated = db
+                    .prepare(
+                      "SELECT * FROM activities WHERE tenant_id=? AND id=?",
+                    )
+                    .get(s.tenant_id, task.id);
+                  db.prepare(
+                    "INSERT INTO record_history(tenant_id,entity,record_id,version,snapshot,actor_id,created_at) VALUES (?,?,?,?,?,?,?)",
+                  ).run(
+                    s.tenant_id,
+                    "activities",
+                    task.id,
+                    updated.version,
+                    JSON.stringify(updated),
+                    s.user_id,
+                    now,
+                  );
+                  audit(s, "activities.reschedule_from_appointment", task.id);
+                }
+              }
             });
             return json(
               res,
@@ -586,7 +667,11 @@ export function createApp({
         "/": "index.html",
         "/app.js": "app.js",
         "/schema.js": "schema.js",
+        "/planner.js": "planner.js",
+        "/planner-view.js": "planner-view.js",
+        "/wps-clock.js": "wps-clock.js",
         "/style.css": "style.css",
+        "/planner.css": "planner.css",
         "/assets/logo-light.png": "assets/logo-light.png",
         "/assets/logo-dark.png": "assets/logo-dark.png",
       };
