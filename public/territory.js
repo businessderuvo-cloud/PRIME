@@ -1,3 +1,4 @@
+import { mountRepeatableRecaps } from "./repeatable-recaps.js";
 import { unitHighlights } from "./territory-highlights.js";
 import { groupUnitsByFloor } from "./territory-floors.js";
 const sortBy = (rows, key = "title") =>
@@ -685,7 +686,12 @@ export function renderTerritory(ctx) {
       )
       .join(
         "",
-      )}</select></label><label>Relazione<select name="relationship">${["proprietario", "comproprietario", "inquilino", "occupante", "delegato", "altro interlocutore"].map((x) => `<option>${x}</option>`).join("")}</select></label><label>Nome e cognome<input name="title" required maxlength="200" autocomplete="off"></label><label>Telefono<input name="phone" type="tel" maxlength="200"></label><label>Email<input name="email" type="email" maxlength="200"></label></div><p class="small-note">Dalla scheda completa potrai aggiungere altri recapiti, profili social, fasce orarie e informazioni personali facoltative. Le persone già presenti non vengono duplicate.</p></div><footer class="dialog-footer"><button class="primary" type="submit">Salva e collega</button></footer></form>`;
+      )}</select></label><label>Relazione<select name="relationship">${["proprietario", "comproprietario", "inquilino", "occupante", "delegato", "altro interlocutore"].map((x) => `<option>${x}</option>`).join("")}</select></label><label>Nome e cognome<input name="title" required maxlength="200" autocomplete="off"></label><label>Telefono<input name="phone" type="tel" maxlength="200"></label><label>Email<input name="email" type="email" maxlength="200"></label></div><p class="small-note">Usa Aggiungi numero e Aggiungi social per inserire più recapiti. Fasce orarie e informazioni personali facoltative sono nella scheda completa. Le persone già presenti non vengono duplicate.</p></div><footer class="dialog-footer"><button class="primary" type="submit">Salva e collega</button></footer></form>`;
+    let collectRecaps = mountRepeatableRecaps({
+      container: dialog.querySelector(".form-grid"),
+      phoneInput: dialog.querySelector("[name=phone]"),
+      esc,
+    });
     dialog.showModal();
     dialog.querySelector("[data-close]").onclick = () => dialog.close();
     const form = dialog.querySelector("form");
@@ -694,6 +700,18 @@ export function renderTerritory(ctx) {
       for (const key of ["title", "phone", "email"])
         form.elements[key].disabled = existing;
       form.elements.title.required = !existing;
+      dialog
+        .querySelectorAll(".repeatable-recaps")
+        .forEach((element) => element.remove());
+      const selected = d.contact_methods.filter(
+        (method) => method.contact_id === form.elements.contact_id.value,
+      );
+      collectRecaps = mountRepeatableRecaps({
+        container: dialog.querySelector(".form-grid"),
+        phoneInput: existing ? null : form.elements.phone,
+        esc,
+        methods: selected,
+      });
     };
     form.onsubmit = async (e) => {
       e.preventDefault();
@@ -707,6 +725,7 @@ export function renderTerritory(ctx) {
           body: JSON.stringify({
             unit_id: unit.id,
             contact_id: f.get("contact_id") || undefined,
+            contact_methods: collectRecaps(),
             relationship,
             contact: {
               title: f.get("title"),

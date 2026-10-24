@@ -3,6 +3,7 @@ import path from "node:path";
 import { randomUUID, createHash } from "node:crypto";
 import { validate, ApiError } from "./validation.mjs";
 import { transaction } from "./database.mjs";
+import { saveContactMethods } from "./contact-methods.mjs";
 
 export function territoryApi({ db, uploadsDirectory, audit, json, readBody }) {
   const folder = (s) =>
@@ -62,6 +63,7 @@ export function territoryApi({ db, uploadsDirectory, audit, json, readBody }) {
               "Persona non disponibile per questa agenzia",
             );
         } else person = insert("contacts", b.contact, s);
+        saveContactMethods(db, s, person.id, b.contact_methods, audit);
         const link = insert(
           "unit_contacts",
           {

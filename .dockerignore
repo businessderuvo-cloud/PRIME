@@ -1,0 +1,13 @@
+**
+!Dockerfile
+!package.json
+!server.mjs
+!src/
+!src/**
+!public/
+!public/**
+!migrations/
+!migrations/**
+!scripts/
+!scripts/hosted-start.mjs
+!scripts/import-demo.mjs

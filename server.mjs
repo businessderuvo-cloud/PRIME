@@ -14,6 +14,7 @@ import { openDatabase, root, transaction } from "./src/database.mjs";
 import { ApiError, validate } from "./src/validation.mjs";
 import { schema } from "./public/schema.js";
 import { territoryApi } from "./src/territory-api.mjs";
+import { saveContactMethods } from "./src/contact-methods.mjs";
 const scrypt = promisify(scryptCallback),
   hash = (x) => createHash("sha256").update(x).digest("hex");
 const dummySalt = randomBytes(16).toString("hex");
@@ -339,6 +340,10 @@ export function createApp({
       );
       if (production)
         res.setHeader("Strict-Transport-Security", "max-age=31536000");
+      if (url.pathname === "/healthz" && method === "GET") {
+        db.prepare("SELECT 1").get();
+        return json(res,200,{status:"ok"});
+      }
       const mutating = !["GET", "HEAD"].includes(method);
       if (
         mutating &&
@@ -619,6 +624,8 @@ export function createApp({
                 now,
               );
               audit(s, `${entity}.${id ? "update" : "create"}`, rid);
+              if (entity === "contacts")
+                saveContactMethods(db, s, rid, raw.contact_methods, audit);
               if (entity === "appointments" && b.activity_id) {
                 const task = db
                   .prepare(
@@ -713,6 +720,7 @@ export function createApp({
         "/territory-floors.js": "territory-floors.js",
         "/territory-highlights.js": "territory-highlights.js",
         "/person-recaps.js": "person-recaps.js",
+        "/repeatable-recaps.js": "repeatable-recaps.js",
         "/voice-input.js": "voice-input.js",
         "/territory.css": "territory.css",
         "/assets/logo-light.png": "assets/logo-light.png",

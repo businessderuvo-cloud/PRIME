@@ -34,7 +34,7 @@ La fase 1 è in corso. Nessun modulo di settore viene dichiarato completo nella 
 
 ## Verifiche eseguite
 
-- 36 test automatici con database temporanei: migrazioni nuove e legacy; asset; accesso, password errate e logout; hash sessioni e cookie; CSRF/origine; CRUD e relazioni; isolamento tra tenant in lettura, scrittura, ricerca, storico e chiavi esterne; duplicati; esito WPS; assegnazione e ruoli; eventi unici; sovrapposizioni; stato/esito; riprogrammazione; due aggiornamenti simultanei; blocco contatti da non richiamare; tema persistente; integrazioni non configurate; eliminazione e input malformati.
+- 39 test automatici con database temporanei: migrazioni nuove e legacy; asset; accesso, password errate e logout; hash sessioni e cookie; CSRF/origine; CRUD e relazioni; isolamento tra tenant in lettura, scrittura, ricerca, storico e chiavi esterne; duplicati; esito WPS; assegnazione e ruoli; eventi unici; sovrapposizioni; stato/esito; riprogrammazione; due aggiornamenti simultanei; blocco contatti da non richiamare; tema persistente; integrazioni non configurate; eliminazione e input malformati.
 - Browser: accesso su database demo separato; dashboard con dati dichiarati di esempio; modifica WPS 4/12 → 5/12 con esito salvato; tema chiaro e persistenza dopo refresh; menu mobile richiudibile e layout a 390 px senza overflow orizzontale. Ricerca via/civico verificata anche dalle API.
 - Le prove demo non scrivono nel database di lavoro dell'agenzia e non sono distribuite come dati produttivi.
 
@@ -55,3 +55,6 @@ Evidenze commerciali, lead caldi e filtri per stabile: [dettagli](EVIDENZE-COMME
 
 
 CRM: filtro per tipo di contatto combinato con ricerca; Lead caldo gestito con una sola spunta, con migrazione dei lead già caldi.
+
+
+Campi telefono/social ripetibili direttamente nella scheda persona: [dettagli](RECAPITI-MULTIPLI.md). Demo Fly.io e persistenza: [configurazione](FLY.md).

@@ -1,3 +1,4 @@
+import { mountRepeatableRecaps } from "./repeatable-recaps.js";
 import { schema, roleLabels } from "./schema.js";
 import { renderPlanner } from "./planner-view.js";
 import { startWpsClock } from "./wps-clock.js";
@@ -130,7 +131,7 @@ function auth(mode = "login", error = "") {
   stopWpsClock?.();
   state.me = null;
   document.documentElement.dataset.theme = "dark";
-  app.innerHTML = `<main class="auth"><section class="auth-story"><div class="auth-brand">${logo()}</div><div><p class="eyebrow">IL TUO LAVORO. UNA NUOVA PROSPETTIVA.</p><h1>Il territorio diventa<br>opportunità.</h1><p class="lead">Persone, immobili e attività.<br>Uno spazio per farli crescere insieme.</p></div><footer>PRIME <span>GESTIONE IMMOBILIARE</span></footer></section><section class="auth-panel"><div class="auth-form"><span class="eyebrow">IL TUO SPAZIO OPERATIVO</span><h2>${mode === "register" ? "Benvenuto in PRIME." : "Bentornato."}</h2><p class="muted">${mode === "register" ? "Crea l’ambiente indipendente della tua agenzia." : "Accedi al workspace della tua agenzia."}</p><form id="auth-form"><div class="error" role="alert" ${error ? "" : "hidden"}>${esc(error)}</div>${mode === "register" ? '<label>Nome agenzia<input name="agency" required maxlength="120" autocomplete="organization"></label>' : ""}<label>Email<input name="email" type="email" autocomplete="username" required maxlength="254"></label><label>Password<input name="password" type="password" autocomplete="${mode === "register" ? "new-password" : "current-password"}" minlength="12" maxlength="128" required></label><small>Da 12 a 128 caratteri.</small><button class="primary wide" type="submit">${mode === "register" ? "Crea la tua agenzia" : "Accedi"} ${icon("arrow")}</button></form><p class="auth-switch">${mode === "register" ? "Hai già un account?" : "Nuova agenzia?"} <button id="auth-toggle" class="text-button">${mode === "register" ? "Accedi" : "Crea il tuo spazio"}</button></p><p class="setup-note">Versione di sviluppo locale. Verifica email, recupero password, 2FA e verifica aziendale Didit non ancora configurati.</p></div></section></main>`;
+  app.innerHTML = `<main class="auth"><section class="auth-story"><div class="auth-brand">${logo()}</div><div><p class="eyebrow">IL TUO LAVORO. UNA NUOVA PROSPETTIVA.</p><h1>Il territorio diventa<br>opportunità.</h1><p class="lead">Persone, immobili e attività.<br>Uno spazio per farli crescere insieme.</p></div><footer>PRIME <span>GESTIONE IMMOBILIARE</span></footer></section><section class="auth-panel"><div class="auth-form"><span class="eyebrow">IL TUO SPAZIO OPERATIVO</span><h2>${mode === "register" ? "Benvenuto in PRIME." : "Bentornato."}</h2><p class="muted">${mode === "register" ? "Crea l’ambiente indipendente della tua agenzia." : "Accedi al workspace della tua agenzia."}</p><form id="auth-form"><div class="error" role="alert" ${error ? "" : "hidden"}>${esc(error)}</div>${mode === "register" ? '<label>Nome agenzia<input name="agency" required maxlength="120" autocomplete="organization"></label>' : ""}<label>Email<input name="email" type="email" autocomplete="username" required maxlength="254"></label><label>Password<input name="password" type="password" autocomplete="${mode === "register" ? "new-password" : "current-password"}" minlength="12" maxlength="128" required></label><small>Da 12 a 128 caratteri.</small><button class="primary wide" type="submit">${mode === "register" ? "Crea la tua agenzia" : "Accedi"} ${icon("arrow")}</button></form><p class="auth-switch">${mode === "register" ? "Hai già un account?" : "Nuova agenzia?"} <button id="auth-toggle" class="text-button">${mode === "register" ? "Accedi" : "Crea il tuo spazio"}</button></p><p class="setup-note">Anteprima di sviluppo. Verifica email, recupero password, 2FA e verifica aziendale Didit non ancora configurati.</p></div></section></main>`;
   document.querySelector("#auth-toggle").onclick = () =>
     auth(mode === "login" ? "register" : "login");
   document.querySelector("#auth-form").onsubmit = async (e) => {
@@ -198,7 +199,7 @@ const navigation = [
 function shell() {
   stopWpsClock?.();
   document.documentElement.dataset.theme = state.me.theme;
-  app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><div class="avatar">${esc(state.me.tenant.slice(0, 2).toUpperCase())}</div><div><strong>${esc(state.me.tenant)}</strong><small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off"><span class="key-hint">/</span><div id="global-results" class="search-results" hidden></div></div><button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button><span class="workspace-badge">AMBIENTE LOCALE</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><span>Versione 0.4 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
+  app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><div class="avatar">${esc(state.me.tenant.slice(0, 2).toUpperCase())}</div><div><strong>${esc(state.me.tenant)}</strong><small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off"><span class="key-hint">/</span><div id="global-results" class="search-results" hidden></div></div><button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button><span class="workspace-badge">ANTEPRIMA DI SVILUPPO</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><span>Versione 0.4 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
   const compactBrand = document.createElement("div");
   compactBrand.className = "compact-brand";
   compactBrand.innerHTML = logo();
@@ -752,7 +753,17 @@ async function openEditor(entity, record = null, prefill = {}) {
     .join(
       "",
     )}</div>${entity === "activities" ? '<p class="small-note">Completa il lavoro registrando l’esito. Usa “Collega appuntamento” per definire quando incontrare il cliente in agenda.</p>' : ""}${record ? `<p class="small-note">Aggiornato il ${date(record.updated_at)} · Versione ${record.version}</p><div id="history-content"></div>` : ""}</div><footer class="dialog-footer">${canDelete ? '<button type="button" class="danger" id="delete-record">Elimina</button>' : ""}${record ? '<button type="button" class="secondary" id="history">Cronologia</button>' : ""}${entity === "activities" && record ? '<button type="button" class="secondary" id="schedule">Collega appuntamento</button>' : ""}<button type="submit" class="primary">Salva</button></footer></form>`;
-  if (entity === "properties" || entity === "contacts")
+  let collectRecaps;
+  if (entity === "contacts")
+    collectRecaps = mountRepeatableRecaps({
+      container: dialog.querySelector(".form-grid"),
+      phoneInput: dialog.querySelector("[name=phone]"),
+      esc,
+      methods: (state.data.contact_methods || []).filter(
+        (method) => method.contact_id === record?.id,
+      ),
+    });
+  if (entity === "properties")
     mountPersonRecaps({ dialog, entity, record, state, esc, api, loadData });
   if (!dialog.open) dialog.showModal();
   if (entity === "appointments") {
@@ -840,7 +851,11 @@ async function openEditor(entity, record = null, prefill = {}) {
         "/api/entities/" + entity + (record ? "/" + record.id : ""),
         {
           method: record ? "PUT" : "POST",
-          body: JSON.stringify({ data, version: record?.version }),
+          body: JSON.stringify({
+            data,
+            version: record?.version,
+            ...(collectRecaps ? { contact_methods: collectRecaps() } : {}),
+          }),
         },
       );
       await loadData();

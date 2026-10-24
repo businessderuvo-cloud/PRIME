@@ -528,6 +528,13 @@ test("migrazione del database precedente conserva utenti e record legacy", () =>
   );
   migrated.close();
 });
+test("health check pubblico per Fly senza dati di agenzia", async () => {
+  const response = await request(null, "/healthz");
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.value, { status: "ok" });
+  assert.equal(response.headers.get("cache-control"), "no-store");
+});
+
 test("asset della schermata iniziale presenti e policy di sicurezza", async () => {
   for (const url of [
     "/",
@@ -542,6 +549,7 @@ test("asset della schermata iniziale presenti e policy di sicurezza", async () =
     "/territory-floors.js",
     "/territory-highlights.js",
     "/person-recaps.js",
+    "/repeatable-recaps.js",
     "/voice-input.js",
     "/territory.css",
     "/assets/logo-dark.png",
@@ -1289,6 +1297,130 @@ test("persona e appartamento: inserimento atomico, riuso CRM, più relazioni sen
     404,
   );
 });
+test("campi multipli: persona, numeri e social salvati insieme o annullati insieme", async () => {
+  const draft = (type, value, title = "") => ({
+    data: { method_type: type, value, title },
+  });
+  const created = await request(a, "/api/entities/contacts", "POST", {
+    data: { title: "Persona con più campi", phone: "+390000000001" },
+    contact_methods: [
+      draft("telefono", "+390000000002"),
+      draft("WhatsApp", "+390000000003"),
+      draft("Instagram", "https://example.invalid/instagram"),
+      draft("LinkedIn", "https://example.invalid/linkedin"),
+    ],
+  });
+  assert.equal(created.status, 201);
+  const person = created.value;
+  const methods = (
+    await request(a, "/api/entities/contact_methods")
+  ).value.filter((m) => m.contact_id === person.id);
+  assert.equal(methods.length, 4);
+  const updated = await request(
+    a,
+    "/api/entities/contacts/" + person.id,
+    "PUT",
+    {
+      version: person.version,
+      data: { ...dataOf(person), phone: "+390000000004" },
+      contact_methods: methods.map((m, i) => ({
+        id: m.id,
+        version: m.version,
+        data: {
+          title: m.title,
+          method_type: m.method_type,
+          value: i === 0 ? "+390000000005" : m.value,
+          notes: m.notes,
+        },
+      })),
+    },
+  );
+  assert.equal(updated.status, 200);
+  assert.equal(updated.value.phone, "+390000000004");
+  const before = (await request(a, "/api/entities/contacts")).value.length;
+  const failed = await request(a, "/api/entities/contacts", "POST", {
+    data: { title: "Rollback persona e campi" },
+    contact_methods: [
+      draft("telefono", "+390000000099"),
+      draft("Instagram", "javascript:alert(1)"),
+    ],
+  });
+  assert.equal(failed.status, 400);
+  assert.equal(
+    (await request(a, "/api/entities/contacts")).value.length,
+    before,
+  );
+  assert.equal(
+    (await request(a, "/api/entities/contact_methods")).value.some(
+      (m) => m.value === "+390000000099",
+    ),
+    false,
+  );
+  const outsider = await create(
+    "contacts",
+    { title: "Persona altra agenzia" },
+    b,
+  );
+  const denied = await request(
+    b,
+    "/api/entities/contacts/" + outsider.id,
+    "PUT",
+    {
+      version: outsider.version,
+      data: { ...dataOf(outsider), title: "Non deve essere salvato" },
+      contact_methods: [
+        {
+          id: methods[0].id,
+          version: methods[0].version,
+          data: { method_type: "telefono", value: "+390000000088" },
+        },
+      ],
+    },
+  );
+  assert.equal(denied.status, 404);
+  assert.equal(
+    (await request(b, "/api/entities/contacts")).value.find(
+      (p) => p.id === outsider.id,
+    ).title,
+    outsider.title,
+  );
+});
+
+test("campi multipli nel censimento: creazione e collegamento con recapiti atomici", async () => {
+  const response = await request(a, "/api/territory/people", "POST", {
+    unit_id: unit.id,
+    relationship: "comproprietario",
+    contact: { title: "Comproprietario con campi multipli" },
+    contact_methods: [
+      { data: { method_type: "telefono", value: "+390000000077" } },
+      {
+        data: {
+          method_type: "Facebook",
+          value: "https://example.invalid/facebook",
+        },
+      },
+    ],
+  });
+  assert.equal(response.status, 201);
+  assert.equal(
+    (await request(a, "/api/entities/contact_methods")).value.filter(
+      (m) => m.contact_id === response.value.person.id,
+    ).length,
+    2,
+  );
+  const before = (await request(a, "/api/entities/contacts")).value.length;
+  const invalid = await request(a, "/api/territory/people", "POST", {
+    unit_id: unit.id,
+    contact: { title: "Persona annullata con recapiti" },
+    contact_methods: [{ data: { method_type: "telefono", value: "" } }],
+  });
+  assert.equal(invalid.status, 400);
+  assert.equal(
+    (await request(a, "/api/entities/contacts")).value.length,
+    before,
+  );
+});
+
 test("recapiti aggiuntivi e social: isolamento e URL attivi non consentiti", async () => {
   const method = await create("contact_methods", {
     contact_id: contact.id,
