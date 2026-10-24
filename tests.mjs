@@ -10,6 +10,7 @@ import { DatabaseSync } from "node:sqlite";
 import { createApp } from "./server.mjs";
 import { openDatabase } from "./src/database.mjs";
 import { clockState, countdown, daysFor, layoutDay } from "./public/planner.js";
+import { groupUnitsByFloor } from "./public/territory-floors.js";
 const temporary = mkdtempSync(path.join(tmpdir(), "prime-tests-"));
 const database = path.join(temporary, "test.sqlite");
 const testPassword = randomBytes(24).toString("hex");
@@ -109,6 +110,42 @@ after(async () => {
   assert.ok(temporary.startsWith(path.join(tmpdir(), "prime-tests-")));
   rmSync(temporary, { recursive: true, force: true });
 });
+test("appartamenti per piano: ordine numerico, piani equivalenti e scala/interno", () => {
+  const rows = [
+    { title: "10", floor: "1", staircase: "A" },
+    { title: "2", floor: "primo", staircase: "A" },
+    { title: "1", floor: "Piano 1", staircase: "B" },
+    { title: "20", floor: "10" },
+    { title: "0", floor: "PT" },
+    { title: "3", floor: "2" },
+    { title: "4", floor: "-1" },
+    { title: "5", floor: "" },
+    { title: "6", floor: "terra" },
+    { title: "7", floor: "rialzato" },
+  ];
+  const before = structuredClone(rows);
+  const groups = groupUnitsByFloor(rows);
+  assert.deepEqual(
+    groups.map((g) => g.label),
+    [
+      "Piano -1",
+      "Piano terra",
+      "Piano rialzato",
+      "Piano 1",
+      "Piano 2",
+      "Piano 10",
+      "Piano da indicare",
+    ],
+  );
+  assert.deepEqual(
+    groups.find((g) => g.label === "Piano 1").units.map((u) => u.title),
+    ["2", "10", "1"],
+  );
+  assert.equal(groups.find((g) => g.label === "Piano terra").units.length, 2);
+  assert.deepEqual(rows, before);
+  assert.deepEqual(groupUnitsByFloor([]), []);
+});
+
 test("migrazioni idempotenti e dati persistenti su disco", () => {
   const second = openDatabase(database);
   assert.equal(second.prepare("SELECT count(*) n FROM migrations").get().n, 4);
@@ -348,6 +385,7 @@ test("asset della schermata iniziale presenti e policy di sicurezza", async () =
     "/wps-clock.js",
     "/planner.css",
     "/territory.js",
+    "/territory-floors.js",
     "/person-recaps.js",
     "/voice-input.js",
     "/territory.css",

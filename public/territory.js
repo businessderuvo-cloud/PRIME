@@ -1,3 +1,4 @@
+import { groupUnitsByFloor } from "./territory-floors.js";
 const sortBy = (rows, key = "title") =>
   [...rows].sort((a, b) =>
     String(a[key] || "").localeCompare(String(b[key] || ""), "it", {
@@ -313,13 +314,18 @@ export function renderTerritory(ctx) {
     const units = unitsOf(building.id);
     return `<div class="section-heading"><h3>Appartamenti · ${units.length}</h3><button class="secondary" data-add-unit="${building.id}">+ Aggiungi appartamento</button></div>${
       units.length
-        ? `<div class="territory-unit-grid">${units
-            .map((u) => {
-              const people = peopleOf(u),
-                photo = photos("units", u.id)[0];
-              return `<button class="unit-card" data-pick="units" data-id="${u.id}"><div class="unit-card-top">${photo ? `<img src="${photo.url}" alt="Foto appartamento" loading="lazy">` : `<span class="floor-mark">${esc(u.floor || "—")}<small>PIANO</small></span>`}<div><h3>Interno ${esc(u.title)}</h3><p>${esc([u.staircase ? "Scala " + u.staircase : "", u.property_type, u.area ? u.area + " m²" : "", u.rooms ? u.rooms + " locali" : ""].filter(Boolean).join(" · ") || "Informazioni da completare")}</p></div></div><div class="unit-card-states"><span class="pill ${u.commercial_status === "in vendita" ? "sale" : ""}">${esc(u.commercial_status)}</span><span class="pill">${esc(u.occupancy_status)}</span></div><footer>${people.length ? esc(people.map((p) => p.person.title).join(", ")) : "Persone da associare"}<span>Apri ↗</span></footer></button>`;
-            })
-            .join("")}</div>`
+        ? groupUnitsByFloor(units)
+            .map(
+              (group) =>
+                `<section class="territory-floor-group"><header class="floor-group-header"><div><p class="eyebrow">APPARTAMENTI DELLO STABILE</p><h3>${esc(group.label)}</h3></div><span class="pill">${group.units.length} ${group.units.length === 1 ? "appartamento" : "appartamenti"}</span><button class="text-button" data-add-unit="${building.id}" data-unit-floor="${esc(group.units[0].floor)}">+ Aggiungi su questo piano</button></header><div class="territory-unit-grid">${group.units
+                  .map((u) => {
+                    const people = peopleOf(u),
+                      photo = photos("units", u.id)[0];
+                    return `<button class="unit-card" data-pick="units" data-id="${u.id}"><div class="unit-card-top">${photo ? `<img src="${photo.url}" alt="Foto appartamento" loading="lazy">` : `<span class="floor-mark">${esc(u.floor || "—")}<small>PIANO</small></span>`}<div><h3>Interno ${esc(u.title)}</h3><p>${esc([u.staircase ? "Scala " + u.staircase : "", u.property_type, u.area ? u.area + " m²" : "", u.rooms ? u.rooms + " locali" : ""].filter(Boolean).join(" · ") || "Informazioni da completare")}</p></div></div><div class="unit-card-states"><span class="pill ${u.commercial_status === "in vendita" ? "sale" : ""}">${esc(u.commercial_status)}</span><span class="pill">${esc(u.occupancy_status)}</span></div><footer>${people.length ? esc(people.map((p) => p.person.title).join(", ")) : "Persone da associare"}<span>Apri ↗</span></footer></button>`;
+                  })
+                  .join("")}</div></section>`,
+            )
+            .join("")
         : '<div class="territory-empty"><h3>Dal civico alle persone.</h3><p>Aggiungi gli interni con piano e scala per iniziare il censimento.</p></div>'
     }`;
   }
@@ -536,7 +542,10 @@ export function renderTerritory(ctx) {
       .forEach(
         (b) =>
           (b.onclick = () =>
-            openEditor("units", null, { building_id: b.dataset.addUnit })),
+            openEditor("units", null, {
+              building_id: b.dataset.addUnit,
+              floor: b.dataset.unitFloor || "",
+            })),
       );
   }
   function bindPhotos(target) {

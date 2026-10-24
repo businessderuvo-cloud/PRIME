@@ -710,6 +710,7 @@ export function createApp({
         "/style.css": "style.css",
         "/planner.css": "planner.css",
         "/territory.js": "territory.js",
+        "/territory-floors.js": "territory-floors.js",
         "/person-recaps.js": "person-recaps.js",
         "/voice-input.js": "voice-input.js",
         "/territory.css": "territory.css",

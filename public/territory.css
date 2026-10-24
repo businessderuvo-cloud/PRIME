@@ -1141,3 +1141,22 @@
   flex-wrap: wrap;
   align-items: center;
 }
+.territory-floor-group {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.floor-group-header {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.floor-group-header h3 {
+  margin: 4px 0 0;
+  font-size: 22px;
+}
+.floor-group-header .text-button {
+  margin-left: auto;
+}

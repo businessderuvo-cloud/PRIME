@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test tests.mjs voice-input.test.mjs",
-    "check": "node --check server.mjs && node --check public/app.js && node --check public/schema.js && node --check public/planner.js && node --check public/planner-view.js && node --check public/wps-clock.js && node --check public/territory.js && node --check public/person-recaps.js && node --check public/voice-input.js && node --check src/territory-api.mjs"
+    "check": "node --check server.mjs && node --check public/app.js && node --check public/schema.js && node --check public/planner.js && node --check public/planner-view.js && node --check public/wps-clock.js && node --check public/territory.js && node --check public/person-recaps.js && node --check public/voice-input.js && node --check src/territory-api.mjs && node --check public/territory-floors.js"
   },
   "engines": {
     "node": ">=24"
