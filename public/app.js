@@ -3,6 +3,8 @@ import { renderPlanner } from "./planner-view.js";
 import { startWpsClock } from "./wps-clock.js";
 import { finishedStatuses } from "./planner.js";
 import { renderTerritory } from "./territory.js";
+import { mountPersonRecaps } from "./person-recaps.js";
+import { startVoiceInput } from "./voice-input.js";
 let stopWpsClock;
 const app = document.querySelector("#app");
 const state = {
@@ -741,6 +743,8 @@ async function openEditor(entity, record = null, prefill = {}) {
     .join(
       "",
     )}</div>${entity === "activities" ? '<p class="small-note">Completa il lavoro registrando l’esito. Usa “Collega appuntamento” per definire quando incontrare il cliente in agenda.</p>' : ""}${record ? `<p class="small-note">Aggiornato il ${date(record.updated_at)} · Versione ${record.version}</p><div id="history-content"></div>` : ""}</div><footer class="dialog-footer">${canDelete ? '<button type="button" class="danger" id="delete-record">Elimina</button>' : ""}${record ? '<button type="button" class="secondary" id="history">Cronologia</button>' : ""}${entity === "activities" && record ? '<button type="button" class="secondary" id="schedule">Collega appuntamento</button>' : ""}<button type="submit" class="primary">Salva</button></footer></form>`;
+  if (entity === "properties" || entity === "contacts")
+    mountPersonRecaps({ dialog, entity, record, state, esc, api, loadData });
   if (!dialog.open) dialog.showModal();
   if (entity === "appointments") {
     const quick = document.createElement("div");
@@ -946,4 +950,5 @@ async function boot() {
     }
   }
 }
+startVoiceInput();
 boot();

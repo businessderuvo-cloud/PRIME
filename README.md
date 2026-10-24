@@ -20,7 +20,7 @@ Aprire il sito e scegliere “Crea il tuo spazio” per registrare la propria ag
 
 ## Verifica
 
-Eseguire `node --run check` e `node --run test` (oppure `node --test tests.mjs`). I test creano database temporanei separati, non modificano data/ e rimuovono solo i propri file temporanei. L'ultima verifica comprende 31 test superati e controlli browser desktop/mobile. Per un ambiente di esempio separato impostare PRIME_DEMO=1 e PRIME_DB su un percorso dedicato: PRIME_DEMO mostra l'avviso demo, non inserisce dati e non abilita accessi speciali.
+Eseguire `node --run check` e `node --run test` (oppure `node --test tests.mjs`). I test creano database temporanei separati, non modificano data/ e rimuovono solo i propri file temporanei. L'ultima verifica comprende 32 test superati e controlli browser desktop/mobile. Per un ambiente di esempio separato impostare PRIME_DEMO=1 e PRIME_DB su un percorso dedicato: PRIME_DEMO mostra l'avviso demo, non inserisce dati e non abilita accessi speciali.
 
 ## Limiti attuali
 
@@ -33,3 +33,6 @@ NODE_ENV=production aggiunge cookie Secure e HSTS ma non sostituisce un'infrastr
 SaaS multi-tenant, ruoli, censimento vie/civici/piani/interni, rubrica condominiale con custode e amministratore, CRM, immobili, agenda e disponibilità visite, WPS, ricerca universale e contestuale, matching, pipeline, visite e feedback acquirenti, contratti, locazioni, dashboard, integrazioni esplicitamente non attive, doppio tema e interfaccia mobile-first.
 
 Il riferimento completo è ora la specifica ufficiale allegata dall'utente e conservata integralmente in docs/. Il WPS non è un semplice elenco di attività e non viene attribuita un'espansione inventata all'acronimo. Non è prevista gestione di custodia, consegna o restituzione chiavi.
+
+
+Dettatura vocale nei campi e nelle ricerche, recapiti multipli per persona direttamente dalla scheda immobile: [dettagli e compatibilità browser](docs/DETTATURA.md).

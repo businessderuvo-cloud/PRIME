@@ -348,6 +348,8 @@ test("asset della schermata iniziale presenti e policy di sicurezza", async () =
     "/wps-clock.js",
     "/planner.css",
     "/territory.js",
+    "/person-recaps.js",
+    "/voice-input.js",
     "/territory.css",
     "/assets/logo-dark.png",
     "/assets/logo-light.png",

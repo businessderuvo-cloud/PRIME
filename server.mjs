@@ -710,6 +710,8 @@ export function createApp({
         "/style.css": "style.css",
         "/planner.css": "planner.css",
         "/territory.js": "territory.js",
+        "/person-recaps.js": "person-recaps.js",
+        "/voice-input.js": "voice-input.js",
         "/territory.css": "territory.css",
         "/assets/logo-light.png": "assets/logo-light.png",
         "/assets/logo-dark.png": "assets/logo-dark.png",
