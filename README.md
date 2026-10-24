@@ -22,7 +22,7 @@ Aprire il sito e scegliere “Crea il tuo spazio” per registrare la propria ag
 
 ## Verifica
 
-Eseguire `node --run check` e `node --run test` (oppure `node --test tests.mjs`). I test creano database temporanei separati, non modificano data/ e rimuovono solo i propri file temporanei. L'ultima verifica comprende 39 test superati e controlli browser desktop/mobile. Per un ambiente di esempio separato impostare PRIME_DEMO=1 e PRIME_DB su un percorso dedicato: PRIME_DEMO mostra l'avviso demo, non inserisce dati e non abilita accessi speciali.
+Eseguire `node --run check` e `node --run test` (oppure `node --test tests.mjs`). I test creano database temporanei separati, non modificano data/ e rimuovono solo i propri file temporanei. L'ultima verifica comprende 42 test superati e controlli browser desktop/mobile. Per un ambiente di esempio separato impostare PRIME_DEMO=1 e PRIME_DB su un percorso dedicato: PRIME_DEMO mostra l'avviso demo, non inserisce dati e non abilita accessi speciali.
 
 ## Limiti attuali
 
@@ -50,3 +50,6 @@ CRM: filtro per tipo di contatto combinato con ricerca; Lead caldo gestito con u
 
 
 Campi telefono/social ripetibili direttamente nella scheda persona: [dettagli](docs/RECAPITI-MULTIPLI.md). Demo Fly.io e persistenza: [configurazione](docs/FLY.md).
+
+
+Categorie telefono Ufficio/Casa/Cell personale/Cell di lavoro, assegnazione e filtri per agente, immagini intere senza fasce: [dettagli](docs/AGENTI-FOTO.md).

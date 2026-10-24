@@ -156,6 +156,30 @@ export function createApp({
       .filter(Boolean)
       .every((word) => value.toLocaleLowerCase("it").includes(word));
   function validateLinks(entity, b, s, id) {
+    if (
+      ["units", "contacts", "properties"].includes(entity) &&
+      s.role === "agent"
+    ) {
+      const original = id
+        ? db
+            .prepare(
+              `SELECT assigned_agent_id FROM ${entity} WHERE tenant_id=? AND id=?`,
+            )
+            .get(s.tenant_id, id)
+        : null;
+      if (
+        (b.assigned_agent_id &&
+          b.assigned_agent_id !== s.user_id &&
+          b.assigned_agent_id !== original?.assigned_agent_id) ||
+        (original?.assigned_agent_id &&
+          original.assigned_agent_id !== s.user_id &&
+          b.assigned_agent_id !== original.assigned_agent_id)
+      )
+        throw new ApiError(
+          403,
+          "Solo titolare o responsabile possono riassegnare il lavoro di un altro agente.",
+        );
+    }
     for (const [key, f] of Object.entries(schema[entity].fields))
       if (f.type === "ref" && b[key]) {
         const row =
@@ -342,7 +366,7 @@ export function createApp({
         res.setHeader("Strict-Transport-Security", "max-age=31536000");
       if (url.pathname === "/healthz" && method === "GET") {
         db.prepare("SELECT 1").get();
-        return json(res,200,{status:"ok"});
+        return json(res, 200, { status: "ok" });
       }
       const mutating = !["GET", "HEAD"].includes(method);
       if (

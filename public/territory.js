@@ -1,5 +1,5 @@
 import { mountRepeatableRecaps } from "./repeatable-recaps.js";
-import { unitHighlights } from "./territory-highlights.js";
+import { unitHighlights, unitAgentIds } from "./territory-highlights.js";
 import { groupUnitsByFloor } from "./territory-floors.js";
 const sortBy = (rows, key = "title") =>
   [...rows].sort((a, b) =>
@@ -86,6 +86,19 @@ export function renderTerritory(ctx) {
       unit,
       peopleOf(unit).map((link) => link.person),
     );
+  const agentsOf = (unit) =>
+    unitAgentIds(
+      unit,
+      d.properties,
+      peopleOf(unit).map((link) => link.person),
+    );
+  const agentLabel = (unit) =>
+    agentsOf(unit)
+      .map(
+        (id) =>
+          state.members.find((member) => member.id === id)?.title || "Agente",
+      )
+      .join(", ") || "Da assegnare";
   function badges(flags) {
     return (
       (flags.sale
@@ -277,7 +290,7 @@ export function renderTerritory(ctx) {
       ]
         .filter(Boolean)
         .join(" · ");
-    return `<article class="territory-person"><header><span class="person-avatar">${esc(person.title.slice(0, 2).toUpperCase())}</span><div><h3>${esc(person.title)}</h3><span class="pill">${esc(link.relationship)}</span>${Number(person.is_hot_lead) === 1 ? badges({ hot: true }) : ""}${person.do_not_contact ? '<span class="pill stop-contact">Non ricontattare</span>' : ""}</div><button class="text-button" data-edit-person="${person.id}">Scheda completa ↗</button></header><div class="person-primary-contacts">${person.phone ? `<a href="tel:${encodeURIComponent(person.phone)}">${esc(person.phone)}</a>` : ""}${person.email ? `<a href="mailto:${encodeURIComponent(person.email)}">${esc(person.email)}</a>` : ""}${!person.phone && !person.email ? '<span class="muted">Recapiti da aggiungere</span>' : ""}</div>${preferences ? `<p class="contact-preferences"><span>Preferenze di contatto</span>${esc(preferences)}</p>` : ""}${person.preference_notes ? `<p class="person-note">${esc(person.preference_notes)}</p>` : ""}${facts(
+    return `<article class="territory-person"><header><span class="person-avatar">${esc(person.title.slice(0, 2).toUpperCase())}</span><div><h3>${esc(person.title)}</h3><span class="pill">${esc(link.relationship)}</span>${person.assigned_agent_id ? `<small class="person-agent-label">Agente · ${esc(state.members.find((member) => member.id === person.assigned_agent_id)?.title || "Agente")}</small>` : ""}${Number(person.is_hot_lead) === 1 ? badges({ hot: true }) : ""}${person.do_not_contact ? '<span class="pill stop-contact">Non ricontattare</span>' : ""}</div><button class="text-button" data-edit-person="${person.id}">Scheda completa ↗</button></header><div class="person-primary-contacts">${person.phone ? `<a href="tel:${encodeURIComponent(person.phone)}">${esc(person.phone)}</a>` : ""}${person.email ? `<a href="mailto:${encodeURIComponent(person.email)}">${esc(person.email)}</a>` : ""}${!person.phone && !person.email ? '<span class="muted">Recapiti da aggiungere</span>' : ""}</div>${preferences ? `<p class="contact-preferences"><span>Preferenze di contatto</span>${esc(preferences)}</p>` : ""}${person.preference_notes ? `<p class="person-note">${esc(person.preference_notes)}</p>` : ""}${facts(
       [
         ["Professione", person.profession],
         [
@@ -339,7 +352,16 @@ export function renderTerritory(ctx) {
     return `<div class="section-heading"><div><p class="eyebrow">RELAZIONI NEL TEMPO</p><h3>Storico contatti e attività</h3></div><button class="secondary" data-log-contact>+ Registra contatto</button></div>${list.length ? `<div class="territory-timeline">${list.map((r) => `<article><span class="timeline-point"></span><div><div class="timeline-top"><span>${esc(r.kind)}</span><time>${date(r.when)}</time></div><button class="timeline-title" data-open-history="${r.entity}:${r.id}">${esc(r.title)}</button><p>${esc(r.result)}</p>${r.contact_id && personOf(r.contact_id) ? `<small>${esc(personOf(r.contact_id).title)}</small>` : ""}${r.notes ? `<p class="timeline-note">${esc(r.notes)}</p>` : ""}${r.next_action ? `<p class="next-action">Prossima azione · ${esc(r.next_action)}</p>` : ""}${r.follow_up_at ? `<span class="pill">Richiamo · ${date(r.follow_up_at)}</span>` : ""}<small class="timeline-author">${esc(state.members.find((m) => m.id === r.created_by)?.title || "Utente agenzia")}</small></div></article>`).join("")}</div>` : '<div class="territory-empty"><h3>Ogni contatto costruisce la relazione.</h3><p>Registra chiamate, telemarketing, porta a porta ed esiti commerciali. Lo storico resterà collegato alla scheda.</p></div>'}`;
   }
   function unitCards(building) {
-    const allUnits = unitsOf(building.id);
+    const agentFilter =
+      state.assignedAgentFilter ??
+      (state.me.role === "agent" ? state.me.id : "");
+    const allUnits = unitsOf(building.id).filter(
+      (unit) =>
+        !agentFilter ||
+        (agentFilter === "unassigned"
+          ? !agentsOf(unit).length
+          : agentsOf(unit).includes(agentFilter)),
+    );
     const filter = state.territoryHighlight || "all";
     const units = allUnits.filter(
       (u) => filter === "all" || flagsOf(u)[filter],
@@ -372,6 +394,7 @@ export function renderTerritory(ctx) {
         .join("") +
       "</div>";
     return (
+      `<label class="crm-type-filter territory-agent-filter">Agente<select id="territory-agent-filter" aria-label="Filtra appartamenti per agente"><option value="">Tutti gli agenti</option><option value="unassigned">Da assegnare</option>${state.members.map((member) => `<option value="${member.id}" ${agentFilter === member.id ? "selected" : ""}>${esc(member.title)}</option>`).join("")}</select></label>` +
       summary +
       `<div class="section-heading"><h3>Appartamenti · ${units.length}</h3><button class="secondary" data-add-unit="${building.id}">+ Aggiungi appartamento</button></div>${
         units.length
@@ -382,13 +405,13 @@ export function renderTerritory(ctx) {
                     .map((u) => {
                       const people = peopleOf(u),
                         photo = photos("units", u.id)[0];
-                      return `<button class="unit-card ${flagClasses(u)}" data-pick="units" data-id="${u.id}">${badges(flagsOf(u)) ? `<div class="unit-priority-badges">${badges(flagsOf(u))}</div>` : ""}<div class="unit-card-top">${photo ? `<img src="${photo.url}" alt="Foto appartamento" loading="lazy">` : `<span class="floor-mark">${esc(u.floor || "—")}<small>PIANO</small></span>`}<div><h3>Interno ${esc(u.title)}</h3><p>${esc([u.staircase ? "Scala " + u.staircase : "", u.property_type, u.area ? u.area + " m²" : "", u.rooms ? u.rooms + " locali" : ""].filter(Boolean).join(" · ") || "Informazioni da completare")}</p></div></div><div class="unit-card-states">${!flagsOf(u).sale && !flagsOf(u).agency ? `<span class="pill">${esc(u.commercial_status)}</span>` : ""}<span class="pill">${esc(u.occupancy_status)}</span></div><footer>${people.length ? esc(people.map((p) => p.person.title).join(", ")) : "Persone da associare"}<span>Apri ↗</span></footer></button>`;
+                      return `<button class="unit-card ${flagClasses(u)}" data-pick="units" data-id="${u.id}">${badges(flagsOf(u)) ? `<div class="unit-priority-badges">${badges(flagsOf(u))}</div>` : ""}<div class="unit-card-top">${photo ? `<img src="${photo.url}" alt="Foto appartamento" loading="lazy">` : `<span class="floor-mark">${esc(u.floor || "—")}<small>PIANO</small></span>`}<div><h3>Interno ${esc(u.title)}</h3><p>${esc([u.staircase ? "Scala " + u.staircase : "", u.property_type, u.area ? u.area + " m²" : "", u.rooms ? u.rooms + " locali" : ""].filter(Boolean).join(" · ") || "Informazioni da completare")}</p></div></div><div class="unit-card-states">${!flagsOf(u).sale && !flagsOf(u).agency ? `<span class="pill">${esc(u.commercial_status)}</span>` : ""}<span class="pill">${esc(u.occupancy_status)}</span></div><p class="unit-agent-label">Agente · ${esc(agentLabel(u))}</p><footer>${people.length ? esc(people.map((p) => p.person.title).join(", ")) : "Persone da associare"}<span>Apri ↗</span></footer></button>`;
                     })
                     .join("")}</div></section>`,
               )
               .join("")
-          : allUnits.length
-            ? '<div class="territory-empty"><h3>Nessun appartamento in questa categoria.</h3><p>Seleziona Tutti gli appartamenti per visualizzare lo stabile completo.</p></div>'
+          : unitsOf(building.id).length
+            ? '<div class="territory-empty"><h3>Nessun appartamento in questa categoria.</h3><p>Modifica il filtro agente o seleziona Tutti gli appartamenti per visualizzare lo stabile completo.</p></div>'
             : '<div class="territory-empty"><h3>Dal civico alle persone.</h3><p>Aggiungi gli interni con piano e scala per iniziare il censimento.</p></div>'
       }`
     );
@@ -458,6 +481,7 @@ export function renderTerritory(ctx) {
         ["Occupazione", unit.occupancy_status],
         ["Commercializzazione", unit.commercial_status],
         ["Acquisizione", unit.acquisition_status],
+        ["Agente assegnato", agentLabel(unit)],
       ]
         .map(
           ([label, value]) =>
@@ -593,6 +617,16 @@ export function renderTerritory(ctx) {
           draw();
         }),
     );
+    const agentSelect = target.querySelector("#territory-agent-filter");
+    if (agentSelect) {
+      agentSelect.value =
+        state.assignedAgentFilter ??
+        (state.me.role === "agent" ? state.me.id : "");
+      agentSelect.onchange = () => {
+        state.assignedAgentFilter = agentSelect.value;
+        draw();
+      };
+    }
     bindTree();
     bindPhotos(target);
     remember();
@@ -686,7 +720,7 @@ export function renderTerritory(ctx) {
       )
       .join(
         "",
-      )}</select></label><label>Relazione<select name="relationship">${["proprietario", "comproprietario", "inquilino", "occupante", "delegato", "altro interlocutore"].map((x) => `<option>${x}</option>`).join("")}</select></label><label>Nome e cognome<input name="title" required maxlength="200" autocomplete="off"></label><label>Telefono<input name="phone" type="tel" maxlength="200"></label><label>Email<input name="email" type="email" maxlength="200"></label></div><p class="small-note">Usa Aggiungi numero e Aggiungi social per inserire più recapiti. Fasce orarie e informazioni personali facoltative sono nella scheda completa. Le persone già presenti non vengono duplicate.</p></div><footer class="dialog-footer"><button class="primary" type="submit">Salva e collega</button></footer></form>`;
+      )}</select></label><label>Relazione<select name="relationship">${["proprietario", "comproprietario", "inquilino", "occupante", "delegato", "altro interlocutore"].map((x) => `<option>${x}</option>`).join("")}</select></label><label>Nome e cognome<input name="title" required maxlength="200" autocomplete="off"></label><label>Telefono<input name="phone" type="tel" maxlength="200"></label><label>Tipo di numero<select name="phone_kind"><option value="">Seleziona tipo…</option><option>Ufficio</option><option>Casa</option><option>Cell personale</option><option>Cell di lavoro</option></select></label><label>Agente assegnato<select name="assigned_agent_id"><option value="">Da assegnare</option>${state.members.map((member) => `<option value="${member.id}">${esc(member.title)}</option>`).join("")}</select></label><label>Email<input name="email" type="email" maxlength="200"></label></div><p class="small-note">Usa Aggiungi numero e Aggiungi social per inserire più recapiti. Fasce orarie e informazioni personali facoltative sono nella scheda completa. Le persone già presenti non vengono duplicate.</p></div><footer class="dialog-footer"><button class="primary" type="submit">Salva e collega</button></footer></form>`;
     let collectRecaps = mountRepeatableRecaps({
       container: dialog.querySelector(".form-grid"),
       phoneInput: dialog.querySelector("[name=phone]"),
@@ -697,7 +731,13 @@ export function renderTerritory(ctx) {
     const form = dialog.querySelector("form");
     form.elements.contact_id.onchange = () => {
       const existing = Boolean(form.elements.contact_id.value);
-      for (const key of ["title", "phone", "email"])
+      for (const key of [
+        "title",
+        "phone",
+        "phone_kind",
+        "assigned_agent_id",
+        "email",
+      ])
         form.elements[key].disabled = existing;
       form.elements.title.required = !existing;
       dialog
@@ -730,6 +770,8 @@ export function renderTerritory(ctx) {
             contact: {
               title: f.get("title"),
               phone: f.get("phone") || "",
+              phone_kind: f.get("phone_kind") || "",
+              assigned_agent_id: f.get("assigned_agent_id") || null,
               email: f.get("email") || "",
               contact_type:
                 relationship === "proprietario" ||

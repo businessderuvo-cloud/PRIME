@@ -18,6 +18,15 @@ export function territoryApi({ db, uploadsDirectory, audit, json, readBody }) {
       id = randomUUID(),
       now = new Date().toISOString(),
       keys = Object.keys(b);
+    if (entity === "contacts" && b.assigned_agent_id) {
+      const membership = db
+        .prepare("SELECT role FROM memberships WHERE tenant_id=? AND user_id=?")
+        .get(s.tenant_id, b.assigned_agent_id);
+      if (!membership || membership.role === "external")
+        throw new ApiError(400, "Agente non disponibile per questa agenzia");
+      if (s.role === "agent" && b.assigned_agent_id !== s.user_id)
+        throw new ApiError(403, "Non puoi assegnare un lead ad altri agenti");
+    }
     db.prepare(
       `INSERT INTO ${entity}(id,tenant_id,${keys.join(",")},created_by,updated_by,created_at,updated_at) VALUES (${Array(
         keys.length + 6,

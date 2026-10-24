@@ -11,7 +11,7 @@ import { createApp } from "./server.mjs";
 import { openDatabase } from "./src/database.mjs";
 import { clockState, countdown, daysFor, layoutDay } from "./public/planner.js";
 import { groupUnitsByFloor } from "./public/territory-floors.js";
-import { unitHighlights } from "./public/territory-highlights.js";
+import { unitHighlights, unitAgentIds } from "./public/territory-highlights.js";
 const temporary = mkdtempSync(path.join(tmpdir(), "prime-tests-"));
 const database = path.join(temporary, "test.sqlite");
 const testPassword = randomBytes(24).toString("hex");
@@ -300,9 +300,130 @@ test("migrazione della temperatura conserva i lead caldi come spunta", () => {
   }
 });
 
+test("tipi telefono: quattro categorie distinte dal canale", async () => {
+  for (const [i, kind] of [
+    "Ufficio",
+    "Casa",
+    "Cell personale",
+    "Cell di lavoro",
+  ].entries()) {
+    const p = await create("contacts", {
+      title: "Persona numero tipo " + i,
+      phone: "+3901111111" + i,
+      phone_kind: kind,
+    });
+    assert.equal(p.phone_kind, kind);
+    const m = await create("contact_methods", {
+      contact_id: p.id,
+      method_type: "telefono",
+      value: "+3902222222" + i,
+      phone_kind: kind,
+    });
+    assert.equal(m.phone_kind, kind);
+  }
+  assert.equal(
+    (
+      await request(a, "/api/entities/contacts", "POST", {
+        data: { title: "Tipo non valido", phone_kind: "WhatsApp" },
+      })
+    ).status,
+    400,
+  );
+});
+
+test("assegnazioni agenti validate per agenzia e ruolo", async () => {
+  const person = await create("contacts", {
+    title: "Lead assegnato",
+    is_hot_lead: 1,
+    assigned_agent_id: agent.id,
+  });
+  assert.equal(person.assigned_agent_id, agent.id);
+  for (const id of [b.id, external.id])
+    assert.equal(
+      (
+        await request(a, "/api/entities/contacts", "POST", {
+          data: { title: "Assegnazione non valida", assigned_agent_id: id },
+        })
+      ).status,
+      400,
+    );
+  assert.equal(
+    (
+      await request(agent, "/api/entities/contacts", "POST", {
+        data: { title: "Non assegnabile da agente", assigned_agent_id: a.id },
+      })
+    ).status,
+    403,
+  );
+  const assignedElsewhere = await create("contacts", {
+    title: "Lead titolare",
+    assigned_agent_id: a.id,
+  });
+  assert.equal(
+    (
+      await request(
+        agent,
+        "/api/entities/contacts/" + assignedElsewhere.id,
+        "PUT",
+        {
+          version: assignedElsewhere.version,
+          data: { ...dataOf(assignedElsewhere), assigned_agent_id: agent.id },
+        },
+      )
+    ).status,
+    403,
+  );
+  const s = await create("streets", {
+    title: "Via assegnazione",
+    city: "Roma",
+  });
+  const bld = await create("buildings", { title: "1", street_id: s.id });
+  const u = await create("units", {
+    title: "1",
+    building_id: bld.id,
+    commercial_status: "in vendita",
+    assigned_agent_id: agent.id,
+  });
+  const p = await create("properties", {
+    title: "Casa assegnata",
+    unit_id: u.id,
+    assigned_agent_id: agent.id,
+  });
+  assert.equal(p.assigned_agent_id, agent.id);
+  assert.equal(
+    (
+      await request(agent, "/api/territory/people", "POST", {
+        unit_id: u.id,
+        contact: { title: "Lead non riassegnabile", assigned_agent_id: b.id },
+      })
+    ).status,
+    400,
+  );
+});
+
+test("filtro per agente usa assegnazione esplicita, immobile o persone collegate", () => {
+  const person = [{ assigned_agent_id: "person-agent" }];
+  const properties = [{ unit_id: "u", assigned_agent_id: "property-agent" }];
+  assert.deepEqual(
+    unitAgentIds(
+      { id: "u", assigned_agent_id: "unit-agent" },
+      properties,
+      person,
+    ),
+    ["unit-agent"],
+  );
+  assert.deepEqual(unitAgentIds({ id: "u" }, properties, person), [
+    "property-agent",
+  ]);
+  assert.deepEqual(unitAgentIds({ id: "u" }, [], [...person, ...person]), [
+    "person-agent",
+  ]);
+  assert.deepEqual(unitAgentIds({ id: "u" }), []);
+});
+
 test("migrazioni idempotenti e dati persistenti su disco", () => {
   const second = openDatabase(database);
-  assert.equal(second.prepare("SELECT count(*) n FROM migrations").get().n, 6);
+  assert.equal(second.prepare("SELECT count(*) n FROM migrations").get().n, 7);
   assert.equal(
     second.prepare("SELECT name FROM tenants WHERE id=?").get(a.tenant_id).name,
     "Agenzia A",

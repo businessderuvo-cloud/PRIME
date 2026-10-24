@@ -1,3 +1,4 @@
+const phoneKinds = ["Ufficio", "Casa", "Cell personale", "Cell di lavoro"];
 const phoneTypes = ["telefono", "WhatsApp"];
 const socialTypes = ["Facebook", "Instagram", "LinkedIn", "altro social"];
 export function mountRepeatableRecaps({
@@ -32,8 +33,8 @@ export function mountRepeatableRecaps({
     const row = document.createElement("div");
     row.className = "repeatable-recap-row";
     const count = kind === "phone" ? nextPhone++ : nextSocial++;
-    const types = kind === "phone" ? phoneTypes : socialTypes;
-    row.innerHTML = `<label>${kind === "phone" ? "Telefono " + count : "Profilo social " + count}<input type="${kind === "phone" ? "tel" : "text"}" data-recap-value maxlength="400" value="${esc(method?.value || "")}" placeholder="${kind === "phone" ? "Numero di telefono" : "Link o nome del profilo"}"></label><label>${kind === "phone" ? "Tipo di numero" : "Social"}<select data-recap-type>${types.map((t) => `<option ${method?.method_type === t ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label><label>Etichetta (facoltativa)<input data-recap-label maxlength="200" value="${esc(method?.title || "")}" placeholder="${kind === "phone" ? "Es. cellulare personale" : "Es. profilo personale"}"></label>${!method ? '<button type="button" class="text-button" data-remove-recap aria-label="Rimuovi campo aggiunto">×</button>' : ""}`;
+    const types = kind === "phone" ? phoneKinds : socialTypes;
+    row.innerHTML = `<label>${kind === "phone" ? "Telefono " + count : "Profilo social " + count}<input type="${kind === "phone" ? "tel" : "text"}" data-recap-value maxlength="400" value="${esc(method?.value || "")}" placeholder="${kind === "phone" ? "Numero di telefono" : "Link o nome del profilo"}"></label><label>${kind === "phone" ? "Tipo di numero" : "Social"}<select data-recap-type>${kind === "phone" ? '<option value="">Seleziona tipo…</option>' : ""}${types.map((t) => `<option ${(kind === "phone" ? method?.phone_kind : method?.method_type) === t ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label><label>Etichetta (facoltativa)<input data-recap-label maxlength="200" value="${esc(method?.title || "")}" placeholder="${kind === "phone" ? "Es. cellulare personale" : "Es. profilo personale"}"></label>${!method ? '<button type="button" class="text-button" data-remove-recap aria-label="Rimuovi campo aggiunto">×</button>' : ""}`;
     section.querySelector("[data-recap-rows]").append(row);
     const entry = { row, kind, method };
     rows.push(entry);
@@ -57,6 +58,7 @@ export function mountRepeatableRecaps({
     data: {
       title: m.title,
       method_type: m.method_type,
+      phone_kind: m.phone_kind || "",
       value: m.value,
       notes: m.notes || "",
     },
@@ -68,12 +70,19 @@ export function mountRepeatableRecaps({
         ({ row, method }) =>
           method || row.querySelector("[data-recap-value]").value.trim(),
       )
-      .map(({ row, method }) => ({
+      .map(({ row, method, kind }) => ({
         id: method?.id,
         version: method?.version,
         data: {
           title: row.querySelector("[data-recap-label]").value.trim(),
-          method_type: row.querySelector("[data-recap-type]").value,
+          method_type:
+            kind === "phone"
+              ? method?.method_type || "telefono"
+              : row.querySelector("[data-recap-type]").value,
+          phone_kind:
+            kind === "phone"
+              ? row.querySelector("[data-recap-type]").value
+              : "",
           value: row.querySelector("[data-recap-value]").value.trim(),
           notes: method?.notes || "",
         },

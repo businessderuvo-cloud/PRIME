@@ -519,7 +519,7 @@ async function renderPage() {
             : "Dati collegati, informazioni sempre a portata di mano.",
         `<button class="primary" id="create">${icon("plus")} ${page === "activities" ? "Nuova attività" : page === "appointments" ? "Nuovo appuntamento" : "Aggiungi"}</button>`,
       ) +
-      `<section class="panel records-panel"><div class="toolbar">${searchBox(page === "streets" ? "Cerca via, città, CAP o quartiere…" : page === "units" ? "Cerca via, civico, scala, piano o interno…" : "Cerca in " + def.label.toLowerCase() + "…")}${["activities", "appointments"].includes(page) ? periodControls() : ""}${page === "streets" ? '<select id="status-filter" aria-label="Filtra stato censimento"><option value="">Tutti gli stati</option><option>da censire</option><option>parziale</option><option>censita</option></select>' : ""}${page === "contacts" ? `<label class="crm-type-filter">Tipo di contatto<select id="contact-type-filter" aria-label="Filtra per tipo di contatto"><option value="">Tutti i tipi</option>${schema.contacts.fields.contact_type.options.map((type) => `<option value="${esc(type)}" ${state.contactType === type ? "selected" : ""}>${esc(type)}</option>`).join("")}</select></label>` : ""}<span id="result-count" class="muted"></span></div>${["activities", "appointments"].includes(page) ? '<p class="small-note">Il periodo parte dalla data selezionata. Senza data, sono visibili tutte le attività.</p>' : ""}<div id="record-list"></div></section>`;
+      `<section class="panel records-panel"><div class="toolbar">${searchBox(page === "streets" ? "Cerca via, città, CAP o quartiere…" : page === "units" ? "Cerca via, civico, scala, piano o interno…" : "Cerca in " + def.label.toLowerCase() + "…")}${["activities", "appointments"].includes(page) ? periodControls() : ""}${page === "streets" ? '<select id="status-filter" aria-label="Filtra stato censimento"><option value="">Tutti gli stati</option><option>da censire</option><option>parziale</option><option>censita</option></select>' : ""}${page === "contacts" ? `<label class="crm-type-filter">Tipo di contatto<select id="contact-type-filter" aria-label="Filtra per tipo di contatto"><option value="">Tutti i tipi</option>${schema.contacts.fields.contact_type.options.map((type) => `<option value="${esc(type)}" ${state.contactType === type ? "selected" : ""}>${esc(type)}</option>`).join("")}</select></label>` : ""}${["contacts", "properties"].includes(page) ? `<label class="crm-type-filter">Agente<select id="assigned-agent-filter" aria-label="Filtra per agente"><option value="">Tutti gli agenti</option><option value="unassigned">Da assegnare</option>${state.members.map((member) => `<option value="${member.id}">${esc(member.title)}</option>`).join("")}</select></label>` : ""}<span id="result-count" class="muted"></span></div>${["activities", "appointments"].includes(page) ? '<p class="small-note">Il periodo parte dalla data selezionata. Senza data, sono visibili tutte le attività.</p>' : ""}<div id="record-list"></div></section>`;
     document.querySelector("#create").onclick = () => openEditor(page);
     bindSearch(drawRecords);
     if (["activities", "appointments"].includes(page)) bindPeriod(drawRecords);
@@ -533,6 +533,16 @@ async function renderPage() {
         state.contactType = event.target.value;
         drawRecords();
       };
+    if (["contacts", "properties"].includes(page)) {
+      const select = document.querySelector("#assigned-agent-filter");
+      select.value =
+        state.assignedAgentFilter ??
+        (state.me.role === "agent" ? state.me.id : "");
+      select.onchange = () => {
+        state.assignedAgentFilter = select.value;
+        drawRecords();
+      };
+    }
     drawRecords();
     return;
   }
@@ -653,8 +663,14 @@ const columns = {
     "commercial_status",
     "acquisition_status",
   ],
-  contacts: ["contact_type", "is_hot_lead", "email", "phone"],
-  properties: ["unit_id", "price", "marketing_status"],
+  contacts: [
+    "contact_type",
+    "is_hot_lead",
+    "assigned_agent_id",
+    "email",
+    "phone",
+  ],
+  properties: ["unit_id", "assigned_agent_id", "price", "marketing_status"],
   activities: ["activity_type", "agent_id", "due_at", "priority", "status"],
   appointments: [
     "starts_at",
@@ -667,6 +683,14 @@ const columns = {
 function drawRecords() {
   const entity = state.page;
   let records = (state.data[entity] || []).filter(matches);
+  const agentFilter =
+    state.assignedAgentFilter ?? (state.me.role === "agent" ? state.me.id : "");
+  if (["contacts", "properties"].includes(entity) && agentFilter)
+    records = records.filter((record) =>
+      agentFilter === "unassigned"
+        ? !record.assigned_agent_id
+        : record.assigned_agent_id === agentFilter,
+    );
   if (entity === "contacts" && state.contactType)
     records = records.filter((r) => r.contact_type === state.contactType);
   if (entity === "streets" && state.status)

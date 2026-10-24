@@ -50,6 +50,7 @@ export const schema = {
       ...common,
       title: text("Interno", { required: true }),
       is_hot_lead: { label: "Lead caldo", type: "checkbox" },
+      assigned_agent_id: { ...ref("Agente assegnato", "members"), default: "" },
       building_id: ref("Stabile", "buildings", true),
       staircase: text("Scala"),
       floor: text("Piano"),
@@ -84,8 +85,16 @@ export const schema = {
     fields: {
       ...common,
       is_hot_lead: { label: "Lead caldo", type: "checkbox" },
+      assigned_agent_id: { ...ref("Agente assegnato", "members"), default: "" },
       email: { label: "Email", type: "email" },
       phone: text("Telefono"),
+      phone_kind: select("Tipo di numero", [
+        "",
+        "Ufficio",
+        "Casa",
+        "Cell personale",
+        "Cell di lavoro",
+      ]),
       contact_type: select("Tipo di contatto", [
         "potenziale cliente",
         "proprietario",
@@ -137,6 +146,7 @@ export const schema = {
       ...common,
       unit_id: ref("Appartamento censito", "units"),
       owner_id: ref("Proprietario", "contacts"),
+      assigned_agent_id: { ...ref("Agente assegnato", "members"), default: "" },
       price: { label: "Prezzo €", type: "number", min: 0 },
       marketing_status: select("Stato commerciale", [
         "preparazione",
@@ -265,6 +275,13 @@ export const schema = {
       ...common,
       title: text("Etichetta (facoltativa)"),
       contact_id: ref("Persona", "contacts", true),
+      phone_kind: select("Tipo di numero", [
+        "",
+        "Ufficio",
+        "Casa",
+        "Cell personale",
+        "Cell di lavoro",
+      ]),
       method_type: select("Tipo di recapito", [
         "telefono",
         "email",

@@ -37,7 +37,7 @@ export function mountPersonRecaps({
     for (const person of persons) {
       const card = document.createElement("article");
       card.className = "territory-person";
-      card.innerHTML = `<h4>${esc(person.title)}</h4>${Number(person.is_hot_lead) === 1 ? '<span class="spot-badge spot-hot">● LEAD CALDO</span>' : ""}<div class="form-grid"><label class="full">Telefono principale · ${esc(person.title)}<input type="tel" data-person-phone maxlength="200" value="${esc(person.phone || "")}"></label></div><p class="error" role="alert" hidden></p><button type="button" class="primary" data-save-person-recaps>Salva telefoni e social</button>`;
+      card.innerHTML = `<h4>${esc(person.title)}</h4>${Number(person.is_hot_lead) === 1 ? '<span class="spot-badge spot-hot">● LEAD CALDO</span>' : ""}<div class="form-grid"><label class="full">Telefono principale · ${esc(person.title)}<input type="tel" data-person-phone maxlength="200" value="${esc(person.phone || "")}"></label><label>Tipo di numero<select data-person-phone-kind><option value="">Seleziona tipo…</option>${["Ufficio", "Casa", "Cell personale", "Cell di lavoro"].map((kind) => `<option ${person.phone_kind === kind ? "selected" : ""}>${kind}</option>`).join("")}</select></label></div><p class="error" role="alert" hidden></p><button type="button" class="primary" data-save-person-recaps>Salva telefoni e social</button>`;
       section.append(card);
       const primary = card.querySelector("[data-person-phone]");
       const collect = mountRepeatableRecaps({
@@ -61,6 +61,9 @@ export function mountPersonRecaps({
             ]),
           );
           data.phone = primary.value;
+          data.phone_kind = card.querySelector(
+            "[data-person-phone-kind]",
+          ).value;
           await api("/api/entities/contacts/" + person.id, {
             method: "PUT",
             body: JSON.stringify({

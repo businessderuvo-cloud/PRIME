@@ -1327,3 +1327,52 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Preserve the full image at its natural ratio, without letterbox padding. */
+.territory-cover.has-photo,
+.unit-profile-summary .territory-cover.has-photo,
+.building-overview > .territory-cover.has-photo {
+  min-height: 0;
+  padding: 0;
+  display: block;
+  align-self: start;
+}
+.territory-cover.has-photo > img,
+.unit-profile-summary .territory-cover.has-photo > img {
+  width: 100%;
+  height: auto;
+  max-height: none;
+  margin: 0;
+  object-fit: contain;
+}
+.photo-gallery img {
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+}
+.photo-full {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 80vh;
+  margin: 0 auto;
+}
+.territory-agent-filter {
+  width: min(100%, 320px);
+  margin-top: 20px;
+}
+.unit-card .unit-agent-label {
+  margin-top: 14px;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.person-agent-label {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.unit-card-top > img {
+  height: auto;
+  object-fit: contain;
+}
