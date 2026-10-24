@@ -19,7 +19,8 @@ export function startWpsClock({
   let stopped = false,
     busy = false,
     polling = false,
-    reviewId = null;
+    reviewId = null,
+    autoReviewDismissed = false;
   const offset = state.clockOffset || 0;
   const bar = document.createElement("div");
   bar.id = "wps-expired-banner";
@@ -30,7 +31,15 @@ export function startWpsClock({
   dialog.id = "wps-resolution";
   dialog.setAttribute("aria-labelledby", "wps-resolution-title");
   document.body.append(dialog);
-  dialog.addEventListener("cancel", (e) => e.preventDefault());
+  function dismissReview() {
+    autoReviewDismissed = true;
+    dialog.close();
+    reviewId = null;
+  }
+  dialog.addEventListener("cancel", (e) => {
+    e.preventDefault();
+    dismissReview();
+  });
   function tick() {
     if (stopped || !state.me || state.me.role === "external") return;
     const clock = clockState(
@@ -88,7 +97,12 @@ export function startWpsClock({
         bar.innerHTML = `<span><strong>Blocco WPS terminato.</strong> ${esc(clock.activity.title)} · registra se l’attività è stata completata.</span><button class="secondary" id="expired-review">Registra esito</button>`;
         bar.querySelector("button").onclick = () => showReview(clock.activity);
       }
-      if (!dialog.open && !document.querySelector("#editor")?.open && !busy)
+      if (
+        !autoReviewDismissed &&
+        !dialog.open &&
+        !document.querySelector("#editor")?.open &&
+        !busy
+      )
         showReview(clock.activity);
     }
     updateNowLine();
@@ -101,7 +115,8 @@ export function startWpsClock({
       dateStyle: "medium",
       timeStyle: "short",
     });
-    dialog.innerHTML = `<form id="wps-result-form"><header class="dialog-header"><div><p class="eyebrow">BLOCCO ORARIO TERMINATO</p><h2 id="wps-resolution-title">Come è andata l’attività?</h2></div></header><div class="dialog-body"><h3>${esc(initial.title)}</h3><p class="muted">${esc(fmt.format(new Date(initial.starts_at)))} → ${esc(fmt.format(new Date(initial.due_at)))}</p><p class="small-note">Il tempo è scaduto. Conferma il risultato per proseguire: nessuna attività viene completata automaticamente.</p><div class="error" role="alert" hidden></div><fieldset class="resolution-options"><legend>Esito del blocco</legend><label><input type="radio" name="result" value="completata" required>Completata</label><label><input type="radio" name="result" value="non completata" required>Non completata</label></fieldset><label class="resolution-label">Risultato / motivo<textarea name="outcome" rows="3" required maxlength="200" placeholder="Descrivi il lavoro svolto o il motivo del mancato completamento."></textarea></label><label class="resolution-label">Prossima azione<input name="next_action" maxlength="200" value="${esc(initial.next_action)}"></label></div><footer class="dialog-footer"><button class="primary" type="submit">Conferma esito</button></footer></form>`;
+    dialog.innerHTML = `<form id="wps-result-form"><header class="dialog-header"><div><p class="eyebrow">BLOCCO ORARIO TERMINATO</p><h2 id="wps-resolution-title">Come è andata l’attività?</h2></div><button type="button" class="icon-button" id="close-wps-review" aria-label="Chiudi pannello WPS" title="Chiudi">×</button></header><div class="dialog-body"><h3>${esc(initial.title)}</h3><p class="muted">${esc(fmt.format(new Date(initial.starts_at)))} → ${esc(fmt.format(new Date(initial.due_at)))}</p><p class="small-note">Il tempo è scaduto. Puoi chiudere questo pannello e registrare l’esito più tardi dal WPS o dal promemoria. Nessuna attività viene completata automaticamente.</p><div class="error" role="alert" hidden></div><fieldset class="resolution-options"><legend>Esito del blocco</legend><label><input type="radio" name="result" value="completata" required>Completata</label><label><input type="radio" name="result" value="non completata" required>Non completata</label></fieldset><label class="resolution-label">Risultato / motivo<textarea name="outcome" rows="3" required maxlength="200" placeholder="Descrivi il lavoro svolto o il motivo del mancato completamento."></textarea></label><label class="resolution-label">Prossima azione<input name="next_action" maxlength="200" value="${esc(initial.next_action)}"></label></div><footer class="dialog-footer"><button class="primary" type="submit">Conferma esito</button></footer></form>`;
+    dialog.querySelector("#close-wps-review").onclick = dismissReview;
     dialog.showModal();
     dialog.querySelector("form").onsubmit = async (e) => {
       e.preventDefault();
