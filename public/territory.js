@@ -729,6 +729,8 @@ export function renderTerritory(ctx) {
     dialog.showModal();
     dialog.querySelector("[data-close]").onclick = () => dialog.close();
     const form = dialog.querySelector("form");
+    if (state.me.role === "agent")
+      form.elements.assigned_agent_id.value = state.me.id;
     form.elements.contact_id.onchange = () => {
       const existing = Boolean(form.elements.contact_id.value);
       for (const key of [

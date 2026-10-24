@@ -519,7 +519,7 @@ async function renderPage() {
             : "Dati collegati, informazioni sempre a portata di mano.",
         `<button class="primary" id="create">${icon("plus")} ${page === "activities" ? "Nuova attività" : page === "appointments" ? "Nuovo appuntamento" : "Aggiungi"}</button>`,
       ) +
-      `<section class="panel records-panel"><div class="toolbar">${searchBox(page === "streets" ? "Cerca via, città, CAP o quartiere…" : page === "units" ? "Cerca via, civico, scala, piano o interno…" : "Cerca in " + def.label.toLowerCase() + "…")}${["activities", "appointments"].includes(page) ? periodControls() : ""}${page === "streets" ? '<select id="status-filter" aria-label="Filtra stato censimento"><option value="">Tutti gli stati</option><option>da censire</option><option>parziale</option><option>censita</option></select>' : ""}${page === "contacts" ? `<label class="crm-type-filter">Tipo di contatto<select id="contact-type-filter" aria-label="Filtra per tipo di contatto"><option value="">Tutti i tipi</option>${schema.contacts.fields.contact_type.options.map((type) => `<option value="${esc(type)}" ${state.contactType === type ? "selected" : ""}>${esc(type)}</option>`).join("")}</select></label>` : ""}${["contacts", "properties"].includes(page) ? `<label class="crm-type-filter">Agente<select id="assigned-agent-filter" aria-label="Filtra per agente"><option value="">Tutti gli agenti</option><option value="unassigned">Da assegnare</option>${state.members.map((member) => `<option value="${member.id}">${esc(member.title)}</option>`).join("")}</select></label>` : ""}<span id="result-count" class="muted"></span></div>${["activities", "appointments"].includes(page) ? '<p class="small-note">Il periodo parte dalla data selezionata. Senza data, sono visibili tutte le attività.</p>' : ""}<div id="record-list"></div></section>`;
+      `<section class="panel records-panel"><div class="toolbar">${searchBox(page === "streets" ? "Cerca via, città, CAP o quartiere…" : page === "units" ? "Cerca via, civico, scala, piano o interno…" : "Cerca in " + def.label.toLowerCase() + "…")}${["activities", "appointments"].includes(page) ? periodControls() : ""}${page === "streets" ? '<select id="status-filter" aria-label="Filtra stato censimento"><option value="">Tutti gli stati</option><option>da censire</option><option>parziale</option><option>censita</option></select>' : ""}${page === "contacts" ? `<label class="crm-type-filter">Tipo di contatto<select id="contact-type-filter" aria-label="Filtra per tipo di contatto"><option value="">Tutti i tipi</option>${schema.contacts.fields.contact_type.options.map((type) => `<option value="${esc(type)}" ${state.contactType === type ? "selected" : ""}>${esc(type)}</option>`).join("")}</select></label>` : ""}${page === "contacts" ? `<label class="checkbox-label crm-hot-filter"><input id="crm-hot-only" type="checkbox" ${state.onlyHotLeads ? "checked" : ""}>Solo lead caldi</label>` : ""}${["contacts", "properties"].includes(page) ? `<label class="crm-type-filter">Agente<select id="assigned-agent-filter" aria-label="Filtra per agente"><option value="">Tutti gli agenti</option><option value="unassigned">Da assegnare</option>${state.members.map((member) => `<option value="${member.id}">${esc(member.title)}</option>`).join("")}</select></label>` : ""}<span id="result-count" class="muted"></span></div>${["activities", "appointments"].includes(page) ? '<p class="small-note">Il periodo parte dalla data selezionata. Senza data, sono visibili tutte le attività.</p>' : ""}<div id="record-list"></div></section>`;
     document.querySelector("#create").onclick = () => openEditor(page);
     bindSearch(drawRecords);
     if (["activities", "appointments"].includes(page)) bindPeriod(drawRecords);
@@ -531,6 +531,11 @@ async function renderPage() {
     if (page === "contacts")
       document.querySelector("#contact-type-filter").onchange = (event) => {
         state.contactType = event.target.value;
+        drawRecords();
+      };
+    if (page === "contacts")
+      document.querySelector("#crm-hot-only").onchange = (event) => {
+        state.onlyHotLeads = event.target.checked;
         drawRecords();
       };
     if (["contacts", "properties"].includes(page)) {
@@ -683,6 +688,8 @@ const columns = {
 function drawRecords() {
   const entity = state.page;
   let records = (state.data[entity] || []).filter(matches);
+  if (entity === "contacts" && state.onlyHotLeads)
+    records = records.filter((record) => Number(record.is_hot_lead) === 1);
   const agentFilter =
     state.assignedAgentFilter ?? (state.me.role === "agent" ? state.me.id : "");
   if (["contacts", "properties"].includes(entity) && agentFilter)
@@ -726,6 +733,12 @@ function drawRecords() {
   );
 }
 async function openEditor(entity, record = null, prefill = {}) {
+  if (
+    !record &&
+    ["contacts", "units", "properties"].includes(entity) &&
+    state.me.role === "agent"
+  )
+    prefill = { assigned_agent_id: state.me.id, ...prefill };
   if (entity === "activities" && !record) {
     const start = new Date();
     start.setMinutes(0, 0, 0);

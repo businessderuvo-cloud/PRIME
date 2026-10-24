@@ -8,6 +8,8 @@ L'appartamento usa in ordine: assegnazione esplicita, agente dell'immobile gesti
 
 Il backend rifiuta assegnazioni a utenti di altre agenzie o utenti esterni. Un agente non può assegnare ad altri né prendere o riassegnare il lavoro assegnato a un altro membro. Titolare e responsabile gestiscono le assegnazioni. Non vengono simulate email di invito o integrazioni esterne.
 
+Il CRM può limitare la lista con «Solo lead caldi» oltre al filtro per agente. I nuovi record creati da un agente vengono precompilati con la sua assegnazione. Nel solo demo online sono disponibili due membri fittizi, agente.uno.demo@prime.example e agente.due.demo@prime.example, senza inviti o credenziali pubblicate. Gli appartamenti sono assegnati in modo che entrambi abbiano esempi di case in vendita e lead caldi.
+
 Le foto dei dettagli e delle gallerie mantengono larghezza piena e altezza proporzionale all'originale, senza altezza fissa, ritaglio o riempimento sopra/sotto. Anche le miniature conservano l'immagine intera. Restano disponibili caricamento e ingrandimento.
 
 Migrazione 007: categorie dei numeri e riferimenti agli agenti, con indici per agenzia. 42 test automatici: categorie ammesse e rifiuto di WhatsApp come categoria; assegnazioni valide, isolamento tra agenzie, esclusione degli esterni e blocco di riassegnazioni non autorizzate; priorità degli agenti per appartamento. I dati già salvati vengono preservati.
