@@ -518,13 +518,18 @@ async function renderPage() {
             : "Dati collegati, informazioni sempre a portata di mano.",
         `<button class="primary" id="create">${icon("plus")} ${page === "activities" ? "Nuova attività" : page === "appointments" ? "Nuovo appuntamento" : "Aggiungi"}</button>`,
       ) +
-      `<section class="panel records-panel"><div class="toolbar">${searchBox(page === "streets" ? "Cerca via, città, CAP o quartiere…" : page === "units" ? "Cerca via, civico, scala, piano o interno…" : "Cerca in " + def.label.toLowerCase() + "…")}${["activities", "appointments"].includes(page) ? periodControls() : ""}${page === "streets" ? '<select id="status-filter" aria-label="Filtra stato censimento"><option value="">Tutti gli stati</option><option>da censire</option><option>parziale</option><option>censita</option></select>' : ""}<span id="result-count" class="muted"></span></div>${["activities", "appointments"].includes(page) ? '<p class="small-note">Il periodo parte dalla data selezionata. Senza data, sono visibili tutte le attività.</p>' : ""}<div id="record-list"></div></section>`;
+      `<section class="panel records-panel"><div class="toolbar">${searchBox(page === "streets" ? "Cerca via, città, CAP o quartiere…" : page === "units" ? "Cerca via, civico, scala, piano o interno…" : "Cerca in " + def.label.toLowerCase() + "…")}${["activities", "appointments"].includes(page) ? periodControls() : ""}${page === "streets" ? '<select id="status-filter" aria-label="Filtra stato censimento"><option value="">Tutti gli stati</option><option>da censire</option><option>parziale</option><option>censita</option></select>' : ""}${page === "contacts" ? `<label class="crm-type-filter">Tipo di contatto<select id="contact-type-filter" aria-label="Filtra per tipo di contatto"><option value="">Tutti i tipi</option>${schema.contacts.fields.contact_type.options.map((type) => `<option value="${esc(type)}" ${state.contactType === type ? "selected" : ""}>${esc(type)}</option>`).join("")}</select></label>` : ""}<span id="result-count" class="muted"></span></div>${["activities", "appointments"].includes(page) ? '<p class="small-note">Il periodo parte dalla data selezionata. Senza data, sono visibili tutte le attività.</p>' : ""}<div id="record-list"></div></section>`;
     document.querySelector("#create").onclick = () => openEditor(page);
     bindSearch(drawRecords);
     if (["activities", "appointments"].includes(page)) bindPeriod(drawRecords);
     if (page === "streets")
       document.querySelector("#status-filter").onchange = (e) => {
         state.status = e.target.value;
+        drawRecords();
+      };
+    if (page === "contacts")
+      document.querySelector("#contact-type-filter").onchange = (event) => {
+        state.contactType = event.target.value;
         drawRecords();
       };
     drawRecords();
@@ -647,7 +652,7 @@ const columns = {
     "commercial_status",
     "acquisition_status",
   ],
-  contacts: ["contact_type", "lead_temperature", "email", "phone"],
+  contacts: ["contact_type", "is_hot_lead", "email", "phone"],
   properties: ["unit_id", "price", "marketing_status"],
   activities: ["activity_type", "agent_id", "due_at", "priority", "status"],
   appointments: [
@@ -661,7 +666,9 @@ const columns = {
 function drawRecords() {
   const entity = state.page;
   let records = (state.data[entity] || []).filter(matches);
-  if (state.status)
+  if (entity === "contacts" && state.contactType)
+    records = records.filter((r) => r.contact_type === state.contactType);
+  if (entity === "streets" && state.status)
     records = records.filter((r) => r.census_status === state.status);
   if (entity === "activities")
     records = records
@@ -675,11 +682,13 @@ function drawRecords() {
     records.length + " risultati";
   const out = document.querySelector("#record-list");
   out.innerHTML = records.length
-    ? `<div class="table-wrap"><table><thead><tr><th>${entity === "units" ? "Interno" : entity === "buildings" ? "Civico" : "Titolo"}</th>${columns[entity].map((k) => `<th>${schema[entity].fields[k].label}</th>`).join("")}<th><span class="sr-only">Azioni</span></th></tr></thead><tbody>${records.map((r) => `<tr><td><button class="record-open" data-id="${r.id}">${esc(r.title)}</button>${entity === "activities" ? `<small>${r.progress}/${r.goal} · ${esc(r.next_action || "Prossima azione da definire")}</small>` : ""}</td>${columns[entity].map((k) => `<td data-label="${schema[entity].fields[k].label}">${k.includes("status") || k === "priority" || k === "lead_temperature" ? `<span class="pill ${k === "lead_temperature" && r[k] === "caldo" ? "spot-badge spot-hot" : ""} ${["completata", "effettuato", "censita"].includes(r[k]) ? "positive" : ""}">${esc(displayValue(entity, k, r[k]))}</span>` : esc(displayValue(entity, k, r[k]))}</td>`).join("")}<td><button class="text-button record-open" data-id="${r.id}" aria-label="Apri ${esc(r.title)}">Apri ↗</button></td></tr>`).join("")}</tbody></table></div>`
+    ? `<div class="table-wrap"><table><thead><tr><th>${entity === "units" ? "Interno" : entity === "buildings" ? "Civico" : "Titolo"}</th>${columns[entity].map((k) => `<th>${schema[entity].fields[k].label}</th>`).join("")}<th><span class="sr-only">Azioni</span></th></tr></thead><tbody>${records.map((r) => `<tr><td><button class="record-open" data-id="${r.id}">${esc(r.title)}</button>${entity === "activities" ? `<small>${r.progress}/${r.goal} · ${esc(r.next_action || "Prossima azione da definire")}</small>` : ""}</td>${columns[entity].map((k) => `<td data-label="${schema[entity].fields[k].label}">${k.includes("status") || k === "priority" || k === "is_hot_lead" ? `<span class="pill ${k === "is_hot_lead" && Number(r[k]) === 1 ? "spot-badge spot-hot" : ""} ${["completata", "effettuato", "censita"].includes(r[k]) ? "positive" : ""}">${k === "is_hot_lead" ? (Number(r[k]) === 1 ? "✓ Lead caldo" : "—") : esc(displayValue(entity, k, r[k]))}</span>` : esc(displayValue(entity, k, r[k]))}</td>`).join("")}<td><button class="text-button record-open" data-id="${r.id}" aria-label="Apri ${esc(r.title)}">Apri ↗</button></td></tr>`).join("")}</tbody></table></div>`
     : empty(
-        state.query ? "Nessun risultato." : "Il primo passo parte da qui.",
-        state.query
-          ? "Prova a modificare la ricerca."
+        state.query || (entity === "contacts" && state.contactType)
+          ? "Nessun risultato."
+          : "Il primo passo parte da qui.",
+        state.query || (entity === "contacts" && state.contactType)
+          ? "Prova a modificare la ricerca o seleziona Tutti i tipi."
           : "Aggiungi il primo elemento: verrà salvato nel database della tua agenzia.",
       );
   out.querySelectorAll(".record-open").forEach(

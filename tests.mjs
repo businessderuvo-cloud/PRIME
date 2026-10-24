@@ -151,13 +151,13 @@ test("evidenza commerciale e lead caldi restano distinti e possono coesistere", 
   assert.deepEqual(
     unitHighlights({
       commercial_status: "in vendita",
-      lead_temperature: "caldo",
+      is_hot_lead: 1,
     }),
     { sale: true, agency: false, hot: true },
   );
   assert.deepEqual(
     unitHighlights({ commercial_status: "altra agenzia" }, [
-      { lead_temperature: "caldo" },
+      { is_hot_lead: 1 },
     ]),
     { sale: false, agency: true, hot: true },
   );
@@ -167,24 +167,24 @@ test("evidenza commerciale e lead caldi restano distinti e possono coesistere", 
         commercial_status: "non in vendita",
         acquisition_status: "opportunità",
       },
-      [{ lead_temperature: "tiepido" }],
+      [{ is_hot_lead: 0 }],
     ),
     { sale: false, agency: false, hot: false },
   );
   assert.equal(unitHighlights({ commercial_status: "in vendita" }).hot, false);
 });
 
-test("temperatura lead persistente, validata e isolata per agenzia", async () => {
+test("spunta lead caldo persistente, validata e isolata per agenzia", async () => {
   const person = await create("contacts", {
     title: "Lead test caldo",
-    lead_temperature: "caldo",
+    is_hot_lead: 1,
   });
-  assert.equal(person.lead_temperature, "caldo");
+  assert.equal(person.is_hot_lead, 1);
   assert.equal(
     (
       await request(b, "/api/entities/contacts/" + person.id, "PUT", {
         version: person.version,
-        data: { ...dataOf(person), lead_temperature: "freddo" },
+        data: { ...dataOf(person), is_hot_lead: 0 },
       })
     ).status,
     404,
@@ -192,7 +192,7 @@ test("temperatura lead persistente, validata e isolata per agenzia", async () =>
   assert.equal(
     (
       await request(a, "/api/entities/contacts", "POST", {
-        data: { title: "Lead non valido", lead_temperature: "bollente" },
+        data: { title: "Lead non valido", is_hot_lead: "caldo" },
       })
     ).status,
     400,
@@ -202,27 +202,107 @@ test("temperatura lead persistente, validata e isolata per agenzia", async () =>
   const unit = await create("units", {
     title: "1",
     building_id: building.id,
-    lead_temperature: "caldo",
+    is_hot_lead: 1,
     commercial_status: "altra agenzia",
   });
-  assert.equal(unit.lead_temperature, "caldo");
+  assert.equal(unit.is_hot_lead, 1);
   const updated = await request(a, "/api/entities/units/" + unit.id, "PUT", {
     version: unit.version,
-    data: { ...dataOf(unit), lead_temperature: "tiepido" },
+    data: { ...dataOf(unit), is_hot_lead: 0 },
   });
   assert.equal(updated.status, 200);
-  assert.equal(updated.value.lead_temperature, "tiepido");
+  assert.equal(updated.value.is_hot_lead, 0);
   assert.equal(updated.value.commercial_status, "altra agenzia");
   assert.equal(
     (await create("contacts", { title: "Lead ancora da qualificare" }))
-      .lead_temperature,
-    "non indicata",
+      .is_hot_lead,
+    0,
   );
+});
+
+test("migrazione della temperatura conserva i lead caldi come spunta", () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    for (const name of [
+      "001_foundation.sql",
+      "002_relational_workspace.sql",
+      "003_hourly_wps.sql",
+      "004_territory_workspace.sql",
+      "005_lead_temperature.sql",
+    ])
+      db.exec(
+        readFileSync(new URL("./migrations/" + name, import.meta.url), "utf8"),
+      );
+    db.prepare("INSERT INTO tenants VALUES (?,?)").run(
+      "checkbox-tenant",
+      "Test",
+    );
+    db.prepare("INSERT INTO users(id,email,password) VALUES (?,?,?)").run(
+      "checkbox-user",
+      "checkbox@tests.invalid",
+      "disabled",
+    );
+    const base = [
+      "checkbox-tenant",
+      "checkbox-user",
+      "checkbox-user",
+      "2026-10-24T10:00:00Z",
+      "2026-10-24T10:00:00Z",
+    ];
+    db.prepare(
+      "INSERT INTO streets(id,title,city,tenant_id,created_by,updated_by,created_at,updated_at) VALUES ('checkbox-street','Test','Roma',?,?,?,?,?)",
+    ).run(...base);
+    db.prepare(
+      "INSERT INTO buildings(id,title,street_id,tenant_id,created_by,updated_by,created_at,updated_at) VALUES ('checkbox-building','1','checkbox-street',?,?,?,?,?)",
+    ).run(...base);
+    for (const [index, temperature] of [
+      "non indicata",
+      "freddo",
+      "tiepido",
+      "caldo",
+    ].entries()) {
+      db.prepare(
+        "INSERT INTO contacts(id,title,lead_temperature,tenant_id,created_by,updated_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)",
+      ).run(
+        "checkbox-person-" + index,
+        "Persona " + index,
+        temperature,
+        ...base,
+      );
+      db.prepare(
+        "INSERT INTO units(id,title,building_id,lead_temperature,tenant_id,created_by,updated_by,created_at,updated_at) VALUES (?,?,'checkbox-building',?,?,?,?,?,?)",
+      ).run("checkbox-unit-" + index, String(index), temperature, ...base);
+    }
+    db.exec(
+      readFileSync(
+        new URL("./migrations/006_hot_lead_checkbox.sql", import.meta.url),
+        "utf8",
+      ),
+    );
+    for (const table of ["contacts", "units"]) {
+      assert.deepEqual(
+        db
+          .prepare(`SELECT is_hot_lead FROM ${table} ORDER BY title`)
+          .all()
+          .map((r) => r.is_hot_lead),
+        [0, 0, 0, 1],
+      );
+      assert.equal(
+        db
+          .prepare(`PRAGMA table_info(${table})`)
+          .all()
+          .some((c) => c.name === "lead_temperature"),
+        false,
+      );
+    }
+  } finally {
+    db.close();
+  }
 });
 
 test("migrazioni idempotenti e dati persistenti su disco", () => {
   const second = openDatabase(database);
-  assert.equal(second.prepare("SELECT count(*) n FROM migrations").get().n, 5);
+  assert.equal(second.prepare("SELECT count(*) n FROM migrations").get().n, 6);
   assert.equal(
     second.prepare("SELECT name FROM tenants WHERE id=?").get(a.tenant_id).name,
     "Agenzia A",

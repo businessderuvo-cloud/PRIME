@@ -1345,3 +1345,14 @@ dd {
 .voice-input-status[hidden] {
   display: none;
 }
+.crm-type-filter {
+  display: grid;
+  gap: 6px;
+  min-width: 180px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.crm-type-filter select {
+  width: 100%;
+  min-height: 42px;
+}

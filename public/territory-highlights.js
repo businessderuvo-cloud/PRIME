@@ -3,7 +3,7 @@ export function unitHighlights(unit, people = []) {
     sale: unit.commercial_status === "in vendita",
     agency: unit.commercial_status === "altra agenzia",
     hot:
-      unit.lead_temperature === "caldo" ||
-      people.some((p) => p.lead_temperature === "caldo"),
+      Number(unit.is_hot_lead) === 1 ||
+      people.some((p) => Number(p.is_hot_lead) === 1),
   };
 }
