@@ -602,6 +602,67 @@ export function createApp({
           return json(res, 200, { theme: b.theme });
         }
         authorize(s);
+        if (url.pathname === "/api/map/zones" && method === "GET")
+          return json(
+            res,
+            200,
+            db
+              .prepare("SELECT id,title,agent_id,polygon_json,version,created_by FROM territory_zones WHERE tenant_id=? ORDER BY title")
+              .all(s.tenant_id)
+              .map((zone) => ({ ...zone, polygon: JSON.parse(zone.polygon_json) })),
+          );
+        if (url.pathname === "/api/map/position" && method === "PUT") {
+          const b = await readBody(req);
+          if (!["buildings", "properties"].includes(b.entity))
+            throw new ApiError(400, "Scheda mappa non valida");
+          const row = db
+            .prepare(`SELECT * FROM ${b.entity} WHERE tenant_id=? AND id=?`)
+            .get(s.tenant_id, b.id);
+          if (!row) throw new ApiError(404, "Scheda non trovata");
+          authorize(s, b.entity, row);
+          if (b.version !== row.version)
+            throw new ApiError(409, "La scheda è stata aggiornata. Riaprila prima di spostare il punto.");
+          if (!Number.isFinite(b.latitude) || b.latitude < -85 || b.latitude > 85 || !Number.isFinite(b.longitude) || b.longitude < -180 || b.longitude > 180)
+            throw new ApiError(400, "Posizione non valida");
+          const now = new Date().toISOString();
+          const updated = transaction(db, () => {
+            const changed = db.prepare(`UPDATE ${b.entity} SET latitude=?,longitude=?,version=version+1,updated_by=?,updated_at=? WHERE tenant_id=? AND id=? AND version=?`)
+              .run(b.latitude, b.longitude, s.user_id, now, s.tenant_id, row.id, row.version);
+            if (!changed.changes) throw new ApiError(409, "La scheda è cambiata. Riaprila prima di spostare il punto.");
+            const saved = db.prepare(`SELECT * FROM ${b.entity} WHERE tenant_id=? AND id=?`).get(s.tenant_id, row.id);
+            db.prepare("INSERT INTO record_history(tenant_id,entity,record_id,version,snapshot,actor_id,created_at) VALUES (?,?,?,?,?,?,?)")
+              .run(s.tenant_id, b.entity, row.id, saved.version, JSON.stringify(saved), s.user_id, now);
+            audit(s, `${b.entity}.map_position`, row.id);
+            return saved;
+          });
+          return json(res, 200, updated);
+        }
+        if (url.pathname === "/api/map/zones" && method === "POST") {
+          const b = await readBody(req);
+          if (!String(b.title || "").trim() || String(b.title).length > 120)
+            throw new ApiError(400, "Dai un nome alla zona (massimo 120 caratteri)");
+          if (!Array.isArray(b.polygon) || b.polygon.length < 3 || b.polygon.length > 200 || b.polygon.some((point) => !Array.isArray(point) || point.length !== 2 || !Number.isFinite(point[0]) || point[0] < -85 || point[0] > 85 || !Number.isFinite(point[1]) || point[1] < -180 || point[1] > 180))
+            throw new ApiError(400, "Disegna sulla mappa un’area chiusa con almeno tre punti");
+          const member = db.prepare("SELECT role FROM memberships WHERE tenant_id=? AND user_id=?").get(s.tenant_id, b.agent_id);
+          if (!member || member.role === "external" || (s.role === "agent" && b.agent_id !== s.user_id))
+            throw new ApiError(403, "Agente non disponibile per questa zona");
+          if (!['owner','manager','agent'].includes(s.role)) throw new ApiError(403, "Non puoi assegnare questa zona");
+          const id = randomUUID(), now = new Date().toISOString();
+          db.prepare("INSERT INTO territory_zones(id,tenant_id,title,agent_id,polygon_json,created_by,updated_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)")
+            .run(id, s.tenant_id, String(b.title).trim(), b.agent_id, JSON.stringify(b.polygon), s.user_id, s.user_id, now, now);
+          audit(s, "territory_zone.create", id);
+          return json(res, 201, { id, title: String(b.title).trim(), agent_id: b.agent_id, polygon: b.polygon, version: 1, created_by: s.user_id });
+        }
+        const zoneMatch = /^\/api\/map\/zones\/([a-f0-9-]+)$/.exec(url.pathname);
+        if (zoneMatch && method === "DELETE") {
+          const zone = db.prepare("SELECT * FROM territory_zones WHERE tenant_id=? AND id=?").get(s.tenant_id, zoneMatch[1]);
+          if (!zone) throw new ApiError(404, "Zona non trovata");
+          if (!['owner','manager'].includes(s.role) && zone.created_by !== s.user_id)
+            throw new ApiError(403, "Puoi rimuovere solo le zone che hai creato");
+          db.prepare("DELETE FROM territory_zones WHERE tenant_id=? AND id=?").run(s.tenant_id, zone.id);
+          audit(s, "territory_zone.delete", zone.id);
+          return json(res, 200, { ok: true });
+        }
         if (await connect.route(req,res,url,s)) return;
         if (await handleTerritory(req, res, url, s)) return;
         if (url.pathname === "/api/integrations" && method === "GET")
@@ -741,8 +802,10 @@ export function createApp({
       const files = {
         "/": "index.html",
         "/app.js": "app.js",
+        "/map.js": "map.js",
         "/connect.js": "connect.js",
         "/connect.css": "connect.css",
+        "/map.css": "map.css",
         "/schema.js": "schema.js",
         "/planner.js": "planner.js",
         "/planner-view.js": "planner-view.js",
@@ -758,6 +821,13 @@ export function createApp({
         "/territory.css": "territory.css",
         "/assets/logo-light.png": "assets/logo-light.png",
         "/assets/logo-dark.png": "assets/logo-dark.png",
+        "/vendor/leaflet/leaflet.js": "vendor/leaflet/leaflet.js",
+        "/vendor/leaflet/leaflet.css": "vendor/leaflet/leaflet.css",
+        "/vendor/leaflet/images/layers.png": "vendor/leaflet/images/layers.png",
+        "/vendor/leaflet/images/layers-2x.png": "vendor/leaflet/images/layers-2x.png",
+        "/vendor/leaflet/images/marker-icon.png": "vendor/leaflet/images/marker-icon.png",
+        "/vendor/leaflet/images/marker-icon-2x.png": "vendor/leaflet/images/marker-icon-2x.png",
+        "/vendor/leaflet/images/marker-shadow.png": "vendor/leaflet/images/marker-shadow.png",
       };
       const file = files[url.pathname];
       if (!file) throw new ApiError(404, "Non trovato");

@@ -423,7 +423,7 @@ test("filtro per agente usa assegnazione esplicita, immobile o persone collegate
 
 test("migrazioni idempotenti e dati persistenti su disco", () => {
   const second = openDatabase(database);
-  assert.equal(second.prepare("SELECT count(*) n FROM migrations").get().n, 9);
+  assert.equal(second.prepare("SELECT count(*) n FROM migrations").get().n, 10);
   assert.equal(
     second.prepare("SELECT name FROM tenants WHERE id=?").get(a.tenant_id).name,
     "Agenzia A",

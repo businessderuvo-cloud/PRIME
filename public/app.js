@@ -1,4 +1,5 @@
 import { renderConnect } from "./connect.js";
+import { renderMap } from "./map.js";
 import { mountRepeatableRecaps } from "./repeatable-recaps.js";
 import { schema, roleLabels } from "./schema.js";
 import { renderPlanner } from "./planner-view.js";
@@ -29,6 +30,7 @@ const esc = (x) =>
       ],
   );
 const icons = {
+  map: "M3 6 9 3l6 3 6-3v15l-6 3-6-3-6 3zM9 3v15m6-12v15",
   territory: "M4 21 9 3m6 0 5 18M12 5v3m0 4v3m0 4v2",
   dashboard: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
   streets: "M4 21 9 3m6 0 5 18M12 5v3m0 4v3m0 4v2",
@@ -190,6 +192,7 @@ function focusTerritoryRow(entity, row) {
 const navigation = [
   ["dashboard", "Panoramica"],
   ["territory", "Vie e territorio"],
+  ["map", "Mappa immobiliare"],
   ["contacts", "CRM · Persone"],
   ["properties", "Immobili in gestione"],
   ["activities", "WPS"],
@@ -415,6 +418,10 @@ async function renderPage() {
       toast,
       date,
     });
+    return;
+  }
+  if (page === "map") {
+    renderMap({ state, main, pageHeader, esc, icon, api, renderPage, navigate, openEditor, toast });
     return;
   }
   if (["activities", "appointments"].includes(page)) {
