@@ -1356,3 +1356,23 @@ dd {
   width: 100%;
   min-height: 42px;
 }
+.crm-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.7fr) minmax(165px, 1fr) auto minmax(165px, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+.crm-toolbar .context-search { min-width: 0; width: 100%; }
+.crm-toolbar .crm-type-filter { min-width: 0; }
+.crm-hot-filter { display: flex; align-items: center; gap: 8px; min-height: 42px; white-space: nowrap; color: var(--text); font-size: 13px; }
+.crm-hot-filter input { margin: 0; accent-color: var(--accent); }
+.crm-toolbar #result-count { justify-self: end; align-self: center; }
+@media (max-width: 1120px) {
+  .crm-toolbar { grid-template-columns: minmax(210px, 1.5fr) minmax(155px, 1fr) minmax(155px, 1fr); }
+  .crm-hot-filter { align-self: center; }
+}
+@media (max-width: 650px) {
+  .crm-toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: end; }
+  .crm-toolbar .context-search, .crm-toolbar #result-count { grid-column: 1 / -1; }
+  .crm-toolbar .crm-hot-filter { grid-column: 1 / -1; justify-self: start; }
+}

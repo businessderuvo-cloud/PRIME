@@ -28,7 +28,7 @@ export function startVoiceInput() {
         status.textContent = text;
         status.hidden = false;
       }
-      button.onclick = () => {
+      button.onclick = async () => {
         if (active?.button === button) {
           active.recognition.stop();
           return;
@@ -45,10 +45,29 @@ export function startVoiceInput() {
           );
           return;
         }
+        if (window.isSecureContext === false) {
+          message("Il microfono richiede una connessione HTTPS. Apri l’indirizzo sicuro di PRIME o usa localhost.");
+          return;
+        }
+        if (globalThis.navigator?.mediaDevices?.getUserMedia) {
+          try {
+            const permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            permissionStream.getTracks().forEach((track) => track.stop());
+          } catch (error) {
+            message(
+              error.name === "NotAllowedError" || error.name === "SecurityError"
+                ? "Consenti il microfono nelle autorizzazioni del sito e riprova."
+                : error.name === "NotFoundError" || error.name === "NotReadableError"
+                  ? "Microfono non trovato o già in uso da un’altra applicazione."
+                  : "Impossibile attivare il microfono. Controlla le autorizzazioni del browser.",
+            );
+            return;
+          }
+        }
         const recognition = new Recognition();
         recognition.lang = "it-IT";
         recognition.continuous = false;
-        recognition.interimResults = false;
+        recognition.interimResults = true;
         const original = input.value;
         const start = input.selectionStart ?? original.length;
         const end = input.selectionEnd ?? start;

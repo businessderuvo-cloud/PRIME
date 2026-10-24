@@ -1,7 +1,9 @@
 FROM node:24-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080 PRIME_DB=/data/prime.sqlite
-COPY package.json server.mjs ./
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
+COPY server.mjs ./
 COPY src ./src
 COPY public ./public
 COPY migrations ./migrations

@@ -1,4 +1,5 @@
 import http from "node:http";
+import { connectService } from "./src/connect/service.mjs";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -75,6 +76,8 @@ export function createApp({
   database = process.env.PRIME_DB,
   production = process.env.NODE_ENV === "production",
   demo = process.env.PRIME_DEMO === "1",
+  connectFetch = fetch,
+  connectInterval = 60000,
 } = {}) {
   const db = openDatabase(database),
     attempts = new Map();
@@ -307,6 +310,7 @@ export function createApp({
         );
     }
     if (entity === "appointments") {
+      if(!["annullato","saltato","riprogrammato"].includes(b.status)&&db.prepare('SELECT 1 FROM external_busy_events b JOIN integration_connections c ON c.id=b.connection_id WHERE c.tenant_id=? AND c.user_id=? AND c.sync_enabled=1 AND b.starts_at<? AND b.ends_at>?').get(s.tenant_id,b.agent_id,b.ends_at,b.starts_at))throw new ApiError(409,'L’agente ha un impegno nel calendario collegato in questa fascia.');
       if (b.activity_id) {
         const task = db
           .prepare("SELECT * FROM activities WHERE tenant_id=? AND id=?")
@@ -352,6 +356,108 @@ export function createApp({
       }
     }
   }
+  function saveEntity(entity,raw,s,id=null){
+    authorize(s,entity,id?db.prepare(`SELECT * FROM ${entity} WHERE tenant_id=? AND id=?`).get(s.tenant_id,id):null);
+            const b = validate(entity, raw.data);
+            validateLinks(entity, b, s, id);
+            const now = new Date().toISOString(),
+              rid = id || randomUUID();
+            const fields = Object.keys(b);
+            transaction(db, () => {
+              if (id) {
+                const live = db
+                  .prepare(
+                    "SELECT * FROM " + entity + " WHERE tenant_id=? AND id=?",
+                  )
+                  .get(s.tenant_id, id);
+                if (!live || live.version !== raw.version)
+                  throw new ApiError(
+                    409,
+                    "Record modificato: riaprilo prima di salvare",
+                  );
+                authorize(s, entity, live);
+                db.prepare(
+                  `UPDATE ${entity} SET ${fields.map((k) => k + "=?").join(",")},version=version+1,updated_by=?,updated_at=? WHERE tenant_id=? AND id=?`,
+                ).run(...Object.values(b), s.user_id, now, s.tenant_id, id);
+              } else {
+                db.prepare(
+                  `INSERT INTO ${entity}(id,tenant_id,${fields.join(",")},created_by,updated_by,created_at,updated_at) VALUES (${Array(
+                    fields.length + 6,
+                  )
+                    .fill("?")
+                    .join(",")})`,
+                ).run(
+                  rid,
+                  s.tenant_id,
+                  ...Object.values(b),
+                  s.user_id,
+                  s.user_id,
+                  now,
+                  now,
+                );
+              }
+              const saved = db
+                .prepare(`SELECT * FROM ${entity} WHERE tenant_id=? AND id=?`)
+                .get(s.tenant_id, rid);
+              db.prepare(
+                "INSERT INTO record_history(tenant_id,entity,record_id,version,snapshot,actor_id,created_at) VALUES (?,?,?,?,?,?,?)",
+              ).run(
+                s.tenant_id,
+                entity,
+                rid,
+                saved.version,
+                JSON.stringify(saved),
+                s.user_id,
+                now,
+              );
+              audit(s, `${entity}.${id ? "update" : "create"}`, rid);
+              if (entity === "contacts")
+                saveContactMethods(db, s, rid, raw.contact_methods, audit);
+              if (entity === "appointments" && b.activity_id) {
+                const task = db
+                  .prepare(
+                    "SELECT * FROM activities WHERE tenant_id=? AND id=?",
+                  )
+                  .get(s.tenant_id, b.activity_id);
+                if (
+                  task.starts_at !== b.starts_at ||
+                  task.due_at !== b.ends_at
+                ) {
+                  db.prepare(
+                    "UPDATE activities SET starts_at=?,due_at=?,version=version+1,updated_by=?,updated_at=? WHERE tenant_id=? AND id=?",
+                  ).run(
+                    b.starts_at,
+                    b.ends_at,
+                    s.user_id,
+                    now,
+                    s.tenant_id,
+                    task.id,
+                  );
+                  const updated = db
+                    .prepare(
+                      "SELECT * FROM activities WHERE tenant_id=? AND id=?",
+                    )
+                    .get(s.tenant_id, task.id);
+                  db.prepare(
+                    "INSERT INTO record_history(tenant_id,entity,record_id,version,snapshot,actor_id,created_at) VALUES (?,?,?,?,?,?,?)",
+                  ).run(
+                    s.tenant_id,
+                    "activities",
+                    task.id,
+                    updated.version,
+                    JSON.stringify(updated),
+                    s.user_id,
+                    now,
+                  );
+                  audit(s, "activities.reschedule_from_appointment", task.id);
+                }
+              }
+            });
+
+    return db.prepare(`SELECT * FROM ${entity} WHERE tenant_id=? AND id=?`).get(s.tenant_id,rid);
+  }
+
+  const connect = connectService({db,directory:database===':memory:'?null:path.dirname(path.resolve(database||path.join(root,'data/prime.sqlite'))),fetcher:connectFetch,json,readBody,audit,interval:connectInterval,saveAppointment:(session,record,delta)=>saveEntity('appointments',{data:{...Object.fromEntries(Object.keys(schema.appointments.fields).map(key=>[key,record?.[key]])),...delta},version:record?.version},session,record?.id)});
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, "http://localhost"),
@@ -368,6 +474,7 @@ export function createApp({
         db.prepare("SELECT 1").get();
         return json(res, 200, { status: "ok" });
       }
+      if (await connect.publicRoute(req,res,url)) return;
       const mutating = !["GET", "HEAD"].includes(method);
       if (
         mutating &&
@@ -495,6 +602,7 @@ export function createApp({
           return json(res, 200, { theme: b.theme });
         }
         authorize(s);
+        if (await connect.route(req,res,url,s)) return;
         if (await handleTerritory(req, res, url, s)) return;
         if (url.pathname === "/api/integrations" && method === "GET")
           return json(res, 200, integrations);
@@ -595,108 +703,7 @@ export function createApp({
                 409,
                 "Il record è stato aggiornato da un altro utente. Riaprilo prima di salvare.",
               );
-            const b = validate(entity, raw.data);
-            validateLinks(entity, b, s, id);
-            const now = new Date().toISOString(),
-              rid = id || randomUUID();
-            const fields = Object.keys(b);
-            transaction(db, () => {
-              if (id) {
-                const live = db
-                  .prepare(
-                    "SELECT * FROM " + entity + " WHERE tenant_id=? AND id=?",
-                  )
-                  .get(s.tenant_id, id);
-                if (!live || live.version !== raw.version)
-                  throw new ApiError(
-                    409,
-                    "Record modificato: riaprilo prima di salvare",
-                  );
-                authorize(s, entity, live);
-                db.prepare(
-                  `UPDATE ${entity} SET ${fields.map((k) => k + "=?").join(",")},version=version+1,updated_by=?,updated_at=? WHERE tenant_id=? AND id=?`,
-                ).run(...Object.values(b), s.user_id, now, s.tenant_id, id);
-              } else {
-                db.prepare(
-                  `INSERT INTO ${entity}(id,tenant_id,${fields.join(",")},created_by,updated_by,created_at,updated_at) VALUES (${Array(
-                    fields.length + 6,
-                  )
-                    .fill("?")
-                    .join(",")})`,
-                ).run(
-                  rid,
-                  s.tenant_id,
-                  ...Object.values(b),
-                  s.user_id,
-                  s.user_id,
-                  now,
-                  now,
-                );
-              }
-              const saved = db
-                .prepare(`SELECT * FROM ${entity} WHERE tenant_id=? AND id=?`)
-                .get(s.tenant_id, rid);
-              db.prepare(
-                "INSERT INTO record_history(tenant_id,entity,record_id,version,snapshot,actor_id,created_at) VALUES (?,?,?,?,?,?,?)",
-              ).run(
-                s.tenant_id,
-                entity,
-                rid,
-                saved.version,
-                JSON.stringify(saved),
-                s.user_id,
-                now,
-              );
-              audit(s, `${entity}.${id ? "update" : "create"}`, rid);
-              if (entity === "contacts")
-                saveContactMethods(db, s, rid, raw.contact_methods, audit);
-              if (entity === "appointments" && b.activity_id) {
-                const task = db
-                  .prepare(
-                    "SELECT * FROM activities WHERE tenant_id=? AND id=?",
-                  )
-                  .get(s.tenant_id, b.activity_id);
-                if (
-                  task.starts_at !== b.starts_at ||
-                  task.due_at !== b.ends_at
-                ) {
-                  db.prepare(
-                    "UPDATE activities SET starts_at=?,due_at=?,version=version+1,updated_by=?,updated_at=? WHERE tenant_id=? AND id=?",
-                  ).run(
-                    b.starts_at,
-                    b.ends_at,
-                    s.user_id,
-                    now,
-                    s.tenant_id,
-                    task.id,
-                  );
-                  const updated = db
-                    .prepare(
-                      "SELECT * FROM activities WHERE tenant_id=? AND id=?",
-                    )
-                    .get(s.tenant_id, task.id);
-                  db.prepare(
-                    "INSERT INTO record_history(tenant_id,entity,record_id,version,snapshot,actor_id,created_at) VALUES (?,?,?,?,?,?,?)",
-                  ).run(
-                    s.tenant_id,
-                    "activities",
-                    task.id,
-                    updated.version,
-                    JSON.stringify(updated),
-                    s.user_id,
-                    now,
-                  );
-                  audit(s, "activities.reschedule_from_appointment", task.id);
-                }
-              }
-            });
-            return json(
-              res,
-              id ? 200 : 201,
-              db
-                .prepare(`SELECT * FROM ${entity} WHERE tenant_id=? AND id=?`)
-                .get(s.tenant_id, rid),
-            );
+            return json(res,id?200:201,saveEntity(entity,raw,s,id));
           }
           if (method === "DELETE" && id && !history) {
             if (!["owner", "manager"].includes(s.role))
@@ -734,6 +741,8 @@ export function createApp({
       const files = {
         "/": "index.html",
         "/app.js": "app.js",
+        "/connect.js": "connect.js",
+        "/connect.css": "connect.css",
         "/schema.js": "schema.js",
         "/planner.js": "planner.js",
         "/planner-view.js": "planner-view.js",
@@ -784,7 +793,8 @@ export function createApp({
       json(res, status, { error: message });
     }
   });
-  return { server, db };
+  server.on("close",connect.close);
+  return { server, db, connect };
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { server } = createApp();

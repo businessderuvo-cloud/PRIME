@@ -219,6 +219,9 @@ export const schema = {
     label: "Agenda appuntamenti",
     singular: "appuntamento",
     fields: {
+      meeting_mode: select("Modalità incontro", ["in presenza", "videocall", "telefono"]),
+      video_provider: select("Servizio videocall", ["", "Google Meet", "Calendly", "Link esterno"]),
+      meeting_url: text("Link videocall (HTTPS)", {max:2000}),
       appointment_type: select("Tipo di appuntamento", [
         "1ª visita immobile",
         "2ª visita immobile",

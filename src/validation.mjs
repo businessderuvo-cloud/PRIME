@@ -76,6 +76,7 @@ export function validate(entity, input) {
       throw new ApiError(400, `${f.label}: campo obbligatorio`);
     output[key] = value;
   }
+  if(entity==='appointments'&&output.meeting_url){try{const u=new URL(output.meeting_url);if(u.protocol!=='https:'||u.username||u.password)throw Error();}catch{throw new ApiError(400,'Il link videocall deve essere un indirizzo HTTPS valido.');}}
   if (entity === "contacts")
     output.phone = output.phone.replace(/[\s().-]/g, "");
   if (

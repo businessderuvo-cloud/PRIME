@@ -1,3 +1,4 @@
+import { renderConnect } from "./connect.js";
 import { mountRepeatableRecaps } from "./repeatable-recaps.js";
 import { schema, roleLabels } from "./schema.js";
 import { renderPlanner } from "./planner-view.js";
@@ -10,7 +11,7 @@ let stopWpsClock;
 const app = document.querySelector("#app");
 const state = {
   me: null,
-  page: "dashboard",
+  page: new URLSearchParams(location.search).has("connect") ? "connect" : "dashboard",
   data: {},
   members: [],
   query: "",
@@ -417,6 +418,7 @@ async function renderPage() {
     return;
   }
   if (["activities", "appointments"].includes(page)) {
+    if(page==="appointments")state.externalBusy=await api("/api/connect/busy");
     renderPlanner({
       state,
       main,
@@ -519,7 +521,7 @@ async function renderPage() {
             : "Dati collegati, informazioni sempre a portata di mano.",
         `<button class="primary" id="create">${icon("plus")} ${page === "activities" ? "Nuova attività" : page === "appointments" ? "Nuovo appuntamento" : "Aggiungi"}</button>`,
       ) +
-      `<section class="panel records-panel"><div class="toolbar">${searchBox(page === "streets" ? "Cerca via, città, CAP o quartiere…" : page === "units" ? "Cerca via, civico, scala, piano o interno…" : "Cerca in " + def.label.toLowerCase() + "…")}${["activities", "appointments"].includes(page) ? periodControls() : ""}${page === "streets" ? '<select id="status-filter" aria-label="Filtra stato censimento"><option value="">Tutti gli stati</option><option>da censire</option><option>parziale</option><option>censita</option></select>' : ""}${page === "contacts" ? `<label class="crm-type-filter">Tipo di contatto<select id="contact-type-filter" aria-label="Filtra per tipo di contatto"><option value="">Tutti i tipi</option>${schema.contacts.fields.contact_type.options.map((type) => `<option value="${esc(type)}" ${state.contactType === type ? "selected" : ""}>${esc(type)}</option>`).join("")}</select></label>` : ""}${page === "contacts" ? `<label class="checkbox-label crm-hot-filter"><input id="crm-hot-only" type="checkbox" ${state.onlyHotLeads ? "checked" : ""}>Solo lead caldi</label>` : ""}${["contacts", "properties"].includes(page) ? `<label class="crm-type-filter">Agente<select id="assigned-agent-filter" aria-label="Filtra per agente"><option value="">Tutti gli agenti</option><option value="unassigned">Da assegnare</option>${state.members.map((member) => `<option value="${member.id}">${esc(member.title)}</option>`).join("")}</select></label>` : ""}<span id="result-count" class="muted"></span></div>${["activities", "appointments"].includes(page) ? '<p class="small-note">Il periodo parte dalla data selezionata. Senza data, sono visibili tutte le attività.</p>' : ""}<div id="record-list"></div></section>`;
+      `<section class="panel records-panel"><div class="toolbar ${page === "contacts" ? "crm-toolbar" : ""}">${searchBox(page === "streets" ? "Cerca via, città, CAP o quartiere…" : page === "units" ? "Cerca via, civico, scala o interno…" : "Cerca in " + def.label.toLowerCase() + "…")}${["activities", "appointments"].includes(page) ? periodControls() : ""}${page === "streets" ? '<select id="status-filter" aria-label="Filtra stato censimento"><option value="">Tutti gli stati</option><option>da censire</option><option>parziale</option><option>censita</option></select>' : ""}${page === "contacts" ? `<label class="crm-type-filter">Tipo di contatto<select id="contact-type-filter" aria-label="Filtra per tipo di contatto"><option value="">Tutti i tipi</option>${schema.contacts.fields.contact_type.options.map((type) => `<option value="${esc(type)}" ${state.contactType === type ? "selected" : ""}>${esc(type)}</option>`).join("")}</select></label>` : ""}${page === "contacts" ? `<label class="checkbox-label crm-hot-filter"><input id="crm-hot-only" type="checkbox" ${state.onlyHotLeads ? "checked" : ""}>Solo lead caldi</label>` : ""}${["contacts", "properties"].includes(page) ? `<label class="crm-type-filter">Agente<select id="assigned-agent-filter" aria-label="Filtra per agente"><option value="">Tutti gli agenti</option><option value="unassigned">Da assegnare</option>${state.members.map((member) => `<option value="${member.id}">${esc(member.title)}</option>`).join("")}</select></label>` : ""}<span id="result-count" class="muted"></span></div>${["activities", "appointments"].includes(page) ? '<p class="small-note">Il periodo parte dalla data selezionata. Senza data, sono visibili tutte le attività.</p>' : ""}<div id="record-list"></div></section>`;
     document.querySelector("#create").onclick = () => openEditor(page);
     bindSearch(drawRecords);
     if (["activities", "appointments"].includes(page)) bindPeriod(drawRecords);
@@ -552,26 +554,7 @@ async function renderPage() {
     return;
   }
   if (page === "connect") {
-    const list = await api("/api/integrations");
-    main.innerHTML =
-      pageHeader(
-        "ECOSISTEMA",
-        "PRIME Connect",
-        "Stato effettivo delle connessioni esterne.",
-      ) +
-      `<section class="panel">${searchBox("Cerca un’integrazione…")}<div id="connect-list" class="connect-grid"></div><p class="small-note">Nessun servizio esterno è attivo. Le connessioni saranno disponibili dopo implementazione, credenziali e verifica del fornitore.</p></section>`;
-    const draw = () =>
-      (document.querySelector("#connect-list").innerHTML =
-        list
-          .filter(matches)
-          .map(
-            (r) =>
-              `<article class="integration"><span class="integration-symbol">${icon("connect")}</span><h3>${esc(r.name)}</h3><span class="pill">${r.status}</span></article>`,
-          )
-          .join("") ||
-        empty("Nessuna integrazione trovata.", "Prova un’altra ricerca."));
-    draw();
-    bindSearch(draw);
+    await renderConnect({main,state,api,esc,pageHeader,toast});
     return;
   }
   if (page === "audit") {
@@ -804,6 +787,10 @@ async function openEditor(entity, record = null, prefill = {}) {
     mountPersonRecaps({ dialog, entity, record, state, esc, api, loadData });
   if (!dialog.open) dialog.showModal();
   if (entity === "appointments") {
+    if(record?.meeting_url){
+      const link=document.createElement('a');link.className='meeting-link';link.href=record.meeting_url;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Apri la videocall ↗';dialog.querySelector('.dialog-body').prepend(link);
+    }
+    const hint=document.createElement('p');hint.className='small-note';hint.textContent='Google Meet viene generato dopo il salvataggio e la sincronizzazione con il tuo Google Calendar. Per Calendly crea il link nella sezione PRIME Connect. Per una videocall già organizzata incolla il collegamento HTTPS.';dialog.querySelector('.dialog-body').append(hint);
     const quick = document.createElement("div");
     quick.className = "appointment-type-shortcuts";
     quick.innerHTML = `<span class="eyebrow">TIPO RAPIDO</span><div>${[
@@ -1003,6 +990,7 @@ async function boot() {
     await loadData();
     shell();
     await renderPage();
+    startMailNotifications();
   } catch (e) {
     if (e.status === 401) auth();
     else {
@@ -1010,6 +998,27 @@ async function boot() {
       document.querySelector("#retry").onclick = boot;
     }
   }
+}
+let mailNotificationTimer,mailNotificationSince=0,mailNotificationBusy=false;
+function startMailNotifications(){
+  clearInterval(mailNotificationTimer);
+  mailNotificationSince=Date.now();
+  async function check(){
+    if(!state.me||mailNotificationBusy)return;
+    mailNotificationBusy=true;
+    try{
+      const items=await api('/api/connect/mail-notifications'),fresh=items.filter(item=>Date.parse(item.notified_at)>mailNotificationSince).sort((a,b)=>a.notified_at.localeCompare(b.notified_at));
+      mailNotificationSince=Date.now();
+      const item=fresh.at(-1);if(!item)return;
+      let alert=document.querySelector('#mail-live-alert');
+      if(!alert){alert=document.createElement('aside');alert.id='mail-live-alert';alert.className='mail-live-alert';alert.setAttribute('role','status');document.body.append(alert);}
+      const provider={gmail:'Gmail',yahoo:'Yahoo Mail',outlook:'Outlook'}[item.provider]||'Email';
+      alert.innerHTML=`<span class="mail-alert-dot" aria-hidden="true"></span><div><strong>Nuova email · ${esc(provider)}</strong><p><b>${esc(item.sender)}</b><br>${esc(item.subject)}</p></div><a href="${esc(item.provider_url)}" target="_blank" rel="noopener noreferrer">Apri email ↗</a><button type="button" aria-label="Chiudi notifica">×</button>`;
+      alert.querySelector('button').onclick=()=>alert.remove();
+      clearTimeout(state.mailNotificationHide);state.mailNotificationHide=setTimeout(()=>alert.remove(),15000);
+    }catch(error){if(error.status===401)clearInterval(mailNotificationTimer);}finally{mailNotificationBusy=false;}
+  }
+  mailNotificationTimer=setInterval(check,60000);
 }
 startVoiceInput();
 boot();

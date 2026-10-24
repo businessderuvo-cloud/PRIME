@@ -133,7 +133,7 @@ export function renderPlanner({
   bindSearch(() => draw(false));
   function draw(resetScroll = true) {
     const days = daysFor(state.day, view),
-      all = (state.data[entity] || [])
+      all = [...(state.data[entity] || []),...(!isWps?(state.externalBusy||[]).map(b=>({...b,id:'busy-'+b.id,external_busy:true,status:'Occupato',search_text:'occupato'})):[])]
         .filter(matches)
         .filter((r) => !agent.value || r.agent_id === agent.value),
       endField = isWps ? "due_at" : "ends_at";
@@ -201,7 +201,7 @@ export function renderPlanner({
                     : r.status === "confermato"
                       ? "confirmed"
                       : "planned";
-              return `<button class="calendar-event ${style} ${segment.minutes < 35 ? "short-event" : segment.minutes < 90 ? "compact-event" : ""}" data-event="${r.id}" data-segment="${index}" aria-label="${esc(r.title)} · ${esc(r.status)}"><span class="event-time">${time(r.starts_at)}–${time(r[endField])}</span><strong>${esc(r.title)}</strong><small>${esc(isWps ? r.activity_type : refLabel("members", r.agent_id))}</small><span class="event-status">${esc(r.status)}${!isWps && r.activity_id ? " · WPS" : ""}</span></button>`;
+              return `<button class="calendar-event ${r.external_busy?'external-busy':style} ${segment.minutes < 35 ? "short-event" : segment.minutes < 90 ? "compact-event" : ""}" data-event="${r.id}" data-segment="${index}" aria-label="${esc(r.title)} · ${esc(r.status)}"><span class="event-time">${time(r.starts_at)}–${time(r[endField])}</span><strong>${esc(r.title)}</strong><small>${esc(isWps ? r.activity_type : refLabel("members", r.agent_id))}</small><span class="event-status">${esc(r.status)}${!isWps && r.activity_id ? " · WPS" : ""}</span></button>`;
             })
             .join(
               "",
@@ -222,7 +222,7 @@ export function renderPlanner({
         el.style.height = Math.max(25, (segment.minutes / 60) * 64 - 3) + "px";
         el.style.left = `calc(${(segment.lane / segment.lanes) * 100}% + 4px)`;
         el.style.width = `calc(${100 / segment.lanes}% - 8px)`;
-        el.onclick = () => openEditor(entity, segment.record);
+        if(segment.record.external_busy){el.setAttribute('aria-label','Occupato · calendario personale');el.onclick=()=>{};}else el.onclick = () => openEditor(entity, segment.record);
       });
       column.querySelectorAll(".time-slot").forEach(
         (el) =>
