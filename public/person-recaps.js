@@ -30,7 +30,7 @@ export function mountPersonRecaps({
       people()
         .map(
           (p) =>
-            `<article class="territory-person"><h4>${esc(p.title)}</h4><div class="person-primary-contacts">${p.phone ? `<span>Telefono principale: ${esc(p.phone)}</span>` : ""}${p.email ? `<span>${esc(p.email)}</span>` : ""}</div><div class="person-methods">${(
+            `<article class="territory-person"><h4>${esc(p.title)}</h4>${p.lead_temperature === "caldo" ? '<span class="spot-badge spot-hot">● LEAD CALDO</span>' : ""}<div class="person-primary-contacts">${p.phone ? `<span>Telefono principale: ${esc(p.phone)}</span>` : ""}${p.email ? `<span>${esc(p.email)}</span>` : ""}</div><div class="person-methods">${(
               state.data.contact_methods || []
             )
               .filter((m) => m.contact_id === p.id)

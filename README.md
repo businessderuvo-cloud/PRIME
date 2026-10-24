@@ -20,7 +20,7 @@ Aprire il sito e scegliere “Crea il tuo spazio” per registrare la propria ag
 
 ## Verifica
 
-Eseguire `node --run check` e `node --run test` (oppure `node --test tests.mjs`). I test creano database temporanei separati, non modificano data/ e rimuovono solo i propri file temporanei. L'ultima verifica comprende 33 test superati e controlli browser desktop/mobile. Per un ambiente di esempio separato impostare PRIME_DEMO=1 e PRIME_DB su un percorso dedicato: PRIME_DEMO mostra l'avviso demo, non inserisce dati e non abilita accessi speciali.
+Eseguire `node --run check` e `node --run test` (oppure `node --test tests.mjs`). I test creano database temporanei separati, non modificano data/ e rimuovono solo i propri file temporanei. L'ultima verifica comprende 35 test superati e controlli browser desktop/mobile. Per un ambiente di esempio separato impostare PRIME_DEMO=1 e PRIME_DB su un percorso dedicato: PRIME_DEMO mostra l'avviso demo, non inserisce dati e non abilita accessi speciali.
 
 ## Limiti attuali
 
@@ -39,3 +39,6 @@ Dettatura vocale nei campi e nelle ricerche, recapiti multipli per persona diret
 
 
 Appartamenti suddivisi per piano e esempio demo: [dettagli](docs/APPARTAMENTI-PER-PIANO.md).
+
+
+Evidenze commerciali, lead caldi e filtri per stabile: [dettagli](docs/EVIDENZE-COMMERCIALI.md).

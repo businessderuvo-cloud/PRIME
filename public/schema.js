@@ -49,6 +49,12 @@ export const schema = {
     fields: {
       ...common,
       title: text("Interno", { required: true }),
+      lead_temperature: select("Temperatura lead", [
+        "non indicata",
+        "freddo",
+        "tiepido",
+        "caldo",
+      ]),
       building_id: ref("Stabile", "buildings", true),
       staircase: text("Scala"),
       floor: text("Piano"),
@@ -82,6 +88,12 @@ export const schema = {
     singular: "contatto",
     fields: {
       ...common,
+      lead_temperature: select("Temperatura lead", [
+        "non indicata",
+        "freddo",
+        "tiepido",
+        "caldo",
+      ]),
       email: { label: "Email", type: "email" },
       phone: text("Telefono"),
       contact_type: select("Tipo di contatto", [

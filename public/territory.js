@@ -1,3 +1,4 @@
+import { unitHighlights } from "./territory-highlights.js";
 import { groupUnitsByFloor } from "./territory-floors.js";
 const sortBy = (rows, key = "title") =>
   [...rows].sort((a, b) =>
@@ -78,6 +79,32 @@ export function renderTerritory(ctx) {
       }
     }
     return links;
+  }
+  const flagsOf = (unit) =>
+    unitHighlights(
+      unit,
+      peopleOf(unit).map((link) => link.person),
+    );
+  function badges(flags) {
+    return (
+      (flags.sale
+        ? '<span class="spot-badge spot-sale">IN VENDITA</span>'
+        : "") +
+      (flags.agency
+        ? '<span class="spot-badge spot-agency">ALTRA AGENZIA</span>'
+        : "") +
+      (flags.hot ? '<span class="spot-badge spot-hot">● LEAD CALDO</span>' : "")
+    );
+  }
+  function flagClasses(unit) {
+    const f = flagsOf(unit);
+    return [
+      f.sale ? "is-sale" : "",
+      f.agency ? "is-agency" : "",
+      f.hot ? "is-hot" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
   }
   const photos = (kind, id) =>
     (state.media || []).filter(
@@ -203,7 +230,7 @@ export function renderTerritory(ctx) {
                           )
                           .map(
                             (u) =>
-                              `<button class="tree-unit-button ${selection.unitId === u.id ? "selected" : ""}" data-pick="units" data-id="${u.id}"><span>${esc(u.floor || "—")}</span><span>Interno ${esc(u.title)}${u.staircase ? " · " + esc(u.staircase) : ""}</span><i class="unit-state-dot ${u.commercial_status === "in vendita" ? "for-sale" : ""}"></i></button>`,
+                              `<button class="tree-unit-button ${flagClasses(u)} ${selection.unitId === u.id ? "selected" : ""}" data-pick="units" data-id="${u.id}"><span>${esc(u.floor || "—")}</span><span>Interno ${esc(u.title)}${u.staircase ? " · " + esc(u.staircase) : ""}<span class="tree-unit-highlights">${badges(flagsOf(u))}</span></span><i class="unit-state-dot ${u.commercial_status === "in vendita" ? "for-sale" : ""}"></i></button>`,
                           )
                           .join("")}</div>`
                       : ""
@@ -249,7 +276,7 @@ export function renderTerritory(ctx) {
       ]
         .filter(Boolean)
         .join(" · ");
-    return `<article class="territory-person"><header><span class="person-avatar">${esc(person.title.slice(0, 2).toUpperCase())}</span><div><h3>${esc(person.title)}</h3><span class="pill">${esc(link.relationship)}</span>${person.do_not_contact ? '<span class="pill stop-contact">Non ricontattare</span>' : ""}</div><button class="text-button" data-edit-person="${person.id}">Scheda completa ↗</button></header><div class="person-primary-contacts">${person.phone ? `<a href="tel:${encodeURIComponent(person.phone)}">${esc(person.phone)}</a>` : ""}${person.email ? `<a href="mailto:${encodeURIComponent(person.email)}">${esc(person.email)}</a>` : ""}${!person.phone && !person.email ? '<span class="muted">Recapiti da aggiungere</span>' : ""}</div>${preferences ? `<p class="contact-preferences"><span>Preferenze di contatto</span>${esc(preferences)}</p>` : ""}${person.preference_notes ? `<p class="person-note">${esc(person.preference_notes)}</p>` : ""}${facts(
+    return `<article class="territory-person"><header><span class="person-avatar">${esc(person.title.slice(0, 2).toUpperCase())}</span><div><h3>${esc(person.title)}</h3><span class="pill">${esc(link.relationship)}</span>${person.lead_temperature === "caldo" ? badges({ hot: true }) : ""}${person.do_not_contact ? '<span class="pill stop-contact">Non ricontattare</span>' : ""}</div><button class="text-button" data-edit-person="${person.id}">Scheda completa ↗</button></header><div class="person-primary-contacts">${person.phone ? `<a href="tel:${encodeURIComponent(person.phone)}">${esc(person.phone)}</a>` : ""}${person.email ? `<a href="mailto:${encodeURIComponent(person.email)}">${esc(person.email)}</a>` : ""}${!person.phone && !person.email ? '<span class="muted">Recapiti da aggiungere</span>' : ""}</div>${preferences ? `<p class="contact-preferences"><span>Preferenze di contatto</span>${esc(preferences)}</p>` : ""}${person.preference_notes ? `<p class="person-note">${esc(person.preference_notes)}</p>` : ""}${facts(
       [
         ["Professione", person.profession],
         [
@@ -311,23 +338,59 @@ export function renderTerritory(ctx) {
     return `<div class="section-heading"><div><p class="eyebrow">RELAZIONI NEL TEMPO</p><h3>Storico contatti e attività</h3></div><button class="secondary" data-log-contact>+ Registra contatto</button></div>${list.length ? `<div class="territory-timeline">${list.map((r) => `<article><span class="timeline-point"></span><div><div class="timeline-top"><span>${esc(r.kind)}</span><time>${date(r.when)}</time></div><button class="timeline-title" data-open-history="${r.entity}:${r.id}">${esc(r.title)}</button><p>${esc(r.result)}</p>${r.contact_id && personOf(r.contact_id) ? `<small>${esc(personOf(r.contact_id).title)}</small>` : ""}${r.notes ? `<p class="timeline-note">${esc(r.notes)}</p>` : ""}${r.next_action ? `<p class="next-action">Prossima azione · ${esc(r.next_action)}</p>` : ""}${r.follow_up_at ? `<span class="pill">Richiamo · ${date(r.follow_up_at)}</span>` : ""}<small class="timeline-author">${esc(state.members.find((m) => m.id === r.created_by)?.title || "Utente agenzia")}</small></div></article>`).join("")}</div>` : '<div class="territory-empty"><h3>Ogni contatto costruisce la relazione.</h3><p>Registra chiamate, telemarketing, porta a porta ed esiti commerciali. Lo storico resterà collegato alla scheda.</p></div>'}`;
   }
   function unitCards(building) {
-    const units = unitsOf(building.id);
-    return `<div class="section-heading"><h3>Appartamenti · ${units.length}</h3><button class="secondary" data-add-unit="${building.id}">+ Aggiungi appartamento</button></div>${
-      units.length
-        ? groupUnitsByFloor(units)
-            .map(
-              (group) =>
-                `<section class="territory-floor-group"><header class="floor-group-header"><div><p class="eyebrow">APPARTAMENTI DELLO STABILE</p><h3>${esc(group.label)}</h3></div><span class="pill">${group.units.length} ${group.units.length === 1 ? "appartamento" : "appartamenti"}</span><button class="text-button" data-add-unit="${building.id}" data-unit-floor="${esc(group.units[0].floor)}">+ Aggiungi su questo piano</button></header><div class="territory-unit-grid">${group.units
-                  .map((u) => {
-                    const people = peopleOf(u),
-                      photo = photos("units", u.id)[0];
-                    return `<button class="unit-card" data-pick="units" data-id="${u.id}"><div class="unit-card-top">${photo ? `<img src="${photo.url}" alt="Foto appartamento" loading="lazy">` : `<span class="floor-mark">${esc(u.floor || "—")}<small>PIANO</small></span>`}<div><h3>Interno ${esc(u.title)}</h3><p>${esc([u.staircase ? "Scala " + u.staircase : "", u.property_type, u.area ? u.area + " m²" : "", u.rooms ? u.rooms + " locali" : ""].filter(Boolean).join(" · ") || "Informazioni da completare")}</p></div></div><div class="unit-card-states"><span class="pill ${u.commercial_status === "in vendita" ? "sale" : ""}">${esc(u.commercial_status)}</span><span class="pill">${esc(u.occupancy_status)}</span></div><footer>${people.length ? esc(people.map((p) => p.person.title).join(", ")) : "Persone da associare"}<span>Apri ↗</span></footer></button>`;
-                  })
-                  .join("")}</div></section>`,
-            )
-            .join("")
-        : '<div class="territory-empty"><h3>Dal civico alle persone.</h3><p>Aggiungi gli interni con piano e scala per iniziare il censimento.</p></div>'
-    }`;
+    const allUnits = unitsOf(building.id);
+    const filter = state.territoryHighlight || "all";
+    const units = allUnits.filter(
+      (u) => filter === "all" || flagsOf(u)[filter],
+    );
+    const filters = [
+      ["all", "Tutti gli appartamenti"],
+      ["sale", "In vendita"],
+      ["agency", "Altra agenzia"],
+      ["hot", "Lead caldi"],
+    ];
+    const summary =
+      '<div class="territory-spotlight" aria-label="Filtra appartamenti in evidenza">' +
+      filters
+        .map(
+          ([key, label]) =>
+            '<button type="button" class="spot-filter spot-' +
+            key +
+            '" data-highlight="' +
+            key +
+            '" aria-pressed="' +
+            (filter === key) +
+            '"><strong>' +
+            (key === "all"
+              ? allUnits.length
+              : allUnits.filter((u) => flagsOf(u)[key]).length) +
+            "</strong><span>" +
+            label +
+            "</span></button>",
+        )
+        .join("") +
+      "</div>";
+    return (
+      summary +
+      `<div class="section-heading"><h3>Appartamenti · ${units.length}</h3><button class="secondary" data-add-unit="${building.id}">+ Aggiungi appartamento</button></div>${
+        units.length
+          ? groupUnitsByFloor(units)
+              .map(
+                (group) =>
+                  `<section class="territory-floor-group"><header class="floor-group-header"><div><p class="eyebrow">APPARTAMENTI DELLO STABILE</p><h3>${esc(group.label)}</h3></div><span class="pill">${group.units.length} ${group.units.length === 1 ? "appartamento" : "appartamenti"}</span><button class="text-button" data-add-unit="${building.id}" data-unit-floor="${esc(group.units[0].floor)}">+ Aggiungi su questo piano</button></header><div class="territory-unit-grid">${group.units
+                    .map((u) => {
+                      const people = peopleOf(u),
+                        photo = photos("units", u.id)[0];
+                      return `<button class="unit-card ${flagClasses(u)}" data-pick="units" data-id="${u.id}">${badges(flagsOf(u)) ? `<div class="unit-priority-badges">${badges(flagsOf(u))}</div>` : ""}<div class="unit-card-top">${photo ? `<img src="${photo.url}" alt="Foto appartamento" loading="lazy">` : `<span class="floor-mark">${esc(u.floor || "—")}<small>PIANO</small></span>`}<div><h3>Interno ${esc(u.title)}</h3><p>${esc([u.staircase ? "Scala " + u.staircase : "", u.property_type, u.area ? u.area + " m²" : "", u.rooms ? u.rooms + " locali" : ""].filter(Boolean).join(" · ") || "Informazioni da completare")}</p></div></div><div class="unit-card-states">${!flagsOf(u).sale && !flagsOf(u).agency ? `<span class="pill">${esc(u.commercial_status)}</span>` : ""}<span class="pill">${esc(u.occupancy_status)}</span></div><footer>${people.length ? esc(people.map((p) => p.person.title).join(", ")) : "Persone da associare"}<span>Apri ↗</span></footer></button>`;
+                    })
+                    .join("")}</div></section>`,
+              )
+              .join("")
+          : allUnits.length
+            ? '<div class="territory-empty"><h3>Nessun appartamento in questa categoria.</h3><p>Seleziona Tutti gli appartamenti per visualizzare lo stabile completo.</p></div>'
+            : '<div class="territory-empty"><h3>Dal civico alle persone.</h3><p>Aggiungi gli interni con piano e scala per iniziare il censimento.</p></div>'
+      }`
+    );
   }
   function draw() {
     if (selection.unitId && !d.units.some((u) => u.id === selection.unitId))
@@ -390,7 +453,7 @@ export function renderTerritory(ctx) {
     else if (unit) {
       const people = peopleOf(unit),
         managed = d.properties.find((p) => p.unit_id === unit.id);
-      content = `<div class="unit-profile-summary">${photoFrame("units", unit, "Foto appartamento")}<div><div class="unit-status-list">${[
+      content = `<div class="unit-priority-badges profile-priority">${badges(flagsOf(unit))}</div><div class="unit-profile-summary">${photoFrame("units", unit, "Foto appartamento")}<div><div class="unit-status-list">${[
         ["Occupazione", unit.occupancy_status],
         ["Commercializzazione", unit.commercial_status],
         ["Acquisizione", unit.acquisition_status],
@@ -522,6 +585,13 @@ export function renderTerritory(ctx) {
           }
         }),
     );
+    target.querySelectorAll("[data-highlight]").forEach(
+      (button) =>
+        (button.onclick = () => {
+          state.territoryHighlight = button.dataset.highlight;
+          draw();
+        }),
+    );
     bindTree();
     bindPhotos(target);
     remember();
@@ -537,16 +607,14 @@ export function renderTerritory(ctx) {
             street_id: b.dataset.addBuilding,
           })),
     );
-    main
-      .querySelectorAll("[data-add-unit]")
-      .forEach(
-        (b) =>
-          (b.onclick = () =>
-            openEditor("units", null, {
-              building_id: b.dataset.addUnit,
-              floor: b.dataset.unitFloor || "",
-            })),
-      );
+    main.querySelectorAll("[data-add-unit]").forEach(
+      (b) =>
+        (b.onclick = () =>
+          openEditor("units", null, {
+            building_id: b.dataset.addUnit,
+            floor: b.dataset.unitFloor || "",
+          })),
+    );
   }
   function bindPhotos(target) {
     target.querySelectorAll("[data-photo-entity]").forEach(

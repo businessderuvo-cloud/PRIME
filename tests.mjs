@@ -11,6 +11,7 @@ import { createApp } from "./server.mjs";
 import { openDatabase } from "./src/database.mjs";
 import { clockState, countdown, daysFor, layoutDay } from "./public/planner.js";
 import { groupUnitsByFloor } from "./public/territory-floors.js";
+import { unitHighlights } from "./public/territory-highlights.js";
 const temporary = mkdtempSync(path.join(tmpdir(), "prime-tests-"));
 const database = path.join(temporary, "test.sqlite");
 const testPassword = randomBytes(24).toString("hex");
@@ -146,9 +147,82 @@ test("appartamenti per piano: ordine numerico, piani equivalenti e scala/interno
   assert.deepEqual(groupUnitsByFloor([]), []);
 });
 
+test("evidenza commerciale e lead caldi restano distinti e possono coesistere", () => {
+  assert.deepEqual(
+    unitHighlights({
+      commercial_status: "in vendita",
+      lead_temperature: "caldo",
+    }),
+    { sale: true, agency: false, hot: true },
+  );
+  assert.deepEqual(
+    unitHighlights({ commercial_status: "altra agenzia" }, [
+      { lead_temperature: "caldo" },
+    ]),
+    { sale: false, agency: true, hot: true },
+  );
+  assert.deepEqual(
+    unitHighlights(
+      {
+        commercial_status: "non in vendita",
+        acquisition_status: "opportunità",
+      },
+      [{ lead_temperature: "tiepido" }],
+    ),
+    { sale: false, agency: false, hot: false },
+  );
+  assert.equal(unitHighlights({ commercial_status: "in vendita" }).hot, false);
+});
+
+test("temperatura lead persistente, validata e isolata per agenzia", async () => {
+  const person = await create("contacts", {
+    title: "Lead test caldo",
+    lead_temperature: "caldo",
+  });
+  assert.equal(person.lead_temperature, "caldo");
+  assert.equal(
+    (
+      await request(b, "/api/entities/contacts/" + person.id, "PUT", {
+        version: person.version,
+        data: { ...dataOf(person), lead_temperature: "freddo" },
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await request(a, "/api/entities/contacts", "POST", {
+        data: { title: "Lead non valido", lead_temperature: "bollente" },
+      })
+    ).status,
+    400,
+  );
+  const s = await create("streets", { title: "Via Test Lead", city: "Roma" });
+  const building = await create("buildings", { title: "1", street_id: s.id });
+  const unit = await create("units", {
+    title: "1",
+    building_id: building.id,
+    lead_temperature: "caldo",
+    commercial_status: "altra agenzia",
+  });
+  assert.equal(unit.lead_temperature, "caldo");
+  const updated = await request(a, "/api/entities/units/" + unit.id, "PUT", {
+    version: unit.version,
+    data: { ...dataOf(unit), lead_temperature: "tiepido" },
+  });
+  assert.equal(updated.status, 200);
+  assert.equal(updated.value.lead_temperature, "tiepido");
+  assert.equal(updated.value.commercial_status, "altra agenzia");
+  assert.equal(
+    (await create("contacts", { title: "Lead ancora da qualificare" }))
+      .lead_temperature,
+    "non indicata",
+  );
+});
+
 test("migrazioni idempotenti e dati persistenti su disco", () => {
   const second = openDatabase(database);
-  assert.equal(second.prepare("SELECT count(*) n FROM migrations").get().n, 4);
+  assert.equal(second.prepare("SELECT count(*) n FROM migrations").get().n, 5);
   assert.equal(
     second.prepare("SELECT name FROM tenants WHERE id=?").get(a.tenant_id).name,
     "Agenzia A",
@@ -386,6 +460,7 @@ test("asset della schermata iniziale presenti e policy di sicurezza", async () =
     "/planner.css",
     "/territory.js",
     "/territory-floors.js",
+    "/territory-highlights.js",
     "/person-recaps.js",
     "/voice-input.js",
     "/territory.css",

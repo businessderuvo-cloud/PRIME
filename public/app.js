@@ -647,7 +647,7 @@ const columns = {
     "commercial_status",
     "acquisition_status",
   ],
-  contacts: ["contact_type", "email", "phone"],
+  contacts: ["contact_type", "lead_temperature", "email", "phone"],
   properties: ["unit_id", "price", "marketing_status"],
   activities: ["activity_type", "agent_id", "due_at", "priority", "status"],
   appointments: [
@@ -675,7 +675,7 @@ function drawRecords() {
     records.length + " risultati";
   const out = document.querySelector("#record-list");
   out.innerHTML = records.length
-    ? `<div class="table-wrap"><table><thead><tr><th>${entity === "units" ? "Interno" : entity === "buildings" ? "Civico" : "Titolo"}</th>${columns[entity].map((k) => `<th>${schema[entity].fields[k].label}</th>`).join("")}<th><span class="sr-only">Azioni</span></th></tr></thead><tbody>${records.map((r) => `<tr><td><button class="record-open" data-id="${r.id}">${esc(r.title)}</button>${entity === "activities" ? `<small>${r.progress}/${r.goal} · ${esc(r.next_action || "Prossima azione da definire")}</small>` : ""}</td>${columns[entity].map((k) => `<td data-label="${schema[entity].fields[k].label}">${k.includes("status") || k === "priority" ? `<span class="pill ${["completata", "effettuato", "censita"].includes(r[k]) ? "positive" : ""}">${esc(displayValue(entity, k, r[k]))}</span>` : esc(displayValue(entity, k, r[k]))}</td>`).join("")}<td><button class="text-button record-open" data-id="${r.id}" aria-label="Apri ${esc(r.title)}">Apri ↗</button></td></tr>`).join("")}</tbody></table></div>`
+    ? `<div class="table-wrap"><table><thead><tr><th>${entity === "units" ? "Interno" : entity === "buildings" ? "Civico" : "Titolo"}</th>${columns[entity].map((k) => `<th>${schema[entity].fields[k].label}</th>`).join("")}<th><span class="sr-only">Azioni</span></th></tr></thead><tbody>${records.map((r) => `<tr><td><button class="record-open" data-id="${r.id}">${esc(r.title)}</button>${entity === "activities" ? `<small>${r.progress}/${r.goal} · ${esc(r.next_action || "Prossima azione da definire")}</small>` : ""}</td>${columns[entity].map((k) => `<td data-label="${schema[entity].fields[k].label}">${k.includes("status") || k === "priority" || k === "lead_temperature" ? `<span class="pill ${k === "lead_temperature" && r[k] === "caldo" ? "spot-badge spot-hot" : ""} ${["completata", "effettuato", "censita"].includes(r[k]) ? "positive" : ""}">${esc(displayValue(entity, k, r[k]))}</span>` : esc(displayValue(entity, k, r[k]))}</td>`).join("")}<td><button class="text-button record-open" data-id="${r.id}" aria-label="Apri ${esc(r.title)}">Apri ↗</button></td></tr>`).join("")}</tbody></table></div>`
     : empty(
         state.query ? "Nessun risultato." : "Il primo passo parte da qui.",
         state.query
