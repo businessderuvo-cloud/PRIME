@@ -1,10 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { openDatabase } from './src/database.mjs';
-import { livePhone, inboundPhone, eliteModel } from './src/elite.mjs';
+import { livePhone, inboundPhone, eliteModel, eliteEditionAllowed } from './src/elite.mjs';
 
 test('Elite fixes Vanessa LIVE to the ElevenLabs GPT 6.1 Sol model',()=>{
   assert.equal(eliteModel,'gpt-6.1-sol');
+});
+
+test('Elite has a standalone edition while the shared app still requires an active subscription',()=>{
+  assert.equal(eliteEditionAllowed({edition:'elite',production:true}),true);
+  assert.equal(eliteEditionAllowed({edition:'full',production:true,activeSubscription:false}),false);
+  assert.equal(eliteEditionAllowed({edition:'full',production:true,activeSubscription:true}),true);
+  assert.equal(eliteEditionAllowed({edition:'full',production:false}),false);
 });
 
 test('Elite phone numbers normalize and reject local or malformed values',()=>{

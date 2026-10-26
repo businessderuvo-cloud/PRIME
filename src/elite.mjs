@@ -11,14 +11,14 @@ const clean=(value,max=4000)=>String(value||'').trim().slice(0,max);
 export const eliteModel='gpt-6.1-sol';
 export function livePhone(value){const n=String(value||'').replace(/[\s().-]/g,'').replace(/^00/,'+');if(!/^\+[1-9]\d{7,14}$/.test(n))throw new ApiError(400,'Usa un numero internazionale completo, per esempio +39 333 1234567.');return n;}
 export function inboundPhone(value){const n=String(value||'').replace(/[\s().-]/g,'').replace(/^00/,'+');return /^\+?\d{5,20}$/.test(n)?n:'';}
+export function eliteEditionAllowed({edition='full',production=false,activeSubscription=false}={}){return edition==='elite'||(production&&activeSubscription);}
 export function eliteService({db,json,readBody,audit,management,rows,authorize,edition='full',env=process.env,fetcher=fetch,directory,clock=Date.now}){
   const usage=usageService(db),busy=new Set(),sessionLimits=new Map();let timer;
   function entitled(s){
     if(s.role==='external')throw new ApiError(403,'Vanessa LIVE è disponibile solo per il team dell’agenzia.');
-    if(env.NODE_ENV==='production'){
-      const subscription=db.prepare("SELECT 1 FROM ai_subscriptions WHERE tenant_id=? AND state='active' AND plan='elite'").get(s.tenant_id);
-      if(!subscription)throw new ApiError(403,'Attiva l’abbonamento Elite per usare Vanessa LIVE.');
-    }else if(edition!=='elite')throw new ApiError(403,'Vanessa LIVE è disponibile nella versione Elite.');
+    const production=env.NODE_ENV==='production';
+    const subscription=production&&db.prepare("SELECT 1 FROM ai_subscriptions WHERE tenant_id=? AND state='active' AND plan='elite'").get(s.tenant_id);
+    if(!eliteEditionAllowed({edition,production,activeSubscription:!!subscription}))throw new ApiError(403,production?'Attiva l’abbonamento Elite per usare Vanessa LIVE.':'Vanessa LIVE è disponibile nella versione Elite.');
   }
   function owner(s){entitled(s);if(s.role!=='owner')throw new ApiError(403,'Configurazione riservata al titolare.');}
   function settings(s){db.prepare('INSERT INTO elite_settings(tenant_id,updated_at) VALUES (?,?) ON CONFLICT DO NOTHING').run(s.tenant_id,new Date(clock()).toISOString());return db.prepare('SELECT * FROM elite_settings WHERE tenant_id=?').get(s.tenant_id);}
