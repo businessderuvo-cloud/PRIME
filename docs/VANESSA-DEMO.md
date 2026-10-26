@@ -11,3 +11,7 @@ La configurazione ElevenLabs preesistente registra e trascrive le conversazioni 
 # Browser voice
 
 La pagina offre anche “Parla con Vanessa”, senza telefono, tramite SDK ElevenLabs self-hosted e URL WebSocket firmato monouso emesso dal server per lo stesso ramo. La chiave API non viene inviata al browser. Richiede consenso esplicito e permesso microfono; include chiusura, mute, stato ascolto/parlato e trascrizione temporanea. Il client chiude dopo 3 minuti; il limite massimo effettivo sul provider resta quello dell’agente. Tre emissioni di sessione al giorno per connessione e tetto globale condiviso con le richiamate. I worklet audio e il ricampionatore sono serviti localmente; build riproducibile con node scripts/build-voice-client.mjs.
+
+## Relazione con Veronica
+
+Il prompt del ramo Vanessa DEMO è stato aggiornato il 26 ottobre 2026 via API ElevenLabs: quando parla di Veronica, Vanessa la presenta come **mia sorella Veronica**, poi **mia sorella** o **lei**, con tono naturale, senza sminuirla. Il personaggio non afferma di essere umano. Una rilettura della configurazione ha confermato il mantenimento del messaggio iniziale, del modello e di tutti i parametri della voce. Backup precedente conservato sul volume privato del server in agent-backups.

@@ -62,3 +62,6 @@ html[data-theme=light]{--nav-text:#4b5360;--nav-active:#101820}
 .browser-call-actions .button.primary{background:#edf2f7;color:#111820;border-color:#edf2f7}.browser-call-actions .button.primary:hover{background:#fff;color:#080b0d}
 /* Keep Veronica's original chat size independent from Vanessa's call controls. */
 #veronica-chat{align-self:start}
+
+/* Preserve the portrait's native lighting; crop the face within the greeting area. */
+@media(max-width:700px){#veronica-chat:before{background-size:auto 620px;background-position:calc(50% + 24px) top}#veronica-chat .meet-header{min-height:390px}.site-header{gap:12px}.site-header>nav{display:flex;flex-basis:100%;gap:6px 18px}.site-header .brand{flex-basis:133px}.site-header .brand img{width:100%}}

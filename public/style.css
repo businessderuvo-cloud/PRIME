@@ -1721,3 +1721,7 @@ select option { background:var(--surface); color:var(--text); }
 @media(max-width:700px){.agency-document-notice{margin:14px 16px 0;flex-direction:column;align-items:stretch;gap:14px}}
 
 .main-footer{flex-wrap:wrap}.main-footer a{overflow-wrap:anywhere}.auth-form a[href^="mailto:"]{overflow-wrap:anywhere}
+
+.upgrade-breakdown{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;margin:24px 0}.upgrade-breakdown dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}.upgrade-options .panel{min-width:0}.upgrade-estimate{margin-top:24px}@media(max-width:480px){.upgrade-breakdown{gap:12px;font-size:13px}}
+
+@media(max-width:850px){.sidebar{height:calc(100dvh - 68px);min-height:0;padding-bottom:env(safe-area-inset-bottom)}.sidebar nav{flex:1;min-height:0;overscroll-behavior:contain;scrollbar-gutter:stable}.sidebar-bottom{flex-shrink:0}.nav-item{flex-shrink:0;min-height:44px}}

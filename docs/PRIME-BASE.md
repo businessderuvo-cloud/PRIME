@@ -15,3 +15,13 @@ Prezzo Standard: 53 €/mese oppure 530 €/anno; supporto via email a phoenix@p
 Per un'installazione dedicata usare il launcher Base e un volume/archivio dedicato; configurare normalmente URL pubblico, provider email e segreti di autenticazione. `PRIME_BASE_DB` cambia esclusivamente il percorso Base, `PORT` e `HOST` l'ascolto. Il servizio completo continua a usare il proprio avvio e archivio.
 
 In un container dedicato si può usare l’avvio hosted esistente con `PRIME_EDITION=base` e `PRIME_DB` impostato sul volume dedicato. Il servizio principale deve mantenere la propria edizione completa.
+
+## Upgrade
+
+Il titolare trova **Piano e upgrade** nel menu. Pro, VIP ed Elite vengono confrontati con il ciclo mensile/annuale già pagato; Secret richiede preventivo. La differenza è il nuovo canone proporzionato al tempo residuo meno il credito del canone effettivamente pagato non utilizzato, arrotondati ai centesimi. Scadenza e periodicità non cambiano. Il preventivo riguarda il canone: consumi e servizi extra restano separati.
+
+La migrazione 027 conserva il ciclo confermato in plan_subscriptions e i preventivi separati per agenzia in plan_upgrade_quotes. Le date e gli importi correnti devono provenire da una conferma di pagamento verificata, mai dal browser. Un preventivo dura al massimo 5 minuti; una revisione dell'abbonamento lo invalida. Solo il titolare con KYB approvato può procedere.
+
+La richiesta è persistente e ripetibile senza creare un secondo upgrade. Il checkout deve essere una offerta Suby emessa per lo specifico preventivo: configurazione server PRIME_SUBY_UPGRADE_<ID_PREVENTIVO_MAIUSCOLO_CON_UNDERSCORE>_URL. Un normale link per il prezzo pieno non è utilizzato per il conguaglio. Senza tale configurazione la richiesta viene registrata, il cliente vede che l'assistenza deve predisporre il pagamento e nessun addebito o cambio di funzioni viene simulato.
+
+Da completare con il collegamento Suby: creazione automatica del conguaglio, verifica della notifica di pagamento, aggiornamento atomico dell'abbonamento e attivazione/accesso alla versione di destinazione Pro/VIP/Elite. Questa parte richiede le reali specifiche/credenziali merchant; nessun endpoint pubblico può auto-approvare pagamenti o cambiare edizione.

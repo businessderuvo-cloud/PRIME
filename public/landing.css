@@ -50,3 +50,7 @@ html[data-theme=light] .brand img{filter:invert(1);mix-blend-mode:normal}
 .features-photo img{width:201.953602%;left:auto;right:0}
 @media(max-width:850px){.hero-photo,.features-photo{justify-self:center}}
 @media(max-width:560px){.hero-photo{width:100%;max-width:480px;aspect-ratio:826/951}.features-photo{width:100%;max-width:420px;aspect-ratio:819/951}}
+
+/* Keep every navigation destination available on phones, without a hidden row. */
+@media(max-width:850px){.site-header{height:auto;min-height:92px;flex-wrap:wrap;padding-block:18px;gap:16px}.site-header .brand{order:0}.site-header .header-actions{order:1;margin-left:auto}.site-header>nav{display:flex;order:3;flex:1 0 100%;width:100%;flex-wrap:wrap;justify-content:center;gap:10px 20px;padding-block:10px 0}.site-header>nav a{display:flex;align-items:center;justify-content:center;min-height:44px;font-size:13px;white-space:nowrap}.site-header>.icon-button{margin-left:auto}.site-header>.header-back{margin-left:0}.header-actions .icon-button{display:grid}}
+@media(max-width:380px){.site-header>nav{gap:4px 15px}.site-header>nav a{font-size:12px}.site-header .brand{flex-basis:112px;width:112px}.header-actions .button{padding-inline:8px}}

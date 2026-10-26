@@ -1,4 +1,5 @@
 import { demoCallbackService } from './src/demo-callback.mjs';
+import { planUpgradeService } from './src/plan-upgrades.mjs';
 import { billingService, publicOverage } from './src/billing.mjs';
 import { deviceBackupService } from './src/device-backups.mjs';
 import { diditService, diditConfig } from './src/didit.mjs';
@@ -116,6 +117,7 @@ export function createApp({
     authMailer = createAuthMailer({ fetcher: authEmailFetch, apiKey: authEmailApiKey, from: authEmailFrom, production });
   const handleDemoCallback = demoCallbackService({db,json,readBody,production});
   const handleBilling = billingService({db,json,readBody});
+  const handlePlanUpgrade = planUpgradeService({db,json,readBody});
   const geocodeCache = new Map();
   const didit = diditService({db,json,readBody,audit,fetcher:connectFetch,config:diditOptions || diditConfig({production})});
   const signatures = namirialService({ db, vault: authVault, directory: dataDirectory || path.join(root, "data"), fetcher: connectFetch, json, readBody, audit });
@@ -605,7 +607,7 @@ export function createApp({
       if (production)
         res.setHeader("Strict-Transport-Security", "max-age=31536000");
       if (url.pathname === '/' && method === 'GET' && ['verify','reset','invite','connect','mail'].some(key=>url.searchParams.has(key))) { res.writeHead(302,{Location:'/app'+url.search,'Cache-Control':'no-store'});res.end();return; }
-      if (isBase && (/^\/api\/(?:public|connect|assistant|portals|signatures|contactout|billing|webhooks)(?:\/|$)/.test(url.pathname))) throw new ApiError(403,'Funzione non disponibile in PRIME Base.');
+      if (isBase && (/^\/api\/(?:public|connect|assistant|portals|signatures|contactout|webhooks)(?:\/|$)/.test(url.pathname))) throw new ApiError(403,'Funzione non disponibile in PRIME Base.');
       if(!isBase && await handleDemoCallback(req,res,url))return;
       if (url.pathname === '/api/public/pricing' && method === 'GET') return json(res,200,{overage:publicOverage()});
       if (url.pathname === "/healthz" && method === "GET") {
@@ -788,6 +790,7 @@ export function createApp({
         if(isBase && !baseApiAllowed(url.pathname)) throw new ApiError(403,'Funzione non disponibile in PRIME Base.');
         if(await backupDevices.route(req,res,url,s))return;
         if(await didit.route(req,res,url,s))return;
+        if(await handlePlanUpgrade(req,res,url,s))return;
         if(await handleBilling(req,res,url,s))return;
         if (url.pathname === "/api/me" && method === "GET")
           return json(res, 200, {
@@ -1136,6 +1139,7 @@ export function createApp({
       if (method !== "GET") throw new ApiError(405, "Metodo non consentito");
       const files = {
         "/edition.js":"edition.js",
+        "/upgrade.js":"upgrade.js",
 "/vendor/elevenlabs/client.js":"vendor/elevenlabs/client.js",
 "/vendor/elevenlabs/client.js.LEGAL.txt":"vendor/elevenlabs/client.js.LEGAL.txt",
 "/vendor/elevenlabs/rawAudioProcessor.js":"vendor/elevenlabs/rawAudioProcessor.js",

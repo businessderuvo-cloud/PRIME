@@ -1,3 +1,4 @@
+import { renderUpgrade } from './upgrade.js';
 import { baseExcludedEntities, baseExcludedPages } from './edition.js';
 import {startDocumentRenewalNotifications} from './didit.js';
 import { mountOperations } from './operations.js';
@@ -46,6 +47,7 @@ const esc = (x) =>
       ],
   );
 const icons = {
+  upgrade: "M12 20V4m-6 6 6-6 6 6M4 20h16",
   mail: "M3 5h18v14H3zM3 5l9 8 9-8",
   agents: "M9 3h6l-1 4h-4zM10 7h4l3 12-5 3-5-3z",
   map: "M3 6 9 3l6 3 6-3v15l-6 3-6-3-6 3zM9 3v15m6-12v15",
@@ -400,12 +402,13 @@ const globalNavigation = [
   ["mail", "Email"],
   ["assistant", "Veronica"],
   ["roadmap", "Stato sviluppo"],
+  ["upgrade", "Piano e upgrade"],
   ["security", "Sicurezza account"],
 ];
 function shell() {
   const isBase = state.me.edition === 'base';
   if (isBase && baseExcludedPages.includes(state.page)) state.page = 'dashboard';
-  const navigation = globalNavigation.filter(([page,label]) => (state.me.role === 'owner' || page !== 'agents') && (!isBase || (!baseExcludedPages.includes(page) && label !== 'CONNESSIONI')));
+  const navigation = globalNavigation.filter(([page,label]) => (state.me.role === 'owner' || !['agents','upgrade'].includes(page)) && (!isBase || (!baseExcludedPages.includes(page) && label !== 'CONNESSIONI')));
   stopWpsClock?.();
   document.documentElement.dataset.theme = state.me.theme;
   app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => k === "section" ? `<p class="nav-section-label">${label}</p>` : `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><div class="avatar">${esc(state.me.tenant.slice(0, 2).toUpperCase())}</div><div><strong>${esc(state.me.tenant)}</strong><small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off"><span class="key-hint">/</span><div id="global-results" class="search-results" hidden></div></div><button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button><span class="workspace-badge">ANTEPRIMA DI SVILUPPO</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><a href="mailto:phoenix@primegestionale.it">Assistenza: phoenix@primegestionale.it</a><a href="/privacy">Privacy</a><span>Versione 0.4 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
@@ -603,6 +606,7 @@ function bindPeriod(callback) {
 }
 async function renderPage() {
   clearInterval(agendaRefreshTimer);
+  if (state.page === "upgrade") return renderUpgrade({main:document.querySelector("#main"),api,esc});
   const main = document.querySelector("#main"),
     page = state.page;
   if(page==="security"){
