@@ -1,3 +1,4 @@
+import { demoCallbackService } from './src/demo-callback.mjs';
 import { billingService, publicOverage } from './src/billing.mjs';
 import { deviceBackupService } from './src/device-backups.mjs';
 import { diditService, diditConfig } from './src/didit.mjs';
@@ -107,6 +108,7 @@ export function createApp({
       : database === ":memory:" ? null : path.join(root,"data"),
     authVault = createVault({ directory: dataDirectory || undefined }),
     authMailer = createAuthMailer({ fetcher: authEmailFetch, apiKey: authEmailApiKey, from: authEmailFrom, production });
+  const handleDemoCallback = demoCallbackService({db,json,readBody,production});
   const handleBilling = billingService({db,json,readBody});
   const geocodeCache = new Map();
   const didit = diditService({db,json,readBody,audit,fetcher:connectFetch,config:diditOptions || diditConfig({production})});
@@ -592,6 +594,7 @@ export function createApp({
       if (production)
         res.setHeader("Strict-Transport-Security", "max-age=31536000");
       if (url.pathname === '/' && method === 'GET' && ['verify','reset','invite','connect','mail'].some(key=>url.searchParams.has(key))) { res.writeHead(302,{Location:'/app'+url.search,'Cache-Control':'no-store'});res.end();return; }
+      if(await handleDemoCallback(req,res,url))return;
       if (url.pathname === '/api/public/pricing' && method === 'GET') return json(res,200,{overage:publicOverage()});
       if (url.pathname === "/healthz" && method === "GET") {
         db.prepare("SELECT 1").get();

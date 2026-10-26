@@ -26,7 +26,7 @@ test('public sisters demo keeps plan entitlements and future calling accurate',(
   assert.match(veronicaReply('Standard'), /Non include AI Assistant, chiamate AI o Detective/);
   assert.match(veronicaReply('Quali sono le quote?'), /0,27696/);
   assert.match(veronicaReply('Chi è Vanessa?'), /VIP ed Elite/);
-  assert.match(veronicaReply('Posso chiamare?'), /non è ancora attiva/);
+  assert.match(veronicaReply('Posso chiamare?'), /richiedere una chiamata dimostrativa/);
   assert.match(veronicaReply('Posso usare una voce personalizzata?'), /Con Elite/);
   assert.match(veronicaReply('Anche VIP ha la voce reale del titolare?'), /non per Standard, Pro o VIP/);
   assert.match(veronicaReply('Posso cambiare la personalità di Vanessa?'), /ha già una personalità distinta/);

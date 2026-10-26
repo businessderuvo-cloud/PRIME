@@ -1719,3 +1719,5 @@ select option { background:var(--surface); color:var(--text); }
 .agency-document-notice{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:18px 40px 0;padding:18px 22px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;background:var(--surface);color:var(--text)}
 .agency-document-notice strong{font-size:14px}.agency-document-notice p{margin:6px 0 0;font-size:13px;line-height:1.6;color:var(--muted)}.agency-document-notice small{display:block;margin-top:8px;color:var(--muted)}.agency-document-notice>.primary{flex-shrink:0;font-size:12px}
 @media(max-width:700px){.agency-document-notice{margin:14px 16px 0;flex-direction:column;align-items:stretch;gap:14px}}
+
+.main-footer{flex-wrap:wrap}.main-footer a{overflow-wrap:anywhere}.auth-form a[href^="mailto:"]{overflow-wrap:anywhere}

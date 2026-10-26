@@ -5,7 +5,7 @@ Le attività sotto sono da realizzare o collegare: questa checklist non indica c
 
 ## 1. Vanessa nella pagina di presentazione
 
-- [ ] Collegare un agente dimostrativo di Vanessa alla pagina Sorelle Assistenti.
+- [x] Collegare un agente dimostrativo di Vanessa alla pagina Sorelle Assistenti tramite richiamata SIP su richiesta.
 - [ ] Sostituire lo stato “Chiamata in arrivo” con una conversazione vocale funzionante, mantenendo la foto di Vanessa durante la chiamata.
 - [ ] Far presentare a Vanessa le proprie funzioni e le differenze rispetto a Veronica e tra i piani.
 - [ ] Tenere la demo pubblica separata dagli agenti e dai dati delle agenzie.
@@ -66,3 +66,5 @@ Nessun dominio o indirizzo definitivo è stato ancora indicato in questa richies
 - Sorgenti della landing: C:/Users/deruv/Documents/Codex/prime-fly-release-39-01M5QSM2
 
 Aggiornare il gestionale sulla demo originale 4319, non confonderlo con la copia del gestionale servita dalla landing sulla 4328.
+
+Contatto di assistenza pubblicato: phoenix@primegestionale.it. Richiamata Vanessa: cellulare italiano, ramo dedicato, limiti giornalieri e consenso; prima telefonata reale da richiedere nel modulo dal proprietario del numero.

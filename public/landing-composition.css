@@ -98,3 +98,5 @@ html[data-theme=light]{--nav-text:#4b5360;--nav-active:#101820}
 .site-header nav a{color:var(--nav-text);text-shadow:none}
 .site-header nav a:hover,.site-header nav a:focus-visible,.site-header nav a[aria-current]{color:var(--nav-active);text-decoration:underline;text-underline-offset:7px}
 .site-header nav a:focus-visible{outline-color:var(--nav-active)}
+
+.site-footer{flex-wrap:wrap}.site-footer a[href^="mailto:"]{overflow-wrap:anywhere;max-width:100%}
