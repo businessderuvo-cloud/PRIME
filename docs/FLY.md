@@ -18,3 +18,5 @@ Verifiche prima della distribuzione: 87 test automatici superati e controllo sin
 Restano da collegare i servizi indicati in PRIME-ROADMAP.md: agente vocale Vanessa, effettivi eventi di consumo e offerte di pagamento, dominio e posta. La verifica email in produzione richiede PRIME_RESEND_API_KEY e PRIME_EMAIL_FROM su dominio verificato; finché non configurati l'invio rimane indisponibile. La demo pubblica di Veronica usa risposte guidate e la chiamata Vanessa resta in arrivo.
 
 PRIME_PUBLIC_URL deve corrispondere all'origine HTTPS. Dopo il collegamento del dominio aggiornare anche i callback OAuth presso i provider configurati, senza rimuovere quelli attuali finché il passaggio non è completato.
+
+Dominio configurato il 26 ottobre 2026: https://primegestionale.it e https://www.primegestionale.it. A e AAAA puntano agli indirizzi pubblici Fly; www segue il dominio principale tramite CNAME. Record email e PEC conservati. PRIME_PUBLIC_URL usa il dominio; PRIME_CONNECT_PUBLIC_URL conserva i callback OAuth già registrati su Fly finché i relativi provider non vengono aggiornati.

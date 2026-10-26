@@ -18,17 +18,17 @@ export function connectService({db,directory,fetcher=fetch,json,readBody,audit,s
  const config=(tenant,provider)=>{
   if(provider==='datagma'){const row=db.prepare('SELECT credentials_cipher FROM datagma_settings WHERE tenant_id=?').get(tenant);return row?vault.open(row.credentials_cipher,`datagma:${tenant}`):{};}
   const row=db.prepare('SELECT config_cipher FROM integration_settings WHERE tenant_id=? AND provider=?').get(tenant,provider),stored=row?vault.open(row.config_cipher,context(tenant,provider)):{};
-  if(provider==='google')return {...stored,client_id:process.env.PRIME_GOOGLE_CLIENT_ID||stored.client_id,client_secret:process.env.PRIME_GOOGLE_CLIENT_SECRET||stored.client_secret,base_url:process.env.PRIME_PUBLIC_URL||stored.base_url};
+  if(provider==='google')return {...stored,client_id:process.env.PRIME_GOOGLE_CLIENT_ID||stored.client_id,client_secret:process.env.PRIME_GOOGLE_CLIENT_SECRET||stored.client_secret,base_url:(process.env.PRIME_CONNECT_PUBLIC_URL||process.env.PRIME_PUBLIC_URL)||stored.base_url};
   if(provider==='gmail'){
    const google=config(tenant,'google');
-   return {...stored,client_id:process.env.PRIME_GMAIL_CLIENT_ID||stored.client_id||google.client_id,client_secret:process.env.PRIME_GMAIL_CLIENT_SECRET||stored.client_secret||google.client_secret,base_url:process.env.PRIME_GMAIL_BASE_URL||process.env.PRIME_PUBLIC_URL||stored.base_url||google.base_url};
+   return {...stored,client_id:process.env.PRIME_GMAIL_CLIENT_ID||stored.client_id||google.client_id,client_secret:process.env.PRIME_GMAIL_CLIENT_SECRET||stored.client_secret||google.client_secret,base_url:process.env.PRIME_GMAIL_BASE_URL||(process.env.PRIME_CONNECT_PUBLIC_URL||process.env.PRIME_PUBLIC_URL)||stored.base_url||google.base_url};
   }
   if(provider==='outlook'||provider==='yahoo'){
    const prefix=provider==='outlook'?'PRIME_OUTLOOK_':'PRIME_YAHOO_';
-   return {...stored,client_id:process.env[prefix+'CLIENT_ID']||stored.client_id,client_secret:process.env[prefix+'CLIENT_SECRET']||stored.client_secret,base_url:process.env[prefix+'BASE_URL']||stored.base_url||process.env.PRIME_PUBLIC_URL};
+   return {...stored,client_id:process.env[prefix+'CLIENT_ID']||stored.client_id,client_secret:process.env[prefix+'CLIENT_SECRET']||stored.client_secret,base_url:process.env[prefix+'BASE_URL']||stored.base_url||(process.env.PRIME_CONNECT_PUBLIC_URL||process.env.PRIME_PUBLIC_URL)};
   }
-  if(provider==='calendly')return {...stored,client_id:process.env.PRIME_CALENDLY_CLIENT_ID||stored.client_id,client_secret:process.env.PRIME_CALENDLY_CLIENT_SECRET||stored.client_secret,base_url:process.env.PRIME_PUBLIC_URL||stored.base_url};
-  if(provider==='whatsapp')return {...stored,app_id:process.env.PRIME_META_APP_ID||stored.app_id,app_secret:process.env.PRIME_META_APP_SECRET||stored.app_secret,config_id:process.env.PRIME_META_WHATSAPP_CONFIG_ID||stored.config_id,verify_token:process.env.PRIME_META_VERIFY_TOKEN||stored.verify_token,graph_version:process.env.PRIME_META_GRAPH_VERSION||stored.graph_version||'v23.0',base_url:process.env.PRIME_PUBLIC_URL||stored.base_url};
+  if(provider==='calendly')return {...stored,client_id:process.env.PRIME_CALENDLY_CLIENT_ID||stored.client_id,client_secret:process.env.PRIME_CALENDLY_CLIENT_SECRET||stored.client_secret,base_url:(process.env.PRIME_CONNECT_PUBLIC_URL||process.env.PRIME_PUBLIC_URL)||stored.base_url};
+  if(provider==='whatsapp')return {...stored,app_id:process.env.PRIME_META_APP_ID||stored.app_id,app_secret:process.env.PRIME_META_APP_SECRET||stored.app_secret,config_id:process.env.PRIME_META_WHATSAPP_CONFIG_ID||stored.config_id,verify_token:process.env.PRIME_META_VERIFY_TOKEN||stored.verify_token,graph_version:process.env.PRIME_META_GRAPH_VERSION||stored.graph_version||'v23.0',base_url:(process.env.PRIME_CONNECT_PUBLIC_URL||process.env.PRIME_PUBLIC_URL)||stored.base_url};
   return stored;
  };
  const secrets=c=>vault.open(c.credentials_cipher,`account:${c.tenant_id}:${c.id}`);
