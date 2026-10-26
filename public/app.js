@@ -1,3 +1,4 @@
+import { baseExcludedEntities, baseExcludedPages } from './edition.js';
 import {startDocumentRenewalNotifications} from './didit.js';
 import { mountOperations } from './operations.js';
 import { renderConnect } from "./connect.js";
@@ -348,7 +349,7 @@ function auth(mode = "login", error = "") {
 }
 async function loadData() {
   const entries = await Promise.all(
-    Object.keys(schema).map(async (k) => [k, await api("/api/entities/" + k)]),
+    Object.keys(schema).map(async (k) => [k, state.me.edition === "base" && baseExcludedEntities.includes(k) ? [] : await api("/api/entities/" + k)]),
   );
   state.data = Object.fromEntries(entries);
   state.members = await api("/api/members");
@@ -402,12 +403,14 @@ const globalNavigation = [
   ["security", "Sicurezza account"],
 ];
 function shell() {
-  const navigation = state.me.role === "owner" ? [...globalNavigation] : globalNavigation.filter(([page]) => page !== "agents");
+  const isBase = state.me.edition === 'base';
+  if (isBase && baseExcludedPages.includes(state.page)) state.page = 'dashboard';
+  const navigation = globalNavigation.filter(([page,label]) => (state.me.role === 'owner' || page !== 'agents') && (!isBase || (!baseExcludedPages.includes(page) && label !== 'CONNESSIONI')));
   stopWpsClock?.();
   document.documentElement.dataset.theme = state.me.theme;
   app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => k === "section" ? `<p class="nav-section-label">${label}</p>` : `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><div class="avatar">${esc(state.me.tenant.slice(0, 2).toUpperCase())}</div><div><strong>${esc(state.me.tenant)}</strong><small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off"><span class="key-hint">/</span><div id="global-results" class="search-results" hidden></div></div><button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button><span class="workspace-badge">ANTEPRIMA DI SVILUPPO</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><a href="mailto:phoenix@primegestionale.it">Assistenza: phoenix@primegestionale.it</a><a href="/privacy">Privacy</a><span>Versione 0.4 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
-  mountMailInbox();
-  mountAssistantChatWidget();
+  if (!isBase) { mountMailInbox(); mountAssistantChatWidget(); }
+  if (isBase) { document.title = "PRIME Base · Gestionale immobiliare"; document.querySelector(".sidebar-label").textContent = "PRIME BASE · STANDARD"; }
   const compactBrand = document.createElement("div");
   compactBrand.className = "compact-brand";
   compactBrand.innerHTML = logo();
@@ -415,7 +418,7 @@ function shell() {
   if (innerWidth < 850)
     document.querySelector("#global-search").placeholder = "Cerca…";
   document.querySelector(".workspace-badge").textContent =
-    state.me.environment === "demo"
+    isBase ? "PRIME BASE · STANDARD" : state.me.environment === "demo"
       ? "DEMO · DATI DI ESEMPIO"
       : "AMBIENTE LOCALE";
   if (state.me.environment === "demo") {
@@ -615,6 +618,13 @@ async function renderPage() {
     if (state.me.role !== "owner") { main.innerHTML = pageHeader("TEAM", "Agenti", "Pagina riservata al titolare."); return; }
     const agents = await api("/api/agents");
     main.innerHTML = pageHeader("IL TEAM DELLA TUA AGENZIA", "Agenti", "Invita i tuoi agenti via email e assegna a ciascuno le zone di competenza dalla mappa.") + `<section class="agents-layout"><form id="agent-create" class="panel agent-create-panel"><h2>Invita un agente</h2><label>Email<input name="email" type="email" maxlength="254" required autocomplete="off" placeholder="nome@agenzia.it"></label><p class="small-note">L’agente riceverà un link per impostare in autonomia una password personale.</p><button class="primary" type="submit">Invia invito</button><p id="agent-create-status" role="status" class="small-note"></p></form><section class="panel agent-list-panel"><div class="map-sidebar-heading"><h2>Agenti (${agents.length})</h2><button id="agents-open-map" class="text-button">Assegna zone sulla mappa ↗</button></div><label>Cerca agente<input id="agent-search" type="search" placeholder="Cerca per email…"></label><div id="agent-list"></div></section></section>`;
+    if (state.me.edition === 'base') {
+      const used = state.members.length, limit = state.me.human_seat_limit;
+      const note = document.createElement('p'); note.className = 'small-note';
+      note.textContent = 'PRIME Base: ' + used + ' di ' + limit + ' posti utilizzati, titolare e inviti pendenti compresi. Due posti inclusi; ogni posto aggiuntivo costa 50 €/mese e richiede attivazione.';
+      document.querySelector('#agent-create h2').after(note);
+      if (used >= limit) { const button = document.querySelector('#agent-create [type="submit"]'); button.disabled = true; document.querySelector('#agent-create-status').textContent = 'Tutti i posti attivi sono utilizzati. Contatta l’assistenza per un posto aggiuntivo.'; }
+    }
     const drawAgents = () => {
       const query = document.querySelector("#agent-search").value.trim().toLowerCase();
       const filtered = agents.filter(agent => agent.email.toLowerCase().includes(query));
@@ -776,6 +786,7 @@ async function renderPage() {
         ["Locazioni attive", d.leases.filter((x) => x.status === "attiva").length, "leases"],
         ["Provvigioni incassate", money(d.commissions.reduce((sum, x) => sum + Number(x.collected_amount || 0), 0)), "commissions"],
       ]
+        .filter(([, , key]) => state.me.edition !== "base" || !baseExcludedPages.includes(key))
         .map(
           ([label, n, key]) =>
             `<button class="stat" data-nav="${key}"><span>${label}</span><strong>${n}</strong><span class="stat-bottom">Apri sezione ${icon("arrow")}</span></button>`,
@@ -1298,7 +1309,7 @@ async function openEditor(entity, record = null, prefill = {}) {
     hint.textContent =
       "Preferenze e informazioni personali sono facoltative: annota dati pertinenti e forniti dal contatto.";
     dialog.querySelector(".dialog-body").append(hint);
-    if(record){
+    if(record && state.me.edition !== "base"){
       mountContactOutEnrichment({ dialog, record, methods: (state.data.contact_methods || []).filter((item) => item.contact_id === record.id), api, esc });
       const panel=document.createElement('section');panel.className='datagma-enrichment panel';panel.innerHTML=`<div><p class="eyebrow">RICERCA PROFESSIONALE</p><h3>Arricchisci con Datagma</h3><p class="small-note">PRIME invierà a Datagma l’email professionale oppure il profilo LinkedIn salvato. La ricerca può consumare crediti. Nessun risultato viene registrato senza la tua revisione e il successivo salvataggio della scheda.</p><label class="checkbox-label"><input type="checkbox" data-datagma-consent>Ho verificato che questa ricerca sia consentita e desidero inviare questi dati a Datagma.</label><button type="button" class="secondary" data-datagma-run ${record.do_not_contact?'disabled':''}>Cerca contatto</button><p class="small-note" role="status" data-datagma-status>${record.do_not_contact?'Ricerca disabilitata: il contatto ha chiesto di non essere ricontattato.':''}</p><div data-datagma-results></div></div>`;dialog.querySelector('.dialog-body').append(panel);
       const runSearch=panel.querySelector('[data-datagma-run]'),status=panel.querySelector('[data-datagma-status]'),results=panel.querySelector('[data-datagma-results]'),consent=panel.querySelector('[data-datagma-consent]');
@@ -1510,7 +1521,7 @@ async function boot() {
     await loadData();
     shell();
     await renderPage();
-    startMailNotifications();
+    if (state.me.edition !== "base") startMailNotifications();
     stopDocumentRenewalNotifications?.();
     stopDocumentRenewalNotifications = startDocumentRenewalNotifications({state,api});
     startBreakReminders();

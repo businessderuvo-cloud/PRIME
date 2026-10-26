@@ -87,7 +87,10 @@ const integrations = [
   "Zapier / Make / n8n",
   "AI Assistant",
 ].map((name) => ({ name, status: "Non configurata" }));
+import { baseApiAllowed, baseExcludedEntities } from './public/edition.js';
 export function createApp({
+  edition = process.env.PRIME_EDITION || 'full',
+  baseExtraSeats = Number(process.env.PRIME_BASE_EXTRA_SEATS || 0),
   database = process.env.PRIME_DB,
   production = process.env.NODE_ENV === "production",
   demo = process.env.PRIME_DEMO === "1",
@@ -101,6 +104,9 @@ export function createApp({
   authEmailFrom = process.env.PRIME_EMAIL_FROM || "",
   diditOptions,
 } = {}) {
+  if (!['full','base'].includes(edition)) throw new Error('Edizione PRIME non valida');
+  if (!Number.isSafeInteger(baseExtraSeats) || baseExtraSeats < 0) throw new Error('Posti aggiuntivi Base non validi');
+  const isBase = edition === 'base';
   const db = openDatabase(database),
     attempts = new Map(),
     dataDirectory = database && database !== ":memory:"
@@ -185,6 +191,7 @@ export function createApp({
       );
   }
   function rows(entity, s) {
+    if (isBase && baseExcludedEntities.includes(entity)) return [];
     if (entity === "activities") return db.prepare("SELECT * FROM activities WHERE tenant_id=? AND agent_id=? ORDER BY updated_at DESC,id").all(s.tenant_id, s.user_id);
     return db
       .prepare(
@@ -577,7 +584,7 @@ export function createApp({
   const importer = importService({db,previewEntity,saveEntity,audit});
   const backupDevices = deviceBackupService({db,database:database||path.join(root,'data/prime.sqlite'),readBody,json,audit});
   const backups = backupService({db,database:database||path.join(root,'data/prime.sqlite')});
-  const connect = connectService({db,directory:database===':memory:'?null:path.dirname(path.resolve(database||path.join(root,'data/prime.sqlite'))),fetcher:connectFetch,json,readBody,audit,interval:connectInterval,saveAppointment:(session,record,delta)=>saveEntity('appointments',{data:{...Object.fromEntries(Object.keys(schema.appointments.fields).map(key=>[key,record?.[key]])),...delta},version:record?.version},session,record?.id)});
+  const connect = connectService({db,directory:database===':memory:'?null:path.dirname(path.resolve(database||path.join(root,'data/prime.sqlite'))),fetcher:connectFetch,json,readBody,audit,interval:isBase?0:connectInterval,saveAppointment:(session,record,delta)=>saveEntity('appointments',{data:{...Object.fromEntries(Object.keys(schema.appointments.fields).map(key=>[key,record?.[key]])),...delta},version:record?.version},session,record?.id)});
   const portalRoute = portalService({db,readBody,json});
   const assistantManager = assistantManagement({db,readBody,json,audit,previewSave:previewEntity,saveEntity,deleteEntity,authorize,rows});
   const assistant = assistantService({db,fetcher:assistantFetch,apiKey:assistantApiKey,model:assistantModel,readBody,json,audit,management:assistantManager});
@@ -598,7 +605,8 @@ export function createApp({
       if (production)
         res.setHeader("Strict-Transport-Security", "max-age=31536000");
       if (url.pathname === '/' && method === 'GET' && ['verify','reset','invite','connect','mail'].some(key=>url.searchParams.has(key))) { res.writeHead(302,{Location:'/app'+url.search,'Cache-Control':'no-store'});res.end();return; }
-      if(await handleDemoCallback(req,res,url))return;
+      if (isBase && (/^\/api\/(?:public|connect|assistant|portals|signatures|contactout|billing|webhooks)(?:\/|$)/.test(url.pathname))) throw new ApiError(403,'Funzione non disponibile in PRIME Base.');
+      if(!isBase && await handleDemoCallback(req,res,url))return;
       if (url.pathname === '/api/public/pricing' && method === 'GET') return json(res,200,{overage:publicOverage()});
       if (url.pathname === "/healthz" && method === "GET") {
         db.prepare("SELECT 1").get();
@@ -777,6 +785,7 @@ export function createApp({
             403,
             "Sessione di sicurezza non valida: aggiorna la pagina",
           );
+        if(isBase && !baseApiAllowed(url.pathname)) throw new ApiError(403,'Funzione non disponibile in PRIME Base.');
         if(await backupDevices.route(req,res,url,s))return;
         if(await didit.route(req,res,url,s))return;
         if(await handleBilling(req,res,url,s))return;
@@ -789,6 +798,8 @@ export function createApp({
             role: s.role,
             theme: s.theme,
             csrf: s.csrf,
+            edition,
+            human_seat_limit: isBase ? 2 + baseExtraSeats : null,
             environment: demo ? "demo" : "local",
             server_now: Date.now(),
           });
@@ -850,6 +861,7 @@ export function createApp({
             if (db.prepare("SELECT id FROM users WHERE email=?").get(email)) throw new ApiError(409, "Email già utilizzata. Scegli un altro indirizzo per il nuovo account.");
             const password = await passwordHash(randomBytes(32).toString("hex")), id = randomUUID();
             transaction(db, () => {
+              if (isBase && db.prepare('SELECT COUNT(*) count FROM memberships WHERE tenant_id=?').get(s.tenant_id).count >= 2 + baseExtraSeats) throw new ApiError(403,'PRIME Base include 2 agenti umani, titolare compreso. I posti aggiuntivi richiedono attivazione e costano 50 €/mese ciascuno.');
               db.prepare("INSERT INTO users(id,email,password,email_verified) VALUES (?,?,?,0)").run(id, email, password);
               db.prepare("INSERT INTO memberships(user_id,tenant_id,role) VALUES (?,?,?)").run(id, s.tenant_id, "agent");
               audit(s, "agent.create", id);
@@ -1123,6 +1135,7 @@ export function createApp({
       }
       if (method !== "GET") throw new ApiError(405, "Metodo non consentito");
       const files = {
+        "/edition.js":"edition.js",
 "/vendor/elevenlabs/client.js":"vendor/elevenlabs/client.js",
 "/vendor/elevenlabs/client.js.LEGAL.txt":"vendor/elevenlabs/client.js.LEGAL.txt",
 "/vendor/elevenlabs/rawAudioProcessor.js":"vendor/elevenlabs/rawAudioProcessor.js",
@@ -1145,8 +1158,8 @@ export function createApp({
 "/assets/veronica-poster.png":"assets/veronica-poster.png",
 "/assets/vanessa-poster.png":"assets/vanessa-poster.png",
 "/assets/manrope-variable.ttf":"assets/manrope-variable.ttf",
-        "/": "landing.html",
-        "/app": "index.html",
+        "/": isBase ? "base.html" : "landing.html",
+        "/app": isBase?"base.html":"index.html",
         "/landing": "landing.html",
         "/privacy": "privacy.html",
         "/app.js": "app.js",
