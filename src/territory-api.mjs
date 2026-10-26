@@ -13,6 +13,7 @@ export function territoryApi({ db, uploadsDirectory, audit, json, readBody }) {
     );
   const filename = (s, row) =>
     path.join(folder(s), row.id + "." + row.extension);
+  const documentPath = (s, id) => path.join(folder(s), "documents", id + ".pdf");
   function insert(entity, data, s) {
     const b = validate(entity, data),
       id = randomUUID(),
@@ -52,6 +53,37 @@ export function territoryApi({ db, uploadsDirectory, audit, json, readBody }) {
     return row;
   }
   return async function handle(req, res, url, s) {
+    const documentMatch = /^\/api\/documents\/([a-f0-9-]+)\/content$/.exec(url.pathname);
+    if (documentMatch) {
+      if (s.role === "external") throw new ApiError(403, "Accesso ai documenti non disponibile per questo profilo.");
+      const row = db.prepare("SELECT * FROM documents WHERE tenant_id=? AND id=?").get(s.tenant_id, documentMatch[1]);
+      if (!row) throw new ApiError(404, "Documento non trovato");
+      if (req.method === "POST") {
+        if (row.status === "archiviato") throw new ApiError(409, "Un documento archiviato non può essere sostituito.");
+        if ((req.headers["content-type"] || "").split(";")[0] !== "application/pdf") throw new ApiError(415, "Carica un documento PDF.");
+        const chunks = []; let size = 0;
+        for await (const chunk of req) { size += chunk.length; if (size > 20 * 1024 * 1024) throw new ApiError(413, "Il PDF supera 20 MB."); chunks.push(chunk); }
+        const bytes = Buffer.concat(chunks);
+        if (bytes.length < 8 || bytes.subarray(0, 5).toString() !== "%PDF-") throw new ApiError(400, "Il file non è un PDF valido.");
+        const target = documentPath(s, row.id), now = new Date().toISOString();
+        mkdirSync(path.dirname(target), { recursive: true });
+        writeFileSync(target, bytes, { flag: "w" });
+        transaction(db, () => {
+          db.prepare("UPDATE documents SET file_name=?,file_reference=?,status='disponibile',version=version+1,updated_by=?,updated_at=? WHERE tenant_id=? AND id=?").run(row.title + ".pdf", row.id, s.user_id, now, s.tenant_id, row.id);
+          const saved = db.prepare("SELECT * FROM documents WHERE tenant_id=? AND id=?").get(s.tenant_id, row.id);
+          db.prepare("INSERT INTO record_history(tenant_id,entity,record_id,version,snapshot,actor_id,created_at) VALUES (?,?,?,?,?,?,?)").run(s.tenant_id,"documents",row.id,saved.version,JSON.stringify(saved),s.user_id,now);
+          audit(s,"documents.upload",row.id);
+        });
+        json(res, 200, { ok: true, file_name: row.title + ".pdf" }); return true;
+      }
+      if (req.method === "GET") {
+        if (row.status !== "disponibile" || row.file_reference !== row.id) throw new ApiError(404, "Il file PDF non è disponibile.");
+        let bytes; try { bytes = readFileSync(documentPath(s, row.id)); } catch { throw new ApiError(404, "Il file PDF non è disponibile."); }
+        res.writeHead(200, { "Content-Type":"application/pdf", "Content-Length":bytes.length, "Cache-Control":"private, no-store", "Content-Disposition":"inline; filename=\"documento.pdf\"", "X-Content-Type-Options":"nosniff" });
+        res.end(bytes); return true;
+      }
+      throw new ApiError(405, "Metodo non consentito");
+    }
     if (url.pathname === "/api/territory/people" && req.method === "POST") {
       const b = await readBody(req);
       if (

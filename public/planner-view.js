@@ -35,14 +35,27 @@ export function renderPlanner({
       : "") +
     `<section class="planner panel"><div class="planner-toolbar"><div class="planner-date-nav"><button class="icon-button" id="planner-prev" aria-label="Periodo precedente">‹</button><button class="secondary" id="planner-today">Oggi</button><button class="icon-button" id="planner-next" aria-label="Periodo successivo">›</button><h2 id="planner-period"></h2></div><div class="planner-view-toggle" aria-label="Vista calendario"><button data-view="day" class="${view === "day" ? "selected" : ""}">Giorno</button><button data-view="week" class="${view === "week" ? "selected" : ""}">Settimana</button></div></div><div class="planner-filters">${searchBox(isWps ? "Cerca attività, tipo o risultato…" : "Cerca appuntamenti…")}<label class="sr-only" for="planner-date">Data da visualizzare</label><input type="date" id="planner-date" value="${state.day}"><select id="planner-agent" aria-label="Filtra per agente"><option value="">Tutti gli agenti</option>${state.members.map((r) => `<option value="${r.id}">${esc(r.title)}</option>`).join("")}</select><span id="planner-count" class="muted"></span></div><div class="planner-legend"><span class="legend-item"><i class="legend-swatch planned"></i>${isWps ? "Pianificata" : "Da confermare"}</span><span class="legend-item"><i class="legend-swatch confirmed"></i>${isWps ? "In corso" : "Confermato"}</span><span class="legend-item"><i class="legend-swatch done"></i>${isWps ? "Completata" : "Effettuato"}</span><span class="legend-item"><i class="legend-swatch missed"></i>${isWps ? "Non completata" : "Saltato / annullato"}</span></div><div id="planner-grid"></div><p class="small-note">${isWps ? "Seleziona una fascia vuota per pianificare un compito. Il timer segue le tue attività, anche mentre consulti altre sezioni." : "Seleziona una fascia vuota per aggiungere un appuntamento. Gli eventi collegati al WPS sono gli stessi presenti nella scheda dell’attività."}</p></section>`;
   const agent = document.querySelector("#planner-agent");
-  agent.value = state.plannerAgents?.[entity] ?? (isWps ? state.me.id : "");
+  const team = state.members.filter(member => member.role !== "external");
+  let selectedMembers = new Set(state.agendaMemberIds ?? team.map(member => member.id));
+  if (isWps) { agent.innerHTML = `<option value="${esc(state.me.id)}">Il mio WPS · privato</option>`; agent.value = state.me.id; agent.disabled = true; }
+  else {
+    agent.remove();
+    const filters = document.createElement("fieldset"); filters.className = "agenda-team-filter";
+    filters.innerHTML = `<legend>Calendari dell’agenzia</legend><div class="agenda-team-actions"><button type="button" data-team-choice="all">Tutti</button><button type="button" data-team-choice="mine">Solo i miei</button><button type="button" data-team-choice="none">Deseleziona tutti</button></div><div class="agenda-team-options">${team.map(member => `<label><input type="checkbox" value="${esc(member.id)}" ${selectedMembers.has(member.id) ? "checked" : ""}>${esc(member.title)}${member.role === "owner" ? " · Titolare" : ""}${member.id === state.me.id ? " · Io" : ""}</label>`).join("")}</div>`;
+    main.querySelector(".planner-filters").after(filters);
+    filters.querySelectorAll('input[type="checkbox"]').forEach(input => input.onchange = () => { selectedMembers = new Set([...filters.querySelectorAll('input:checked')].map(input => input.value)); state.agendaMemberIds = [...selectedMembers]; draw(); });
+    filters.querySelectorAll("[data-team-choice]").forEach(button => button.onclick = () => {
+      selectedMembers = new Set(button.dataset.teamChoice === "all" ? team.map(member => member.id) : button.dataset.teamChoice === "mine" ? [state.me.id] : []);
+      state.agendaMemberIds = [...selectedMembers]; filters.querySelectorAll("input").forEach(input => { input.checked = selectedMembers.has(input.value); }); draw();
+    });
+  }
   function newBlock(
     start = new Date(),
     end = new Date(+start + 3600000),
     extra = {},
   ) {
     openEditor(entity, null, {
-      agent_id: agent.value || state.me.id,
+      agent_id: !isWps && ["owner", "manager"].includes(state.me.role) && selectedMembers.size === 1 ? [...selectedMembers][0] : state.me.id,
       starts_at: start.toISOString(),
       [isWps ? "due_at" : "ends_at"]: end.toISOString(),
       ...extra,
@@ -131,11 +144,12 @@ export function renderPlanner({
       }),
   );
   bindSearch(() => draw(false));
+  main.querySelector(".planner").addEventListener("prime:refresh", () => draw(false));
   function draw(resetScroll = true) {
     const days = daysFor(state.day, view),
       all = [...(state.data[entity] || []),...(!isWps?(state.externalBusy||[]).map(b=>({...b,id:'busy-'+b.id,external_busy:true,status:'Occupato',search_text:'occupato'})):[])]
         .filter(matches)
-        .filter((r) => !agent.value || r.agent_id === agent.value),
+        .filter((r) => isWps ? r.agent_id === state.me.id : selectedMembers.has(r.agent_id)),
       endField = isWps ? "due_at" : "ends_at";
     const segments = days.map((day) => layoutDay(all, day, { endField }));
     const dayFmt = new Intl.DateTimeFormat("it-IT", {

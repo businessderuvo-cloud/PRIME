@@ -1,17 +1,20 @@
-# Demo PRIME su Fly.io
+# Distribuzione PRIME su Fly.io
 
-Indirizzo pubblico: https://prime-gestionale-deruvo.fly.dev/ . Prima distribuzione eseguita e verificata il 24 ottobre 2026: health check positivo, login demo riuscito, 11 appartamenti e 14 foto persistenti. Foto autenticate HTTP 200 e richiesta senza sessione HTTP 401. Verificato da browser il salvataggio di due numeri e due social aggiuntivi sulla stessa persona. 39 test automatici superati.
+Aggiornamento del 26 ottobre 2026: landing e gestionale riuniti nello stesso servizio.
 
-Applicazione separata: `prime-gestionale-deruvo`, regione Parigi `cdg`, organizzazione personale autorizzata dall'utente. I progetti Phoenix esistenti non sono modificati.
+- Landing: https://prime-gestionale-deruvo.fly.dev/
+- Gestionale: https://prime-gestionale-deruvo.fly.dev/app
+- Sorelle Assistenti: https://prime-gestionale-deruvo.fly.dev/sorelle-assistenti
+- Repository: https://github.com/businessderuvo-cloud/PRIME
 
-Configurazione in fly.toml: una macchina shared CPU, 512 MB RAM, volume `prime_data` da 1 GB montato in /data, HTTPS obbligatorio, arresto automatico quando inattiva e riavvio alla prima richiesta. Distribuire con `fly deploy --remote-only --ha=false` per mantenere una sola macchina SQLite.
+La distribuzione conserva il volume esistente prime_data e il database /data/prime.sqlite. Una sola macchina shared CPU da 512 MB nella regione cdg; nessun nuovo servizio database. Prima dell'aggiornamento è stato creato uno snapshot del volume. Le migrazioni sono additive e mantengono le migrazioni storiche presenti sul server.
 
-Il contenitore usa Node 24. Il processo prende in carico i permessi del volume e poi lavora come utente non privilegiato. `/healthz` controlla il database senza esporre dati dell'agenzia. L'arresto SIGTERM chiude server e SQLite prima dell'uscita.
+Comando di distribuzione: fly deploy --remote-only --ha=false.
 
-Database e foto persistono rispettivamente in /data/prime.sqlite e /data/uploads. Docker copia soltanto sorgenti, migrazioni e risorse pubbliche; database, upload, sessioni, chiavi e credenziali non sono inclusi nell'immagine o nel repository.
+Il contenitore usa Node 24 e un utente non privilegiato. Database, upload, backup e chiavi restano nel volume, esclusi da immagine e GitHub. Il repository è pubblico: non inserire credenziali o dati delle agenzie. I segreti dei provider vanno configurati in Fly secrets o tramite il flusso protetto dell'app.
 
-Lo strumento import-demo.mjs importa uno snapshot soltanto in un database demo completamente vuoto, con migrazioni identiche, senza sovrascrivere dati presenti. Le sessioni locali vengono escluse. È una procedura CLI di inizializzazione, non un endpoint pubblico. Le foto vengono trasferite separatamente dal codice.
+Verifiche prima della distribuzione: 87 test automatici superati e controllo sintattico dei moduli. Sono coperti autenticazione, separazione agenzie, importazioni, backup, documenti scaduti, simulatore, pagamenti bloccati prima del KYB e streaming dei video.
 
-Questa è una demo di sviluppo con dati fittizi e immagini contrassegnate «IMMAGINE DEMO · AI». SQLite a macchina singola non offre alta disponibilità; la configurazione non dichiara completato l'hardening di produzione o i moduli ancora indicati in STATO.md. Prima di dati reali: backup esterno e prova di ripristino, identità/team e privacy di produzione.
+Restano da collegare i servizi indicati in PRIME-ROADMAP.md: agente vocale Vanessa, effettivi eventi di consumo e offerte di pagamento, dominio e posta. La verifica email in produzione richiede PRIME_RESEND_API_KEY e PRIME_EMAIL_FROM su dominio verificato; finché non configurati l'invio rimane indisponibile. La demo pubblica di Veronica usa risposte guidate e la chiamata Vanessa resta in arrivo.
 
-L'utente ha autorizzato l'avvio della demo con budget indicativo di 10 USD/mese per macchina e volume, oltre traffico/imposte. Il budget non è un tetto automatico imposto da Fly. Fonte prezzi: https://docs.fly.io/about/pricing . Gli aggiornamenti si applicano soltanto all'app PRIME identificata in fly.toml.
+PRIME_PUBLIC_URL deve corrispondere all'origine HTTPS. Dopo il collegamento del dominio aggiornare anche i callback OAuth presso i provider configurati, senza rimuovere quelli attuali finché il passaggio non è completato.

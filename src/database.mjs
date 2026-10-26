@@ -35,13 +35,14 @@ export function openDatabase(filename = path.join(root, "data/prime.sqlite")) {
   return db;
 }
 export function transaction(db, fn) {
-  db.exec("BEGIN IMMEDIATE");
+  const nested = db.isTransaction;
+  db.exec(nested ? "SAVEPOINT prime_nested" : "BEGIN IMMEDIATE");
   try {
     const value = fn();
-    db.exec("COMMIT");
+    db.exec(nested ? "RELEASE prime_nested" : "COMMIT");
     return value;
   } catch (e) {
-    db.exec("ROLLBACK");
+    db.exec(nested ? "ROLLBACK TO prime_nested; RELEASE prime_nested" : "ROLLBACK");
     throw e;
   }
 }

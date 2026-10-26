@@ -63,8 +63,11 @@ export function validate(entity, input) {
         !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)
       )
         throw new ApiError(400, `${f.label}: orario non valido`);
-      if (f.type === "date" && value && !/^\d{4}-\d{2}-\d{2}$/.test(value))
-        throw new ApiError(400, `${f.label}: data non valida`);
+      if (f.type === "date" && value) {
+        const date = new Date(value + 'T00:00:00.000Z');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(date.getTime()) || date.toISOString().slice(0,10) !== value)
+          throw new ApiError(400, `${f.label}: data non valida`);
+      }
       if (f.type === "datetime-local" && value) {
         const d = new Date(value);
         if (Number.isNaN(d.getTime()))
@@ -148,6 +151,21 @@ export function validate(entity, input) {
         400,
         "L’esito commerciale richiede un appuntamento effettuato",
       );
+  }
+  if (entity === "buyer_profiles" && output.budget_max && output.budget_min > output.budget_max)
+    throw new ApiError(400, "Il budget minimo non può superare quello massimo");
+  if (entity === "valuations" && output.high_value && output.low_value > output.high_value)
+    throw new ApiError(400, "Il valore minimo non può superare quello massimo");
+  if (entity === "viewing_feedback" && !output.title)
+    output.title = `Visita · ${output.outcome}`;
+  if (entity === "signature_requests" && !["da configurare", "bozza"].includes(output.status))
+    throw new ApiError(409, "Lo stato della firma può essere aggiornato solo dalla connessione verificata con il provider.");
+  if (entity === "documents" && output.status === "disponibile" && !output.file_reference)
+    throw new ApiError(409, "Carica prima il PDF con il pulsante dedicato nella scheda documento.");
+  if (entity === 'deals') {
+    output.status = output.stage === 'conclusa' ? 'vinta'
+      : output.stage === 'persa' ? (input.status === 'annullata' ? 'annullata' : 'persa')
+      : ['proposta', 'controproposta'].includes(output.stage) ? 'in attesa' : 'aperta';
   }
   return output;
 }

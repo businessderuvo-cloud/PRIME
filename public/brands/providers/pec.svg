@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Posta elettronica certificata">
+  <rect x="4" y="8" width="40" height="30" rx="6" fill="#f3f7ff" stroke="#315a9b" stroke-width="2"/>
+  <path d="m6 12 18 14 18-14M6 34l12-10m24 10L30 24" fill="none" stroke="#315a9b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="37" cy="34" r="8" fill="#fff" stroke="#b39455" stroke-width="2"/>
+  <path d="m33.5 34 2.2 2.2 4-4.5" fill="none" stroke="#b39455" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

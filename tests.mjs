@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import http from "node:http";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { createApp } from "./server.mjs";
 import { openDatabase } from "./src/database.mjs";
@@ -16,6 +16,7 @@ const temporary = mkdtempSync(path.join(tmpdir(), "prime-tests-"));
 const database = path.join(temporary, "test.sqlite");
 const testPassword = randomBytes(24).toString("hex");
 let app, base, a, b, agent, external;
+const assistantRequestBodies = [];
 async function request(user, url, method = "GET", data, extra = {}) {
   const response = await fetch(base + url, {
     method,
@@ -42,8 +43,13 @@ async function register(email, agency) {
     agency,
     password: testPassword,
   });
-  assert.equal(r.status, 200, JSON.stringify(r.value));
-  const cookie = r.headers.get("set-cookie").split(";")[0];
+  assert.equal(r.status, 201, JSON.stringify(r.value));
+  const token = new URL(r.value.verification_url).searchParams.get("verify");
+  const verified = await request(null,"/api/auth/verify-email","POST",{token});
+  assert.equal(verified.status,200,JSON.stringify(verified.value));
+  const login=await request(null,"/api/auth","POST",{mode:"login",email,password:testPassword});
+  assert.equal(login.status,200,JSON.stringify(login.value));
+  const cookie = login.headers.get("set-cookie").split(";")[0];
   const me = await request({ cookie }, "/api/me");
   return { cookie, ...me.value };
 }
@@ -93,11 +99,23 @@ const dataOf = (row) =>
           "updated_at",
           "version",
           "search_text",
+          "latitude",
+          "longitude",
         ].includes(key),
     ),
   );
 before(async () => {
-  app = createApp({ database });
+  app = createApp({
+    database,
+    assistantApiKey: "test-only-key",
+    assistantFetch: async (_url, options) => {
+      assistantRequestBodies.push(JSON.parse(options.body));
+      return new Response(
+        JSON.stringify({ output_text: "Ho trovato un immobile di prova." }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    },
+  });
   await new Promise((resolve) => app.server.listen(0, "127.0.0.1", resolve));
   base = "http://127.0.0.1:" + app.server.address().port;
   a = await register("owner-a@tests.invalid", "Agenzia A");
@@ -423,7 +441,7 @@ test("filtro per agente usa assegnazione esplicita, immobile o persone collegate
 
 test("migrazioni idempotenti e dati persistenti su disco", () => {
   const second = openDatabase(database);
-  assert.equal(second.prepare("SELECT count(*) n FROM migrations").get().n, 10);
+  assert.equal(second.prepare("SELECT count(*) n FROM migrations").get().n, readdirSync(new URL('./migrations/', import.meta.url)).filter((name) => name.endsWith('.sql')).length);
   assert.equal(
     second.prepare("SELECT name FROM tenants WHERE id=?").get(a.tenant_id).name,
     "Agenzia A",
@@ -739,7 +757,7 @@ test("CSRF, origine e assegnazione tenant non falsificabili", async () => {
     400,
   );
 });
-let street, building, unit, contact, property, activity, appointment;
+let street, building, unit, contact, property, activity, appointment, buyerProfile;
 test("CRUD territorio con riferimenti, recapiti solo sullo stabile e stati distinti", async () => {
   street = await create("streets", {
     title: "Via della Quercia",
@@ -868,6 +886,40 @@ test("prevenzione duplicati e collegamento CRM/immobile/censimento", async () =>
     409,
   );
 });
+test("moduli commerciali collegati, isolati per tenant e firme mai dichiarate senza provider", async () => {
+  buyerProfile = await create("buyer_profiles", { title: "Ricerca Brera", contact_id: contact.id, assigned_agent_id: agent.id, budget_min: 200000, budget_max: 500000, preferred_areas: "Brera", min_rooms: 3 });
+  assert.equal(buyerProfile.status, "attiva");
+  const updatedUnit = await request(a, "/api/entities/units/" + unit.id, "PUT", { version: unit.version, data: { ...dataOf(unit), area: 90, rooms: 3, has_garage: 1 } });
+  assert.equal(updatedUnit.status, 200); unit = updatedUnit.value;
+  const updatedProperty = await request(a, "/api/entities/properties/" + property.id, "PUT", { version: property.version, data: { ...dataOf(property), marketing_status: "in vendita" } });
+  assert.equal(updatedProperty.status, 200, JSON.stringify(updatedProperty.value)); property = updatedProperty.value;
+  const matches = await request(a, "/api/matching/" + buyerProfile.id);
+  assert.equal(matches.status, 200); assert.equal(matches.value[0].id, property.id);
+  const deal = await create("deals", { title: "Vendita Trilocale Brera", property_id: property.id, contact_id: contact.id, assigned_agent_id: agent.id, stage: "incarico", expected_value: 450000 });
+  const offer = await create("offers", { title: "Prima proposta", deal_id: deal.id, contact_id: contact.id, amount: 430000, deposit: 20000, status: "presentata" });
+  const valuation = await create("valuations", { title: "Stima Brera", property_id: property.id, contact_id: contact.id, agent_id: agent.id, assessed_on: "2026-10-24", low_value: 400000, high_value: 470000 });
+  const lease = await create("leases", { title: "Locazione test", property_id: property.id, tenant_contact_id: contact.id, rent_monthly: 1500, starts_on: "2027-01-01", ends_on: "2028-01-01", status: "attiva" });
+  const commission = await create("commissions", { title: "Provvigione trattativa", deal_id: deal.id, agent_id: agent.id, expected_amount: 9000, collected_amount: 1000 });
+  assert.equal((await request(a, '/api/entities/commissions', 'POST', {data:{title:'Senza assegnazione',deal_id:deal.id,expected_amount:1000}})).status,400);
+  assert.equal((await request(a, '/api/entities/commissions', 'POST', {data:{title:'Titolare',deal_id:deal.id,agent_id:a.id,expected_amount:1000}})).status,201);
+  assert.equal(offer.deal_id, deal.id); assert.equal(valuation.property_id, property.id); assert.equal(lease.tenant_contact_id, contact.id); assert.equal(commission.collected_amount, 1000);
+  assert.equal((await request(b, "/api/entities/deals/" + deal.id)).status, 404);
+  const foreignRef = await request(b, "/api/entities/deals", "POST", { data: { title: "Cross tenant", property_id: property.id } });
+  assert.equal(foreignRef.status, 400);
+  const document = await create("documents", { title: "Incarico vendita", property_id: property.id, contact_id: contact.id, deal_id: deal.id, document_type: "incarico" });
+  const signature = await create("signature_requests", { title: "Firma incarico", document_id: document.id, signer_contact_id: contact.id, provider: "InfoCert", signature_level: "qualificata (QES)" });
+  assert.equal(signature.status, "da configurare");
+  const forged = await request(a, "/api/entities/signature_requests/" + signature.id, "PUT", { version: signature.version, data: { ...dataOf(signature), status: "firmata" } });
+  assert.equal(forged.status, 400);
+  const pdf = Buffer.from("%PDF-1.4\nPRIME test document\n%%EOF");
+  const uploaded = await fetch(`${base}/api/documents/${document.id}/content`, { method: "POST", headers: { Cookie: a.cookie, "X-CSRF-Token": a.csrf, "Content-Type": "application/pdf" }, body: pdf });
+  assert.equal(uploaded.status, 200);
+  const downloaded = await fetch(`${base}/api/documents/${document.id}/content`, { headers: { Cookie: a.cookie } });
+  assert.equal(downloaded.status, 200); assert.equal(downloaded.headers.get("cache-control"), "private, no-store");
+  assert.deepEqual(Buffer.from(await downloaded.arrayBuffer()), pdf);
+  const otherTenant = await fetch(`${base}/api/documents/${document.id}/content`, { headers: { Cookie: b.cookie } });
+  assert.equal(otherTenant.status, 404);
+});
 test("WPS: assegnazione, avanzamento, esito obbligatorio e prossima azione", async () => {
   activity = await create("activities", {
     title: "Incontro proprietario",
@@ -883,7 +935,7 @@ test("WPS: assegnazione, avanzamento, esito obbligatorio e prossima azione", asy
     building_id: building.id,
     street_id: street.id,
     next_action: "Concordare la valutazione",
-  });
+  }, agent);
   let r = await request(
     agent,
     "/api/entities/activities/" + activity.id,
@@ -982,6 +1034,12 @@ test("stato appuntamento separato dall’esito e cronologia riprogrammazione", a
   assert.equal(r.status, 200);
   assert.equal(r.value.status, "effettuato");
   appointment = r.value;
+  const feedbackList = (await request(a, "/api/entities/viewing_feedback")).value;
+  let feedback = feedbackList.find((item) => item.appointment_id === appointment.id);
+  assert.ok(feedback, "la chiusura di una visita deve predisporre il feedback");
+  const negativeFeedback = await request(a, "/api/entities/viewing_feedback/" + feedback.id, "PUT", { version: feedback.version, data: { ...dataOf(feedback), outcome: "negativo", rejection_reason: "Non adatto" } });
+  assert.equal(negativeFeedback.status, 200);
+  assert.deepEqual((await request(a, "/api/matching/" + buyerProfile.id)).value, []);
   r = await request(a, "/api/entities/appointments/" + appointment.id, "PUT", {
     version: appointment.version,
     data: {
@@ -1731,6 +1789,83 @@ test("foto citofono e appartamento: file privati, tipi validati, permessi e rimo
   );
   assert.equal((await request(b, "/api/media")).value.length, 0);
 });
+test("AI Assistant: contesto minimizzato, ruoli e tenant isolati", async () => {
+  const aiStreet = await create("streets", {
+    title: "Via Assistant di prova",
+    city: "Bari",
+    district: "Centro",
+    postal_code: "70100",
+  });
+  const aiBuilding = await create("buildings", {
+    title: "31",
+    street_id: aiStreet.id,
+  });
+  const aiUnit = await create("units", {
+    title: "5",
+    building_id: aiBuilding.id,
+    area: 88,
+    rooms: 4,
+    property_type: "appartamento",
+  });
+  await create("properties", {
+    title: "Annuncio riservato CRM",
+    unit_id: aiUnit.id,
+    assigned_agent_id: agent.id,
+    price: 245000,
+    marketing_status: "in vendita",
+  });
+  await create("contacts", {
+    title: "Contatto segreto AI",
+    assigned_agent_id: agent.id,
+    email: "private-assistant@test.invalid",
+    phone: "+390001112233",
+    notes: "Nota riservata da non trasmettere",
+  });
+
+  const reply = await request(agent, "/api/assistant/chat", "POST", {
+    messages: [{ role: "user", content: "Cerca immobili a Bari" }],
+  });
+  assert.equal(reply.status, 200, JSON.stringify(reply.value));
+  assert.match(reply.value.message,/Bari/);
+  assert.match(reply.value.message,/245.000/);
+  assert.equal(reply.value.mode,'internal');
+  assert.equal(assistantRequestBodies.length,0,'no external AI request, even with an API key');
+  assert.doesNotMatch(reply.value.message,/Contatto segreto AI|private-assistant|Nota riservata/);
+
+  const otherTenant = await request(b, "/api/assistant/chat", "POST", {
+    messages: [{ role: "user", content: "Riepiloga immobili" }],
+  });
+  assert.equal(otherTenant.status, 200);
+  assert.doesNotMatch(otherTenant.value.message, /Bari|245.000/);
+  assert.equal(
+    (await request(external, "/api/assistant/status")).status,
+    403,
+  );
+  assert.equal(
+    (
+      await request(external, "/api/assistant/chat", "POST", {
+        messages: [{ role: "user", content: "Riepiloga" }],
+      })
+    ).status,
+    403,
+  );
+});
+
+test('Portali: predisposizione e bozze locali isolate per agenzia',async()=>{
+ const listing=await create('properties',{title:'Annuncio portali',price:150000,marketing_status:'in vendita'});
+ let result=await request(a,'/api/portals');assert.equal(result.status,200);assert.equal(result.value.portals.length,3);
+ assert.equal((await request(agent,'/api/portals')).status,403);
+ assert.equal((await request(a,'/api/portals/idealista','PUT',{account_reference:'AGENZIA-42',channel:'feed'})).status,200);
+ assert.equal((await request(a,'/api/portals/idealista','PUT',{account_reference:'x',channel:'invalid'})).status,400);
+ assert.equal((await request(a,'/api/portals/drafts','POST',{property_id:listing.id,portals:['immobiliare','idealista','casa'],operation:'publish'})).status,200);
+ result=await request(a,'/api/portals');assert.equal(result.value.drafts.length,3);assert.equal(result.value.portals.find(p=>p.id==='idealista').account_reference,'AGENZIA-42');
+ assert.equal((await request(b,'/api/portals')).value.drafts.length,0);
+ assert.equal((await request(b,'/api/portals/drafts','POST',{property_id:listing.id,portals:['casa'],operation:'withdraw'})).status,404);
+ assert.equal((await request(a,'/api/portals/drafts','POST',{property_id:listing.id,portals:['immobiliare'],operation:'update'})).status,200);
+ assert.equal((await request(a,'/api/portals')).value.drafts.length,3,'operations replace the local draft rather than duplicate');
+ assert.equal((await request(a,'/api/connect/whatsapp/embedded-signup','POST',{})).status,409);
+});
+
 test("input malformati e sessione revocata", async () => {
   const malformed = await fetch(base + "/api/entities/streets", {
     method: "POST",

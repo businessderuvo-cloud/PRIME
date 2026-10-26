@@ -35,6 +35,9 @@ test("dettatura: inserimento, selezione, ricerca reattiva, conflitti, numeri e p
     setAttribute(k, v) {
       this.attrs[k] = v;
     }
+    hasAttribute(k) {
+      return Object.hasOwn(this.attrs, k);
+    }
     dispatchEvent(event) {
       this.events.push(event.type);
     }

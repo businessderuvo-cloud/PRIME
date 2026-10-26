@@ -22,11 +22,11 @@ Aprire il sito e scegliere “Crea il tuo spazio” per registrare la propria ag
 
 ## Verifica
 
-Eseguire `node --run check` e `node --run test` (oppure `node --test tests.mjs`). I test creano database temporanei separati, non modificano data/ e rimuovono solo i propri file temporanei. L'ultima verifica comprende 42 test superati e controlli browser desktop/mobile. Per un ambiente di esempio separato impostare PRIME_DEMO=1 e PRIME_DB su un percorso dedicato: PRIME_DEMO mostra l'avviso demo, non inserisce dati e non abilita accessi speciali.
+Eseguire `node --run check` e `node --run test` (oppure `node --test tests.mjs voice-input.test.mjs`). I test creano database temporanei separati, non modificano data/ e rimuovono solo i propri file temporanei. L'ultima verifica comprende 43 test superati, incluso AI Assistant con provider simulato, isolamento tenant e minimizzazione del contesto; controlli browser desktop/mobile. Per un ambiente di esempio separato impostare PRIME_DEMO=1 e PRIME_DB su un percorso dedicato: PRIME_DEMO mostra l'avviso demo, non inserisce dati e non abilita accessi speciali.
 
 ## Limiti attuali
 
-Email verificata, recupero password, 2FA, inviti, disponibilità visite avanzate, feedback, matching, mappe, ricorrenze WPS e moduli commerciali sono da completare. Didit, Stripe e tutti i servizi esterni risultano non configurati. La schermata PRIME Connect descrive questo stato, senza azioni fittizie. La ricerca attuale è adatta al primo sviluppo locale; indicizzazione e paginazione per grandi volumi sono future.
+Email verificata, recupero password, 2FA, inviti, disponibilità visite avanzate, matching, mappe, ricorrenze WPS e moduli commerciali sono da completare. Didit, Stripe e tutti i servizi esterni risultano non configurati. La schermata PRIME Connect descrive questo stato, senza azioni fittizie. La ricerca attuale è adatta al primo sviluppo locale; indicizzazione e paginazione per grandi volumi sono future.
 
 NODE_ENV=production aggiunge cookie Secure e HSTS ma non sostituisce un'infrastruttura HTTPS corretta, né rende questa versione pronta per la produzione. Non esporre il server di sviluppo direttamente a Internet. Il repository pubblico contiene sorgenti, loghi e specifica; dati dell'agenzia e credenziali restano fuori da Git.
 

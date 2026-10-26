@@ -12,3 +12,4 @@
 !scripts/
 !scripts/hosted-start.mjs
 !scripts/import-demo.mjs
+!scripts/backup-pc-setup.ps1

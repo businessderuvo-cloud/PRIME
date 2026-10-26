@@ -336,20 +336,32 @@ export function renderTerritory(ctx) {
       ...r,
       entity: "contact_interactions",
       when: r.occurred_at,
+      agent_id: r.created_by,
       kind: r.channel,
       result: r.outcome,
     }));
     const work = d.activities.filter(includes).map((r) => ({
       ...r,
       entity: "activities",
-      when: r.updated_at,
+      when: r.starts_at || r.created_at,
       kind: "WPS · " + r.activity_type,
       result: r.outcome || r.status,
     }));
-    const list = [...calls, ...work].sort((a, b) =>
+    const all = [...calls, ...work].sort((a, b) =>
       b.when.localeCompare(a.when),
     );
-    return `<div class="section-heading"><div><p class="eyebrow">RELAZIONI NEL TEMPO</p><h3>Storico contatti e attività</h3></div><button class="secondary" data-log-contact>+ Registra contatto</button></div>${list.length ? `<div class="territory-timeline">${list.map((r) => `<article><span class="timeline-point"></span><div><div class="timeline-top"><span>${esc(r.kind)}</span><time>${date(r.when)}</time></div><button class="timeline-title" data-open-history="${r.entity}:${r.id}">${esc(r.title)}</button><p>${esc(r.result)}</p>${r.contact_id && personOf(r.contact_id) ? `<small>${esc(personOf(r.contact_id).title)}</small>` : ""}${r.notes ? `<p class="timeline-note">${esc(r.notes)}</p>` : ""}${r.next_action ? `<p class="next-action">Prossima azione · ${esc(r.next_action)}</p>` : ""}${r.follow_up_at ? `<span class="pill">Richiamo · ${date(r.follow_up_at)}</span>` : ""}<small class="timeline-author">${esc(state.members.find((m) => m.id === r.created_by)?.title || "Utente agenzia")}</small></div></article>`).join("")}</div>` : '<div class="territory-empty"><h3>Ogni contatto costruisce la relazione.</h3><p>Registra chiamate, telemarketing, porta a porta ed esiti commerciali. Lo storico resterà collegato alla scheda.</p></div>'}`;
+    const filters = (selection.activityFilters ??= { from: "", to: "", agent: "" });
+    const day = value => {
+      const parsed = new Date(value);
+      return Number.isNaN(+parsed) ? "" : new Date(+parsed - parsed.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    };
+    const list = all.filter(row => {
+      const rowDay = day(row.when);
+      return (!filters.from || rowDay >= filters.from) &&
+        (!filters.to || rowDay <= filters.to) &&
+        (!filters.agent || row.agent_id === filters.agent);
+    });
+    return `<div class="section-heading"><div><p class="eyebrow">RELAZIONI NEL TEMPO</p><h3>Storico contatti e attività</h3></div><button class="secondary" data-log-contact>+ Registra contatto</button></div><div class="territory-activity-filters"><label>Dal<input type="date" data-activity-from value="${esc(filters.from)}"></label><label>Al<input type="date" data-activity-to value="${esc(filters.to)}"></label><label>Agente<select data-activity-agent><option value="">Tutti gli agenti</option>${state.members.map(member => `<option value="${esc(member.id)}" ${filters.agent === member.id ? "selected" : ""}>${esc(member.title)}</option>`).join("")}</select></label><button type="button" class="text-button" data-activity-filter-clear>Reimposta</button><span class="muted">${list.length} registrazioni</span></div>${list.length ? `<div class="territory-timeline">${list.map((r) => `<article><span class="timeline-point"></span><div><div class="timeline-top"><span>${esc(r.kind)}</span><time>${date(r.when)}</time></div><button class="timeline-title" data-open-history="${r.entity}:${r.id}">${esc(r.title || r.kind)}</button><p>${esc(r.result)}</p>${r.contact_id && personOf(r.contact_id) ? `<small>${esc(personOf(r.contact_id).title)}</small>` : ""}${r.notes ? `<p class="timeline-note">${esc(r.notes)}</p>` : ""}${r.next_action ? `<p class="next-action">Prossima azione · ${esc(r.next_action)}</p>` : ""}${r.follow_up_at ? `<span class="pill">Richiamo · ${date(r.follow_up_at)}</span>` : ""}<small class="timeline-author">${esc(state.members.find((m) => m.id === r.agent_id)?.title || "Utente agenzia")}</small></div></article>`).join("")}</div>` : all.length ? '<div class="territory-empty"><h3>Nessuna attività corrisponde ai filtri.</h3><p>Modifica le date o seleziona tutti gli agenti per vedere altre registrazioni.</p></div>' : '<div class="territory-empty"><h3>Ogni contatto costruisce la relazione.</h3><p>Registra chiamate, telemarketing, porta a porta ed esiti commerciali. Ogni registrazione conserva data, ora e agente.</p></div>'}`;
   }
   function unitCards(building) {
     const agentFilter =
@@ -511,6 +523,24 @@ export function renderTerritory(ctx) {
     }
     target.innerHTML =
       header + '<div class="territory-content">' + content + "</div>";
+    const activityFrom = target.querySelector("[data-activity-from]"),
+      activityTo = target.querySelector("[data-activity-to]"),
+      activityAgent = target.querySelector("[data-activity-agent]");
+    const updateActivityFilters = () => {
+      selection.activityFilters = {
+        from: activityFrom?.value || "",
+        to: activityTo?.value || "",
+        agent: activityAgent?.value || "",
+      };
+      draw();
+    };
+    activityFrom?.addEventListener("change", updateActivityFilters);
+    activityTo?.addEventListener("change", updateActivityFilters);
+    activityAgent?.addEventListener("change", updateActivityFilters);
+    target.querySelector("[data-activity-filter-clear]")?.addEventListener("click", () => {
+      selection.activityFilters = { from: "", to: "", agent: "" };
+      draw();
+    });
     document.querySelector("#territory-edit").onclick = () =>
       openEditor(entity, row);
     document.querySelectorAll("[data-tab]").forEach(
