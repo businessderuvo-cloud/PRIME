@@ -6,7 +6,7 @@ export function demoCallbackService({db,json,readBody,env=process.env,fetcher=fe
  const digest=x=>createHmac('sha256',salt).update(x).digest('hex');
  const enabled=()=>!!(env.PRIME_ELEVEN_API_KEY&&env.PRIME_ELEVEN_PHONE_NUMBER_ID&&env.PRIME_ELEVEN_AGENT_ID&&env.PRIME_ELEVEN_BRANCH_ID);
  return async(req,res,url)=>{
-  if(!['/api/public/vanessa','/api/public/vanessa/callback'].includes(url.pathname))return false;
+  if(!['/api/public/vanessa','/api/public/vanessa/callback','/api/public/vanessa/browser'].includes(url.pathname))return false;
   const ip=digest(production?(req.headers['fly-client-ip']||req.socket.remoteAddress):req.socket.remoteAddress);
   for(const [k,v]of pending)if(v.expires<now())pending.delete(k);
   if(url.pathname==='/api/public/vanessa'&&req.method==='GET'){
@@ -16,13 +16,32 @@ export function demoCallbackService({db,json,readBody,env=process.env,fetcher=fe
    res.setHeader('Set-Cookie','prime_demo='+challenge+'; Path=/api/public/vanessa; HttpOnly; SameSite=Strict; Max-Age=600'+(production?'; Secure':''));
    json(res,200,{available:true,challenge});return true;
   }
-  if(url.pathname!=='/api/public/vanessa/callback'||req.method!=='POST')throw new ApiError(405,'Metodo non consentito');
+  if(!['/api/public/vanessa/callback','/api/public/vanessa/browser'].includes(url.pathname)||req.method!=='POST')throw new ApiError(405,'Metodo non consentito');
   if(!enabled())throw new ApiError(503,'La richiamata non è disponibile al momento. Scrivi a phoenix@primegestionale.it.');
   const origin=req.headers.origin,expected=(production?'https://':'http://')+req.headers.host;
   if(!origin||origin!==expected||req.headers['sec-fetch-site']==='cross-site')throw new ApiError(403,'Apri il modulo dal sito PRIME.');
   const b=await readBody(req),c=pending.get(b.challenge);
   if(!c||c.ip!==ip||c.expires<now()||!String(req.headers.cookie||'').split(';').some(x=>x.trim()==='prime_demo='+b.challenge))throw new ApiError(403,'Ricarica la pagina prima di richiedere la chiamata.');
   if(Object.keys(b).some(k=>!['phone','consent','challenge','website'].includes(k))||b.website||b.consent!==true)throw new ApiError(400,'Conferma che il numero è tuo e che desideri la chiamata AI.');
+  if(url.pathname==='/api/public/vanessa/browser'){
+   if('phone' in b)throw new ApiError(400,'Il numero non serve per la chiamata nel browser.');
+   const stamp=now(),limit=Number(env.PRIME_DEMO_DAILY_CALL_LIMIT||10),browserIp=digest('browser:'+ip);
+   db.prepare('DELETE FROM demo_callbacks WHERE created_ms<?').run(stamp-7*86400000);
+   if(!Number.isSafeInteger(limit)||limit<1)throw new ApiError(503,'La demo è momentaneamente sospesa.');
+   const total=db.prepare('SELECT COUNT(*) AS n FROM demo_callbacks WHERE created_ms>?').get(stamp-86400000).n;
+   const used=db.prepare('SELECT COUNT(*) AS n FROM demo_callbacks WHERE created_ms>? AND ip_hash=?').get(stamp-86400000,browserIp).n;
+   if(total>=limit||used>=3)throw new ApiError(429,'La demo ha raggiunto il limite giornaliero. Riprova domani.');
+   pending.delete(b.challenge);const id=randomBytes(16).toString('hex');
+   db.prepare('INSERT INTO demo_callbacks VALUES (?,?,?,?,?)').run(id,'browser',browserIp,stamp,'browser_pending');
+   try{
+    const target=new URL('https://api.elevenlabs.io/v1/convai/conversation/get-signed-url');target.searchParams.set('agent_id',env.PRIME_ELEVEN_AGENT_ID);target.searchParams.set('branch_id',env.PRIME_ELEVEN_BRANCH_ID);target.searchParams.set('include_conversation_id','true');
+    const response=await fetcher(target.href,{headers:{'xi-api-key':env.PRIME_ELEVEN_API_KEY},signal:AbortSignal.timeout(15000)}),data=await response.json();
+    if(!response.ok)throw new Error('Provider refused');const signed=new URL(data.signed_url);
+    if(signed.protocol!=='wss:'||signed.hostname!=='api.elevenlabs.io'||signed.pathname!=='/v1/convai/conversation')throw new Error('Invalid signed URL');
+    db.prepare('UPDATE demo_callbacks SET state=? WHERE id=?').run('browser_ready',id);json(res,200,{signedUrl:signed.href});
+   }catch{db.prepare('UPDATE demo_callbacks SET state=? WHERE id=?').run('browser_failed',id);throw new ApiError(502,'Non riesco a collegare Vanessa. Riprova più tardi o scrivi a phoenix@primegestionale.it.');}
+   return true;
+  }
   const phone=normalizeDemoPhone(b.phone),phoneHash=digest(phone),stamp=now();
   db.prepare('DELETE FROM demo_callbacks WHERE created_ms<?').run(stamp-7*86400000);
   const count=db.prepare('SELECT COUNT(*) AS n FROM demo_callbacks WHERE created_ms>?').get(stamp-86400000).n;

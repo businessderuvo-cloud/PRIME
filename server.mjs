@@ -591,6 +591,10 @@ export function createApp({
         "Content-Security-Policy",
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       );
+      if(url.pathname==='/sorelle-assistenti'){
+        res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self'; connect-src 'self' wss://api.elevenlabs.io https://api.elevenlabs.io; media-src 'self' blob:; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+        res.setHeader('Permissions-Policy','microphone=(self), camera=()');
+      }
       if (production)
         res.setHeader("Strict-Transport-Security", "max-age=31536000");
       if (url.pathname === '/' && method === 'GET' && ['verify','reset','invite','connect','mail'].some(key=>url.searchParams.has(key))) { res.writeHead(302,{Location:'/app'+url.search,'Cache-Control':'no-store'});res.end();return; }
@@ -1119,6 +1123,12 @@ export function createApp({
       }
       if (method !== "GET") throw new ApiError(405, "Metodo non consentito");
       const files = {
+"/vendor/elevenlabs/client.js":"vendor/elevenlabs/client.js",
+"/vendor/elevenlabs/client.js.LEGAL.txt":"vendor/elevenlabs/client.js.LEGAL.txt",
+"/vendor/elevenlabs/rawAudioProcessor.js":"vendor/elevenlabs/rawAudioProcessor.js",
+"/vendor/elevenlabs/audioConcatProcessor.js":"vendor/elevenlabs/audioConcatProcessor.js",
+"/vendor/elevenlabs/libsamplerate.worklet.js":"vendor/elevenlabs/libsamplerate.worklet.js",
+"/vanessa-browser.js":"vanessa-browser.js",
 "/sorelle-assistenti":"sisters.html",
 "/landing.css":"landing.css",
 "/landing-composition.css":"landing-composition.css",

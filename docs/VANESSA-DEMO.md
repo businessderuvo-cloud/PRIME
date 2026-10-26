@@ -7,3 +7,7 @@ La demo è inizialmente limitata a cellulari italiani. Consenso esplicito, confe
 Il trunk e il ramo vengono verificati tramite API in sola lettura. I test usano un provider simulato e non effettuano telefonate reali. La prima prova reale va richiesta dal proprietario del numero nel modulo pubblico.
 
 La configurazione ElevenLabs preesistente registra e trascrive le conversazioni senza scadenza automatica; il modulo lo comunica e richiede consenso. Impostazioni di voce, primo messaggio e telefonia non sono modificate da questa integrazione.
+
+# Browser voice
+
+La pagina offre anche “Parla con Vanessa”, senza telefono, tramite SDK ElevenLabs self-hosted e URL WebSocket firmato monouso emesso dal server per lo stesso ramo. La chiave API non viene inviata al browser. Richiede consenso esplicito e permesso microfono; include chiusura, mute, stato ascolto/parlato e trascrizione temporanea. Il client chiude dopo 3 minuti; il limite massimo effettivo sul provider resta quello dell’agente. Tre emissioni di sessione al giorno per connessione e tetto globale condiviso con le richiamate. I worklet audio e il ricampionatore sono serviti localmente; build riproducibile con node scripts/build-voice-client.mjs.
