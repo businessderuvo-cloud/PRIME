@@ -60,3 +60,5 @@ html[data-theme=light]{--nav-text:#4b5360;--nav-active:#101820}
 .call-card .call-portrait{height:650px;object-position:center top}.call-card:after{background:linear-gradient(180deg,transparent 0,transparent 280px,#080b0d66 420px,#080b0df5 620px,#080b0d 710px)}
 
 .browser-call-actions .button.primary{background:#edf2f7;color:#111820;border-color:#edf2f7}.browser-call-actions .button.primary:hover{background:#fff;color:#080b0d}
+/* Keep Veronica's original chat size independent from Vanessa's call controls. */
+#veronica-chat{align-self:start}
