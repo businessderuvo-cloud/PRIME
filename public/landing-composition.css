@@ -103,3 +103,5 @@ html[data-theme=light]{--nav-text:#4b5360;--nav-active:#101820}
 
 /* On phones the plan introduction starts after the complete hero photograph. */
 @media(max-width:560px){.hero-photo{flex-shrink:0;margin-bottom:0}.plans-section{margin-top:24px;padding-top:0}}
+
+.annual-deal{background:#eee;color:#000;border-color:#bcbcbc;box-shadow:none}.billing-toggle label:has(input:checked) .annual-deal{background:#000;color:#fff;border-color:#888}
