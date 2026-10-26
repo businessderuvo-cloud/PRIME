@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { openDatabase } from './src/database.mjs';
-import { livePhone, eliteModel } from './src/elite.mjs';
+import { livePhone, inboundPhone, eliteModel } from './src/elite.mjs';
 
 test('Elite fixes Vanessa LIVE to the ElevenLabs GPT 6.1 Sol model',()=>{
   assert.equal(eliteModel,'gpt-6.1-sol');
@@ -12,6 +12,13 @@ test('Elite phone numbers normalize and reject local or malformed values',()=>{
   assert.equal(livePhone('0039 333 1234567'),'+393331234567');
   assert.throws(()=>livePhone('3331234567'),/numero internazionale/);
   assert.throws(()=>livePhone('+00000000'),/numero internazionale/);
+});
+
+test('ElevenLabs SIP inbound numbers accept the assigned short trunk number safely',()=>{
+  assert.equal(inboundPhone('970824'),'970824');
+  assert.equal(inboundPhone('+39 (02) 1234-5678'),'+390212345678');
+  assert.equal(inboundPhone('sip:970824@example.com'),'');
+  assert.equal(inboundPhone('12'),'');
 });
 
 test('Elite database migrations create settings, consented call queue and conversation ledger',()=>{

@@ -10,6 +10,7 @@ const sha=value=>createHash('sha256').update(value).digest('hex');
 const clean=(value,max=4000)=>String(value||'').trim().slice(0,max);
 export const eliteModel='gpt-6.1-sol';
 export function livePhone(value){const n=String(value||'').replace(/[\s().-]/g,'').replace(/^00/,'+');if(!/^\+[1-9]\d{7,14}$/.test(n))throw new ApiError(400,'Usa un numero internazionale completo, per esempio +39 333 1234567.');return n;}
+export function inboundPhone(value){const n=String(value||'').replace(/[\s().-]/g,'').replace(/^00/,'+');return /^\+?\d{5,20}$/.test(n)?n:'';}
 export function eliteService({db,json,readBody,audit,management,rows,authorize,edition='full',env=process.env,fetcher=fetch,directory,clock=Date.now}){
   const usage=usageService(db),busy=new Set(),sessionLimits=new Map();let timer;
   function entitled(s){
@@ -37,7 +38,12 @@ export function eliteService({db,json,readBody,audit,management,rows,authorize,e
   function sessionFromToken(value){
     if(typeof value!=='string'||!/^[a-f0-9]{64}$/.test(value))throw new ApiError(401,'Sessione Vanessa non valida.');
     const row=db.prepare('SELECT t.*,m.role,u.email,tn.name tenant_name FROM elite_access_tokens t JOIN memberships m ON m.user_id=t.user_id AND m.tenant_id=t.tenant_id JOIN users u ON u.id=t.user_id JOIN tenants tn ON tn.id=t.tenant_id WHERE t.token_hash=? AND t.expires_at>?').get(sha(value),clock());
-    if(!row)throw new ApiError(401,'Sessione Vanessa scaduta.');entitled(row);return row;
+    if(!row)throw new ApiError(401,'Sessione Vanessa scaduta.');
+    if(row.scope==='phone'){
+      const configured=env.PRIME_ELEVEN_INBOUND_WEBHOOK_ENABLED&&db.prepare("SELECT 1 FROM elite_settings WHERE tenant_id=? AND phone_number_id<>''").get(row.tenant_id);
+      if(!configured)throw new ApiError(403,'La funzione telefonica non è configurata.');
+    }else entitled(row);
+    return row;
   }
   function numbers(s,contactId){
     const c=db.prepare('SELECT * FROM contacts WHERE tenant_id=? AND id=?').get(s.tenant_id,contactId);if(!c)throw new ApiError(404,'Contatto non trovato in questa agenzia.');
@@ -73,8 +79,8 @@ export function eliteService({db,json,readBody,audit,management,rows,authorize,e
     if(url.pathname==='/api/elite/inbound-init'){
       if(req.method!=='POST')throw new ApiError(405,'Metodo non disponibile.');
       const supplied=Buffer.from(String(req.headers['x-prime-secret']||'')),expected=Buffer.from(String(env.PRIME_ELEVEN_INBOUND_WEBHOOK_SECRET||''));if(!expected.length||supplied.length!==expected.length||!timingSafeEqual(supplied,expected))throw new ApiError(401,'Richiesta ElevenLabs non autenticata.');
-      const b=await readBody(req),called=String(b.called_number||'').replace(/[\s().-]/g,'').replace(/^00/,'+'),liveId=env.PRIME_ELEVEN_LIVE_AGENT_ID;
-      if(!liveId||b.agent_id!==liveId||!called.startsWith('+')){json(res,200,{});return true;}
+      const b=await readBody(req),called=inboundPhone(b.called_number),liveId=env.PRIME_ELEVEN_LIVE_AGENT_ID;
+      if(!liveId||b.agent_id!==liveId||!called){json(res,200,{});return true;}
       const row=db.prepare("SELECT st.tenant_id,st.inbound_greeting,st.instructions,st.address_style,st.phone_number_id,tn.name tenant_name,m.user_id FROM elite_settings st JOIN tenants tn ON tn.id=st.tenant_id JOIN memberships m ON m.tenant_id=st.tenant_id AND m.role='owner' WHERE st.phone_number=? AND st.phone_number_id<>'' LIMIT 1").get(called);
       if(!row){json(res,200,{});return true;}
       const a={id:'vanessa',name:'Vanessa',provider_agent_id:liveId,provider_branch_id:env.PRIME_ELEVEN_LIVE_BRANCH_ID||''};
