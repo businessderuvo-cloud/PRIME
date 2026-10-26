@@ -17,8 +17,10 @@ export function eliteService({db,json,readBody,audit,management,rows,authorize,e
   function entitled(s){
     if(s.role==='external')throw new ApiError(403,'Vanessa LIVE è disponibile solo per il team dell’agenzia.');
     const production=env.NODE_ENV==='production';
+    const paidPlan=production&&db.prepare("SELECT plan FROM plan_subscriptions WHERE tenant_id=? AND state='active' AND period_end>? ORDER BY revision DESC LIMIT 1").get(s.tenant_id,new Date(clock()).toISOString());
     const subscription=production&&db.prepare("SELECT 1 FROM ai_subscriptions WHERE tenant_id=? AND state='active' AND plan='elite'").get(s.tenant_id);
-    if(!eliteEditionAllowed({edition,production,activeSubscription:!!subscription}))throw new ApiError(403,production?'Attiva l’abbonamento Elite per usare Vanessa LIVE.':'Vanessa LIVE è disponibile nella versione Elite.');
+    const eligible=edition==='elite'||(!paidPlan&&eliteEditionAllowed({edition,production,activeSubscription:!!subscription}))||(paidPlan?.plan==='elite'&&!!subscription);
+    if(!eligible)throw new ApiError(403,production?'Attiva l’abbonamento Elite per usare Vanessa LIVE.':'Vanessa LIVE è disponibile nella versione Elite.');
   }
   function owner(s){entitled(s);if(s.role!=='owner')throw new ApiError(403,'Configurazione riservata al titolare.');}
   function settings(s){db.prepare('INSERT INTO elite_settings(tenant_id,updated_at) VALUES (?,?) ON CONFLICT DO NOTHING').run(s.tenant_id,new Date(clock()).toISOString());return db.prepare('SELECT * FROM elite_settings WHERE tenant_id=?').get(s.tenant_id);}

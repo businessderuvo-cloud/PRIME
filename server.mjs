@@ -109,6 +109,22 @@ export function createApp({
   if (!['full','base','elite'].includes(edition)) throw new Error('Edizione PRIME non valida');
   if (!Number.isSafeInteger(baseExtraSeats) || baseExtraSeats < 0) throw new Error('Posti aggiuntivi Base non validi');
   const isBase = edition === 'base';
+  function sessionEdition(s) {
+    if (edition === 'base' || edition === 'elite') return edition;
+    if (production) {
+      const paid = db.prepare("SELECT plan FROM plan_subscriptions WHERE tenant_id=? AND state='active' AND period_end>? ORDER BY revision DESC LIMIT 1").get(s.tenant_id, new Date().toISOString());
+      if (paid?.plan === 'standard') return 'base';
+      if (paid?.plan === 'pro') return 'full';
+      if (paid?.plan === 'elite') {
+        const ai = db.prepare("SELECT 1 FROM ai_subscriptions WHERE tenant_id=? AND state='active' AND plan='elite'").get(s.tenant_id);
+        return ai ? 'elite' : 'full';
+      }
+      if (paid) return 'full';
+      const legacyElite = db.prepare("SELECT 1 FROM ai_subscriptions WHERE tenant_id=? AND state='active' AND plan='elite'").get(s.tenant_id);
+      if (legacyElite) return 'elite';
+    }
+    return edition;
+  }
   const db = openDatabase(database),
     attempts = new Map(),
     dataDirectory = database && database !== ":memory:"
@@ -602,7 +618,7 @@ export function createApp({
         "Content-Security-Policy",
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       );
-      const signedForElite=url.pathname==='/app'&&(()=>{const active=currentSession(req);return !!active&&(edition==='elite'||(production&&!!db.prepare("SELECT 1 FROM ai_subscriptions WHERE tenant_id=? AND state='active' AND plan='elite'").get(active.tenant_id)));})();
+      const signedForElite=url.pathname==='/app'&&(()=>{const active=currentSession(req);return !!active&&sessionEdition(active)==='elite';})();
       if(url.pathname==='/sorelle-assistenti'||signedForElite){
         res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self'; connect-src 'self' wss://api.elevenlabs.io https://api.elevenlabs.io; media-src 'self' blob:; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
         res.setHeader('Permissions-Policy','microphone=(self), camera=()');
@@ -791,7 +807,8 @@ export function createApp({
             403,
             "Sessione di sicurezza non valida: aggiorna la pagina",
           );
-        if(isBase && !baseApiAllowed(url.pathname)) throw new ApiError(403,'Funzione non disponibile in PRIME Base.');
+        const accountEdition=sessionEdition(s);
+        if(accountEdition==='base' && !baseApiAllowed(url.pathname)) throw new ApiError(403,'Questa funzione è inclusa da PRIME Pro in su.');
         if(await backupDevices.route(req,res,url,s))return;
         if(await didit.route(req,res,url,s))return;
         if(await handlePlanUpgrade(req,res,url,s))return;
@@ -805,8 +822,8 @@ export function createApp({
             role: s.role,
             theme: s.theme,
             csrf: s.csrf,
-            edition: edition==='base'?'base':(edition==='elite'||(production&&!!db.prepare("SELECT 1 FROM ai_subscriptions WHERE tenant_id=? AND state='active' AND plan='elite'").get(s.tenant_id))?'elite':edition),
-            human_seat_limit: isBase ? 2 + baseExtraSeats : null,
+            edition: accountEdition,
+            human_seat_limit: accountEdition==='base' ? 2 + baseExtraSeats : null,
             environment: demo ? "demo" : "local",
             server_now: Date.now(),
           });
@@ -868,7 +885,7 @@ export function createApp({
             if (db.prepare("SELECT id FROM users WHERE email=?").get(email)) throw new ApiError(409, "Email già utilizzata. Scegli un altro indirizzo per il nuovo account.");
             const password = await passwordHash(randomBytes(32).toString("hex")), id = randomUUID();
             transaction(db, () => {
-              if (isBase && db.prepare('SELECT COUNT(*) count FROM memberships WHERE tenant_id=?').get(s.tenant_id).count >= 2 + baseExtraSeats) throw new ApiError(403,'PRIME Base include 2 agenti umani, titolare compreso. I posti aggiuntivi richiedono attivazione e costano 50 €/mese ciascuno.');
+              if (accountEdition==='base' && db.prepare('SELECT COUNT(*) count FROM memberships WHERE tenant_id=?').get(s.tenant_id).count >= 2 + baseExtraSeats) throw new ApiError(403,'PRIME Standard include 2 agenti umani, titolare compreso. I posti aggiuntivi richiedono attivazione e costano 50 €/mese ciascuno.');
               db.prepare("INSERT INTO users(id,email,password,email_verified) VALUES (?,?,?,0)").run(id, email, password);
               db.prepare("INSERT INTO memberships(user_id,tenant_id,role) VALUES (?,?,?)").run(id, s.tenant_id, "agent");
               audit(s, "agent.create", id);
