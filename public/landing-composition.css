@@ -100,3 +100,6 @@ html[data-theme=light]{--nav-text:#4b5360;--nav-active:#101820}
 .site-header nav a:focus-visible{outline-color:var(--nav-active)}
 
 .site-footer{flex-wrap:wrap}.site-footer a[href^="mailto:"]{overflow-wrap:anywhere;max-width:100%}
+
+/* On phones the plan introduction starts after the complete hero photograph. */
+@media(max-width:560px){.hero-photo{flex-shrink:0;margin-bottom:0}.plans-section{margin-top:24px;padding-top:0}}
