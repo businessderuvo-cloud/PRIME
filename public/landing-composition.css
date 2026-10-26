@@ -94,7 +94,7 @@
 .plan:last-child .price strong{font-size:clamp(16px,12cqi,24px)}
 /* Theme-aware silver navigation: readable in normal, hover and keyboard states. */
 :root{--nav-text:#c6c9cf;--nav-active:#f2f3f5}
-html[data-theme=light]{--nav-text:#4b5360;--nav-active:#101820}
+html[data-theme=light]{--nav-text:#000;--nav-active:#000}
 .site-header nav a{color:var(--nav-text);text-shadow:none}
 .site-header nav a:hover,.site-header nav a:focus-visible,.site-header nav a[aria-current]{color:var(--nav-active);text-decoration:underline;text-underline-offset:7px}
 .site-header nav a:focus-visible{outline-color:var(--nav-active)}

@@ -45,7 +45,7 @@
 @media(prefers-reduced-motion:reduce){.typing-dots i{animation:none;opacity:.8}}
 /* Theme-aware silver navigation: readable in normal, hover and keyboard states. */
 :root{--nav-text:#c6c9cf;--nav-active:#f2f3f5}
-html[data-theme=light]{--nav-text:#4b5360;--nav-active:#101820}
+html[data-theme=light]{--nav-text:#000;--nav-active:#000}
 .site-header nav a{color:var(--nav-text);text-shadow:none}
 .site-header nav a:hover,.site-header nav a:focus-visible,.site-header nav a[aria-current]{color:var(--nav-active);text-decoration:underline;text-underline-offset:7px}
 .site-header nav a:focus-visible{outline-color:var(--nav-active)}
@@ -67,3 +67,5 @@ html[data-theme=light]{--nav-text:#4b5360;--nav-active:#101820}
 @media(max-width:700px){#veronica-chat:before{background-size:auto 620px;background-position:calc(50% + 24px) top}#veronica-chat .meet-header{min-height:390px}.site-header{gap:12px}.site-header>nav{display:flex;flex-basis:100%;gap:6px 18px}.site-header .brand{flex-basis:133px}.site-header .brand img{width:100%}}
 
 .browser-call-actions .button.primary,.browser-call-actions .button.primary:hover,.browser-call-actions .button.primary:focus-visible{background:#000;color:#fff;border-color:#888}
+
+html[data-theme=light] .bubble.user{background:#eee;color:#000}html[data-theme=light] .bubble.user span{color:#444}
