@@ -1,6 +1,7 @@
 import { mountRepeatableRecaps } from "./repeatable-recaps.js";
 import { unitHighlights, unitAgentIds } from "./territory-highlights.js";
 import { groupUnitsByFloor } from "./territory-floors.js";
+import { openEliteCallDialog } from "./elite-ui.js";
 const sortBy = (rows, key = "title") =>
   [...rows].sort((a, b) =>
     String(a[key] || "").localeCompare(String(b[key] || ""), "it", {
@@ -459,7 +460,7 @@ export function renderTerritory(ctx) {
     const entity = unit ? "units" : building ? "buildings" : "streets",
       row = unit || building || street,
       tab = selection.tab || "scheda";
-    const header = `<div class="territory-breadcrumb"><button data-pick="streets" data-id="${street.id}">${esc(street.city)} · ${esc(street.title)}</button>${building ? `<span>/</span><button data-pick="buildings" data-id="${building.id}">Civico ${esc(building.title)}</button>` : ""}${unit ? `<span>/</span><span>Interno ${esc(unit.title)}</span>` : ""}</div><header class="territory-profile-header"><div><p class="eyebrow">${unit ? "APPARTAMENTO" : building ? "CIVICO E CONDOMINIO" : "VIA E TERRITORIO"}</p><h2>${esc(unit ? "Interno " + unit.title : building ? street.title + " " + building.title : street.title)}</h2><p>${esc(unit ? unitLabel(unit) : [street.city, street.district, street.postal_code].filter(Boolean).join(" · "))}</p></div><div class="territory-header-actions">${building ? `<button class="primary" data-add-unit="${building.id}">+ Aggiungi appartamento</button>` : `<button class="primary" data-add-building="${street.id}">+ Aggiungi civico</button>`}<button class="secondary" id="territory-edit">Modifica scheda</button></div></header><nav class="territory-tabs" aria-label="Sezioni della scheda">${[["scheda", unit ? "Appartamento" : building ? "Appartamenti" : "Civici"], ...(unit ? [["persone", "Persone"]] : building ? [["condominio", "Condominio"]] : []), ["storico", "Storico contatti"], ...(building ? [["foto", "Foto"]] : [])].map(([key, label]) => `<button data-tab="${key}" class="${tab === key ? "selected" : ""}">${label}${key === "persone" ? " · " + peopleOf(unit).length : ""}</button>`).join("")}</nav>`;
+    const header = `<div class="territory-breadcrumb"><button data-pick="streets" data-id="${street.id}">${esc(street.city)} · ${esc(street.title)}</button>${building ? `<span>/</span><button data-pick="buildings" data-id="${building.id}">Civico ${esc(building.title)}</button>` : ""}${unit ? `<span>/</span><span>Interno ${esc(unit.title)}</span>` : ""}</div><header class="territory-profile-header"><div><p class="eyebrow">${unit ? "APPARTAMENTO" : building ? "CIVICO E CONDOMINIO" : "VIA E TERRITORIO"}</p><h2>${esc(unit ? "Interno " + unit.title : building ? street.title + " " + building.title : street.title)}</h2><p>${esc(unit ? unitLabel(unit) : [street.city, street.district, street.postal_code].filter(Boolean).join(" · "))}</p></div><div class="territory-header-actions">${building ? `<button class="primary" data-add-unit="${building.id}">+ Aggiungi appartamento</button>` : `<button class="primary" data-add-building="${street.id}">+ Aggiungi civico</button>`}${unit&&state.me.edition==='elite'?'<button class="secondary" id="elite-unit-call">Chiama con Vanessa</button>':''}<button class="secondary" id="territory-edit">Modifica scheda</button></div></header><nav class="territory-tabs" aria-label="Sezioni della scheda">${[["scheda", unit ? "Appartamento" : building ? "Appartamenti" : "Civici"], ...(unit ? [["persone", "Persone"]] : building ? [["condominio", "Condominio"]] : []), ["storico", "Storico contatti"], ...(building ? [["foto", "Foto"]] : [])].map(([key, label]) => `<button data-tab="${key}" class="${tab === key ? "selected" : ""}">${label}${key === "persone" ? " · " + peopleOf(unit).length : ""}</button>`).join("")}</nav>`;
     let content = "";
     if (tab === "storico") content = timeline(street, building, unit);
     else if (tab === "persone" && unit) {
@@ -543,6 +544,7 @@ export function renderTerritory(ctx) {
     });
     document.querySelector("#territory-edit").onclick = () =>
       openEditor(entity, row);
+    target.querySelector('#elite-unit-call')?.addEventListener('click',()=>void openEliteCallDialog({api,unitId:unit.id,esc}));
     document.querySelectorAll("[data-tab]").forEach(
       (b) =>
         (b.onclick = () => {

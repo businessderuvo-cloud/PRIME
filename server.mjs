@@ -1,3 +1,4 @@
+import { eliteService } from './src/elite.mjs';
 import { demoCallbackService } from './src/demo-callback.mjs';
 import { planUpgradeService } from './src/plan-upgrades.mjs';
 import { billingService, publicOverage } from './src/billing.mjs';
@@ -105,7 +106,7 @@ export function createApp({
   authEmailFrom = process.env.PRIME_EMAIL_FROM || "",
   diditOptions,
 } = {}) {
-  if (!['full','base'].includes(edition)) throw new Error('Edizione PRIME non valida');
+  if (!['full','base','elite'].includes(edition)) throw new Error('Edizione PRIME non valida');
   if (!Number.isSafeInteger(baseExtraSeats) || baseExtraSeats < 0) throw new Error('Posti aggiuntivi Base non validi');
   const isBase = edition === 'base';
   const db = openDatabase(database),
@@ -589,6 +590,7 @@ export function createApp({
   const connect = connectService({db,directory:database===':memory:'?null:path.dirname(path.resolve(database||path.join(root,'data/prime.sqlite'))),fetcher:connectFetch,json,readBody,audit,interval:isBase?0:connectInterval,saveAppointment:(session,record,delta)=>saveEntity('appointments',{data:{...Object.fromEntries(Object.keys(schema.appointments.fields).map(key=>[key,record?.[key]])),...delta},version:record?.version},session,record?.id)});
   const portalRoute = portalService({db,readBody,json});
   const assistantManager = assistantManagement({db,readBody,json,audit,previewSave:previewEntity,saveEntity,deleteEntity,authorize,rows});
+  const elite = eliteService({db,json,readBody,audit,management:assistantManager,rows,authorize,edition,fetcher:connectFetch,directory:dataDirectory});
   const assistant = assistantService({db,fetcher:assistantFetch,apiKey:assistantApiKey,model:assistantModel,readBody,json,audit,management:assistantManager});
   const server = http.createServer(async (req, res) => {
     try {
@@ -600,7 +602,8 @@ export function createApp({
         "Content-Security-Policy",
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       );
-      if(url.pathname==='/sorelle-assistenti'){
+      const signedForElite=url.pathname==='/app'&&(()=>{const active=currentSession(req);return !!active&&(edition==='elite'||(production&&!!db.prepare("SELECT 1 FROM ai_subscriptions WHERE tenant_id=? AND state='active' AND plan='elite'").get(active.tenant_id)));})();
+      if(url.pathname==='/sorelle-assistenti'||signedForElite){
         res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self'; connect-src 'self' wss://api.elevenlabs.io https://api.elevenlabs.io; media-src 'self' blob:; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
         res.setHeader('Permissions-Policy','microphone=(self), camera=()');
       }
@@ -608,6 +611,7 @@ export function createApp({
         res.setHeader("Strict-Transport-Security", "max-age=31536000");
       if (url.pathname === '/' && method === 'GET' && ['verify','reset','invite','connect','mail'].some(key=>url.searchParams.has(key))) { res.writeHead(302,{Location:'/app'+url.search,'Cache-Control':'no-store'});res.end();return; }
       if (isBase && (/^\/api\/(?:public|connect|assistant|portals|signatures|contactout|webhooks)(?:\/|$)/.test(url.pathname))) throw new ApiError(403,'Funzione non disponibile in PRIME Base.');
+      if(await elite.publicRoute(req,res,url))return;
       if(!isBase && await handleDemoCallback(req,res,url))return;
       if (url.pathname === '/api/public/pricing' && method === 'GET') return json(res,200,{overage:publicOverage()});
       if (url.pathname === "/healthz" && method === "GET") {
@@ -801,7 +805,7 @@ export function createApp({
             role: s.role,
             theme: s.theme,
             csrf: s.csrf,
-            edition,
+            edition: edition==='base'?'base':(edition==='elite'||(production&&!!db.prepare("SELECT 1 FROM ai_subscriptions WHERE tenant_id=? AND state='active' AND plan='elite'").get(s.tenant_id))?'elite':edition),
             human_seat_limit: isBase ? 2 + baseExtraSeats : null,
             environment: demo ? "demo" : "local",
             server_now: Date.now(),
@@ -993,6 +997,7 @@ export function createApp({
         if (await signatures.route(req,res,url,s)) return;
         if (await contactOut.route(req,res,url,s)) return;
         if (await assistantManager.route(req,res,url,s)) return;
+        if (await elite.route(req,res,url,s)) return;
         if (await assistant.route(req,res,url,s)) return;
         if (await portalRoute(req,res,url,s)) return;
         if (await handleTerritory(req, res, url, s)) return;
@@ -1140,6 +1145,9 @@ export function createApp({
       const files = {
         "/edition.js":"edition.js",
         "/upgrade.js":"upgrade.js",
+        "/elite-ui.js":"elite-ui.js",
+        "/elite.css":"elite.css",
+        "/elite-audio.js":"elite-audio.js",
 "/vendor/elevenlabs/client.js":"vendor/elevenlabs/client.js",
 "/vendor/elevenlabs/client.js.LEGAL.txt":"vendor/elevenlabs/client.js.LEGAL.txt",
 "/vendor/elevenlabs/rawAudioProcessor.js":"vendor/elevenlabs/rawAudioProcessor.js",
@@ -1294,6 +1302,8 @@ export function createApp({
     }
   });
   server.on("listening",backups.start);
+  server.on("listening",elite.start);
+  server.on("close",elite.close);
   server.on("close",backups.close);
   server.on("close",connect.close);
   return { server, db, connect };
