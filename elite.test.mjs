@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { openDatabase } from './src/database.mjs';
-import { livePhone, inboundPhone, eliteModel, eliteEditionAllowed } from './src/elite.mjs';
+import { livePhone, inboundPhone, eliteModel, eliteEditionAllowed, eliteService } from './src/elite.mjs';
 
 test('Elite fixes Vanessa LIVE to the ElevenLabs GPT 6.1 Sol model',()=>{
   assert.equal(eliteModel,'gpt-6.1-sol');
@@ -12,6 +12,19 @@ test('Elite has a standalone edition while the shared app still requires an acti
   assert.equal(eliteEditionAllowed({edition:'full',production:true,activeSubscription:false}),false);
   assert.equal(eliteEditionAllowed({edition:'full',production:true,activeSubscription:true}),true);
   assert.equal(eliteEditionAllowed({edition:'full',production:false}),false);
+});
+
+test('Elite routes stay unavailable to Standard/Pro accounts in the shared production app',async()=>{
+  const db=openDatabase(':memory:');
+  try{
+    db.prepare('INSERT INTO tenants(id,name) VALUES (?,?)').run('edition-test','PRIME');
+    const responses=[];
+    const make=edition=>eliteService({db,json:(_res,status,payload)=>responses.push({status,payload}),readBody:async()=>({}),audit:()=>{},management:{},rows:()=>[],authorize:()=>{},edition,env:{NODE_ENV:'production'}});
+    const req={method:'GET'},res={},url=new URL('https://prime.test/api/elite/status'),session={tenant_id:'edition-test',user_id:'owner',role:'owner'};
+    await assert.rejects(make('full').route(req,res,url,session),error=>error.status===403);
+    assert.equal(await make('elite').route(req,res,url,session),true);
+    assert.equal(responses.at(-1).payload.name,'Vanessa');
+  }finally{db.close();}
 });
 
 test('Elite phone numbers normalize and reject local or malformed values',()=>{
