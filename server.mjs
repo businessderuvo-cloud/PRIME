@@ -106,22 +106,22 @@ export function createApp({
   authEmailFrom = process.env.PRIME_EMAIL_FROM || "",
   diditOptions,
 } = {}) {
-  if (!['full','base','elite'].includes(edition)) throw new Error('Edizione PRIME non valida');
+  if (!['full','base','vip','elite'].includes(edition)) throw new Error('Edizione PRIME non valida');
   if (!Number.isSafeInteger(baseExtraSeats) || baseExtraSeats < 0) throw new Error('Posti aggiuntivi Base non validi');
   const isBase = edition === 'base';
   function sessionEdition(s) {
-    if (edition === 'base' || edition === 'elite') return edition;
+    if (edition === 'base' || edition === 'vip' || edition === 'elite') return edition;
     if (production) {
       const paid = db.prepare("SELECT plan FROM plan_subscriptions WHERE tenant_id=? AND state='active' AND period_end>? ORDER BY revision DESC LIMIT 1").get(s.tenant_id, new Date().toISOString());
       if (paid?.plan === 'standard') return 'base';
       if (paid?.plan === 'pro') return 'full';
-      if (paid?.plan === 'elite') {
-        const ai = db.prepare("SELECT 1 FROM ai_subscriptions WHERE tenant_id=? AND state='active' AND plan='elite'").get(s.tenant_id);
-        return ai ? 'elite' : 'full';
+      if (['vip','elite'].includes(paid?.plan)) {
+        const ai = db.prepare("SELECT 1 FROM ai_subscriptions WHERE tenant_id=? AND state='active' AND plan=?").get(s.tenant_id,paid.plan);
+        return ai ? paid.plan : 'full';
       }
       if (paid) return 'full';
-      const legacyElite = db.prepare("SELECT 1 FROM ai_subscriptions WHERE tenant_id=? AND state='active' AND plan='elite'").get(s.tenant_id);
-      if (legacyElite) return 'elite';
+      const legacyAI = db.prepare("SELECT plan FROM ai_subscriptions WHERE tenant_id=? AND state='active' AND plan IN ('vip','elite')").get(s.tenant_id);
+      if (legacyAI) return legacyAI.plan;
     }
     return edition;
   }
@@ -606,7 +606,7 @@ export function createApp({
   const connect = connectService({db,directory:database===':memory:'?null:path.dirname(path.resolve(database||path.join(root,'data/prime.sqlite'))),fetcher:connectFetch,json,readBody,audit,interval:isBase?0:connectInterval,saveAppointment:(session,record,delta)=>saveEntity('appointments',{data:{...Object.fromEntries(Object.keys(schema.appointments.fields).map(key=>[key,record?.[key]])),...delta},version:record?.version},session,record?.id)});
   const portalRoute = portalService({db,readBody,json});
   const assistantManager = assistantManagement({db,readBody,json,audit,previewSave:previewEntity,saveEntity,deleteEntity,authorize,rows});
-  const elite = eliteService({db,json,readBody,audit,management:assistantManager,rows,authorize,edition,fetcher:connectFetch,directory:dataDirectory});
+  const elite = eliteService({db,json,readBody,audit,management:assistantManager,rows,authorize,edition,production,fetcher:connectFetch,directory:dataDirectory});
   const assistant = assistantService({db,fetcher:assistantFetch,apiKey:assistantApiKey,model:assistantModel,readBody,json,audit,management:assistantManager});
   const server = http.createServer(async (req, res) => {
     try {
@@ -618,7 +618,7 @@ export function createApp({
         "Content-Security-Policy",
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       );
-      const signedForElite=url.pathname==='/app'&&(()=>{const active=currentSession(req);return !!active&&sessionEdition(active)==='elite';})();
+      const signedForElite=['/','/app'].includes(url.pathname)&&(()=>{const active=currentSession(req);return !!active&&['vip','elite'].includes(sessionEdition(active));})();
       if(url.pathname==='/sorelle-assistenti'||signedForElite){
         res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self'; connect-src 'self' wss://api.elevenlabs.io https://api.elevenlabs.io; media-src 'self' blob:; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
         res.setHeader('Permissions-Policy','microphone=(self), camera=()');
@@ -1186,6 +1186,11 @@ export function createApp({
 "/assets/vanessa-intro.mp4":"assets/vanessa-intro.mp4",
 "/assets/veronica-poster.png":"assets/veronica-poster.png",
 "/assets/vanessa-poster.png":"assets/vanessa-poster.png",
+"/assets/vanessa-icon-v2.png":"assets/vanessa-icon-v2.png",
+"/assets/vanessa-face-icon.png":"assets/vanessa-face-icon.png",
+"/assistant-avatar-v5-chat-crop-v3.png":"assistant-avatar-v5-chat-crop-v3.png",
+"/assistant-avatar-light-chat-crop-v3.png":"assistant-avatar-light-chat-crop-v3.png",
+
 "/assets/manrope-variable.ttf":"assets/manrope-variable.ttf",
         "/": isBase ? "base.html" : "landing.html",
         "/app": isBase?"base.html":"index.html",
@@ -1227,11 +1232,15 @@ export function createApp({
         "/assistant-avatar-v3.png": "assistant-avatar-v3.png",
         "/assistant-avatar-v4.png": "assistant-avatar-v4.png",
         "/assistant-avatar-v5.png": "assistant-avatar-v5.png",
+        "/assistant-avatar-v5-thumb-v2.png": "assistant-avatar-v5-thumb-v2.png",
         "/assistant-avatar-light.png": "assistant-avatar-light.png",
+        "/assistant-avatar-light-thumb-v2.png": "assistant-avatar-light-thumb-v2.png",
         "/assistant-avatar-dark.webp": "assistant-avatar-dark.webp",
         "/assistant-avatar-light.webp": "assistant-avatar-light.webp",
         "/assistant-avatar-dark-thumb.webp": "assistant-avatar-dark-thumb.webp",
         "/assistant-avatar-light-thumb.webp": "assistant-avatar-light-thumb.webp",
+
+
         "/connect.css": "connect.css",
         "/didit.js": "didit.js",
         "/datagma.css": "datagma.css",

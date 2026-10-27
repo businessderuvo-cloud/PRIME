@@ -1,4 +1,4 @@
-import { renderElite, mountEliteWidget, openEliteCallDialog } from './elite-ui.js';
+import { renderElite, mountEliteWidget, openEliteCallDialog } from './elite-ui.js?v=20261027-36';
 import { renderUpgrade } from './upgrade.js';
 import { baseExcludedEntities, baseExcludedPages } from './edition.js';
 import {startDocumentRenewalNotifications} from './didit.js';
@@ -124,12 +124,12 @@ function toast(message) {
   }
 }
 function assistantAvatarSrc() {
-  if (state.me?.edition === "elite") return "/assets/vanessa-poster.png";
+  if (["vip","elite"].includes(state.me?.edition)) return "/assets/vanessa-poster.png";
   return state.me?.theme === "light" ? "/assistant-avatar-light.png?v=20261026" : "/assistant-avatar-v5.png?v=20261026";
 }
 function assistantAvatarThumbSrc() {
-  if (state.me?.edition === "elite") return "/assets/vanessa-poster.png";
-  return state.me?.theme === "light" ? "/assistant-avatar-light.png?v=20261026" : "/assistant-avatar-v5.png?v=20261026";
+  if (["vip","elite"].includes(state.me?.edition)) return "/assets/vanessa-icon-v2.png";
+  return state.me?.theme === "light" ? "/assistant-avatar-light-chat-crop-v3.png" : "/assistant-avatar-v5-chat-crop-v3.png";
 }
 const assistantShortcuts = [
   { label: "Memorizza", prompt: "Ricorda che " },
@@ -415,8 +415,8 @@ function shell() {
   stopWpsClock?.();
   document.documentElement.dataset.theme = state.me.theme;
   app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => k === "section" ? `<p class="nav-section-label">${label}</p>` : `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><div class="avatar">${esc(state.me.tenant.slice(0, 2).toUpperCase())}</div><div><strong>${esc(state.me.tenant)}</strong><small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off"><span class="key-hint">/</span><div id="global-results" class="search-results" hidden></div></div><button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button><span class="workspace-badge">ANTEPRIMA DI SVILUPPO</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><a href="mailto:phoenix@primegestionale.it">Assistenza: phoenix@primegestionale.it</a><a href="/privacy">Privacy</a><span>Versione 0.4 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
-  if (!isBase) { mountMailInbox(); if(state.me.edition === "elite") mountEliteWidget({api,esc,state,navigate,loadData}); else mountAssistantChatWidget(); }
-  if(state.me.edition === "elite") {document.querySelector('[data-page="assistant"] span').textContent="Vanessa";document.querySelector(".sidebar-label").textContent="PRIME ELITE";}
+  if (!isBase) { mountMailInbox(); if(["vip","elite"].includes(state.me.edition)) mountEliteWidget({api,esc,state,navigate,loadData}); else mountAssistantChatWidget(); }
+  if(["vip","elite"].includes(state.me.edition)) {document.querySelector('[data-page="assistant"] span').textContent="Vanessa";document.querySelector(".sidebar-label").textContent=state.me.edition === "vip" ? "PRIME VIP" : "PRIME ELITE";}
   if (isBase) { document.title = "PRIME Base · Gestionale immobiliare"; document.querySelector(".sidebar-label").textContent = "PRIME BASE · STANDARD"; }
   const compactBrand = document.createElement("div");
   compactBrand.className = "compact-brand";
@@ -712,7 +712,7 @@ async function renderPage() {
     }
     return;
   }
-  if (page === "assistant" && state.me.edition === "elite") { await renderElite({main,api,esc,state,loadData});return; }
+  if (page === "assistant" && ["vip","elite"].includes(state.me.edition)) { await renderElite({main,api,esc,state,loadData});return; }
   if (page === "assistant") {
     const status = await api("/api/assistant/status");
     const feedbackItems = status.isDeveloper ? await api("/api/assistant/feedback") : null;

@@ -17,3 +17,149 @@
 .elite-floating-close{position:absolute;top:8px;right:8px;z-index:3}.elite-floating-content{padding:0}.elite-floating-content .elite-heading{display:grid;grid-template-columns:46% minmax(0,1fr);align-items:stretch;gap:0;min-height:0;margin:0;border:0;border-radius:0;overflow:hidden}.elite-floating-content .elite-heading .elite-portrait{display:block;width:100%;height:auto;min-height:0;max-height:310px;object-fit:contain;object-position:top center;mask-image:none;filter:none;border:0;border-radius:0;align-self:start}.elite-floating-content .elite-heading>div{padding:32px 20px 16px;align-self:center}.elite-floating-content .elite-heading .eyebrow{display:none}.elite-floating-content .elite-heading h1{font-size:1.85rem}.elite-floating-content .elite-heading p{line-height:1.5}.elite-floating-content .elite-chat{border:0;border-radius:0;background:transparent;box-shadow:none;padding:0 16px 16px}.elite-floating-content .elite-chat .elite-note,.elite-floating-content .elite-card-head>div{display:none}.elite-floating-content .elite-card-head{justify-content:flex-end;margin:0 0 10px}.elite-floating-content .elite-mode{display:flex;align-items:center;font-size:.85rem}.elite-floating-content .elite-chat-log{height:200px}.elite-floating-content .elite-voice-controls{font-size:.85rem}.elite-floating-content .elite-queue,.elite-floating-content .elite-usage,.elite-floating-content .elite-settings,.elite-floating-content .elite-extra{display:none}.elite-floating-panel{bottom:6.5rem}
 @media(max-width:600px){.elite-floating-content .elite-heading{grid-template-columns:46% minmax(0,1fr)}.elite-floating-content .elite-heading .elite-portrait{height:auto;max-height:280px}.elite-floating-content .elite-heading>div{padding:28px 12px 12px}.elite-floating-content .elite-heading h1{font-size:1.5rem}.elite-floating-content .elite-heading>div>p:last-child{padding:0;font-size:.82rem}.elite-widget-launch,.elite-widget-avatar{width:64px;height:64px}.elite-floating-content .elite-card-head{align-items:flex-end}.elite-floating-content .elite-chat-log{height:180px}}
 .elite-floating-content .elite-heading .elite-portrait{max-height:none;object-fit:contain;height:auto}
+
+/* The avatar needs a real square box: an inline span ignores width and height. */
+.elite-widget-avatar{display:block;overflow:hidden;border-radius:50%}
+.elite-widget-avatar img{width:200%;height:auto;left:-44%;top:-12%;object-fit:contain;object-position:center;image-rendering:high-quality}
+.elite-floating-content .elite-heading .elite-portrait{image-rendering:high-quality;opacity:1}
+
+/* Centred square portrait for Vanessa chat launcher. */
+.elite-widget-avatar img{width:100%;height:100%;left:0;top:0;object-fit:cover;object-position:center;border-radius:50%;image-rendering:auto}
+
+/* Restore Vanessa's previous chat icon and remove the fade under her large portrait. */
+.elite-widget-avatar img{width:100%;height:100%;left:0;top:0;object-fit:cover;object-position:center top;top:3%;transform:scale(1.55);transform-origin:50% 0%;border-radius:0;image-rendering:auto}
+.elite-heading .elite-portrait{mask-image:none;border:0;border-radius:0}
+
+/* Remove the gap beneath Vanessa's large portrait by stretching it to the heading row. */
+.elite-heading{align-items:stretch;margin-bottom:0}
+.elite-heading .elite-portrait{display:block;height:auto;min-height:0;max-height:none;align-self:stretch;object-fit:cover;object-position:50% 18%;mask-image:none;border:0;border-radius:0}
+
+/* Use the supplied face close-up only in Vanessa's circular chat launcher. */
+.elite-widget-avatar img{width:100%;height:100%;left:0;top:0;object-fit:cover;object-position:center;transform:none;border-radius:0}
+
+/* Match Veronica's mobile profile: portrait first, text wraps below, no divider. */
+@media(max-width:850px){
+  .elite-heading{position:relative;display:flex;flex-direction:row;flex-wrap:wrap;align-items:flex-start;column-gap:16px;row-gap:0;margin:0;padding:0;border:0;overflow:visible}
+  .elite-heading .elite-portrait{position:static;display:block;flex:0 1 min(280px,100%);width:min(280px,100%);height:auto;min-height:0;max-height:none;align-self:flex-start;object-fit:cover;object-position:50% 18%;mask-image:none;border:0;border-radius:0;box-shadow:none}
+  .elite-heading>div{min-width:0;flex:1 1 220px;padding:0}
+  .elite-heading .elite-live-pill{position:absolute;right:.5rem;bottom:.5rem;margin:0}
+  .elite-widget-launch,.elite-widget-avatar{width:64px;height:64px}
+}
+@media(max-width:600px){.elite-floating-panel{right:12px;bottom:88px;width:min(420px,calc(100vw - 24px));height:min(600px,calc(100dvh - 24px))}}
+@media(min-width:851px){.elite-heading{margin-bottom:0}.elite-heading .elite-portrait{mask-image:none;border:0;border-radius:0;box-shadow:none}}
+.elite-widget-launch{touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}.elite-widget-launch:active{cursor:grabbing}
+.elite-floating-content .elite-chat-log{border-top:0}
+
+/* Vanessa's floating chat: larger borderless portrait, compact right column, clear separators. */
+.elite-floating-panel{width:min(640px,calc(100vw - 2rem));height:min(810px,calc(100dvh - 8rem));display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto}
+.elite-floating-content{height:auto;min-height:100%;display:flex;flex-direction:column;padding:0}
+.elite-floating-content .elite-heading{flex:none;display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);align-items:center;gap:0;min-height:0;margin:0;padding:14px 22px 12px 16px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;overflow:hidden}
+.elite-floating-content .elite-heading .elite-portrait{display:block;width:100%;height:300px;max-height:300px;align-self:center;object-fit:contain;object-position:center;border:0;border-radius:0;box-shadow:none;transform:none}
+.elite-floating-content .elite-heading>div{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;padding:8px 4px 8px 16px}
+.elite-floating-content .elite-heading .eyebrow,.elite-floating-content .elite-live-pill{display:none}
+.elite-floating-content .elite-heading h1{margin:0;font-size:1.8rem}
+.elite-floating-content .elite-heading>div>p:not(.eyebrow){max-width:none;margin:0;line-height:1.5}
+.elite-floating-content .elite-heading .elite-mode{display:grid;gap:5px;margin-top:2px;font-size:.9rem}
+.elite-floating-content .elite-heading .elite-mode select{width:min(220px,100%);min-width:0}
+.elite-floating-content .elite-grid{display:flex;flex:0 0 auto;min-height:0;overflow:visible}
+.elite-floating-content .elite-chat{display:flex;flex:none;min-height:0;flex-direction:column;gap:8px;overflow:visible;padding:8px 14px 14px;border:0;border-radius:0;background:transparent;box-shadow:none}
+.elite-floating-content .elite-card-head,.elite-floating-content .elite-note{display:none}
+.elite-floating-content .elite-chat-log{flex:none;height:160px;min-height:120px;overflow:auto;padding:10px 12px 10px 4px;border:0;border-right:1px solid var(--line);border-radius:0;background:transparent}
+.elite-floating-content .elite-message.is-agent{max-width:100%;padding:8px 4px;border:0;border-radius:0;background:transparent;box-shadow:none}
+.elite-floating-content .elite-shortcuts{flex:none;max-height:76px;overflow:auto;margin:0;padding-top:9px;border-top:1px solid var(--line)}
+.elite-floating-content .elite-chat-form{flex:none;margin:0;padding-top:9px;border-top:1px solid var(--line)}
+.elite-floating-content .elite-chat-form>div{align-items:stretch}
+.elite-floating-content .elite-chat-form textarea{min-height:54px;max-height:110px;resize:vertical}
+.elite-floating-content .elite-voice-controls{display:flex;flex:none;flex-wrap:wrap;align-items:center;gap:8px;margin:0;padding-top:9px;border-top:1px solid var(--line)}
+.elite-floating-content .elite-copilot-sources{flex:none;max-height:130px;overflow:auto;margin:0;padding:9px 0 0;border:0;border-top:1px solid var(--line)}
+.elite-floating-content .elite-queue,.elite-floating-content .elite-usage,.elite-floating-content .elite-settings,.elite-floating-content .elite-extra{display:none}
+.elite-floating-close{border:0;border-radius:50%;background:transparent;box-shadow:none}
+.elite-floating-close:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.elite-widget-launch{width:72px;height:72px;padding:0;border:0;border-radius:50%;overflow:hidden;background:var(--surface);box-shadow:0 0 0 1.5px #c5c9cf,0 0 15px 4px rgba(205,212,222,.58),0 7px 18px rgba(0,0,0,.42);touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.elite-widget-launch:active{cursor:grabbing}
+.elite-widget-avatar{display:block;position:relative;width:100%;height:100%;overflow:hidden;border-radius:50%;background:var(--surface)}
+.elite-widget-avatar img{position:absolute;width:100%;height:100%;left:0;top:0;object-fit:cover;object-position:center;border-radius:0;transform:translateY(-4%) translateX(-6%) scale(1.25);transform-origin:50% 62%;image-rendering:auto}
+:root[data-theme="light"] .elite-widget-launch{box-shadow:none}
+.elite-floating-root{position:fixed;inset:0;z-index:70;pointer-events:none;isolation:isolate}
+.elite-floating-root .elite-widget-launch{position:absolute;pointer-events:auto}
+.elite-floating-root .elite-floating-panel{pointer-events:auto;z-index:71}
+@media(max-width:600px){
+  .elite-floating-panel{right:12px;bottom:88px;width:calc(100vw - 24px);height:min(600px,calc(100dvh - 6.7rem))}
+  .elite-floating-content .elite-heading{grid-template-columns:minmax(0,42%) minmax(0,1fr);padding:12px 40px 10px 12px}
+  .elite-floating-content .elite-heading .elite-portrait{height:240px;max-height:240px}
+  .elite-floating-content .elite-heading>div{gap:6px;padding:8px 4px 8px 12px}
+  .elite-floating-content .elite-heading h1{font-size:1.5rem}
+  .elite-floating-content .elite-heading>div>p:not(.eyebrow){font-size:.86rem}
+  .elite-floating-content .elite-chat{padding:8px 12px 12px}
+  .elite-floating-content .elite-chat-log{height:135px;min-height:105px}
+  .elite-floating-content .elite-mode{align-items:flex-start}
+  .elite-floating-content .elite-mode select{width:min(210px,100%)}
+  .elite-floating-content .elite-shortcuts{max-height:64px}
+  .elite-widget-launch,.elite-widget-avatar{width:64px;height:64px}
+}
+@media(max-height:560px){.elite-floating-panel{height:calc(100dvh - 24px)}.elite-floating-content .elite-heading .elite-portrait{height:230px;max-height:230px}}
+
+.elite-floating-panel{box-sizing:border-box;right:16px;bottom:16px;width:min(760px,calc(100vw - 32px));height:min(760px,calc(100dvh - 32px));max-height:calc(100dvh - 32px);overflow:hidden;border:0;border-radius:0;box-shadow:none}
+.elite-floating-content{box-sizing:border-box;height:100%;min-height:0;overflow:hidden}
+.elite-floating-content .elite-heading{grid-template-columns:minmax(0,360px) minmax(0,1fr);min-height:0;padding:12px 22px 12px 14px;border:0;border-bottom:1px solid var(--line);overflow:hidden}
+.elite-floating-content .elite-heading .elite-portrait{width:100%;height:min(44dvh,350px);max-height:min(44dvh,350px);object-fit:cover;object-position:center 18%;border:0;border-radius:0;box-shadow:none}
+.elite-floating-content .elite-heading>div{gap:8px;padding:8px 4px 8px 18px}
+.elite-floating-content .elite-grid{flex:1 1 auto;min-height:0;overflow:hidden}
+.elite-floating-content .elite-chat{flex:1 1 auto;min-height:0;overflow:hidden}
+.elite-floating-content .elite-chat-log{flex:1 1 auto;height:auto;min-height:56px;max-height:none;overflow:auto;border:0;background:transparent}
+.elite-floating-content .elite-shortcuts,.elite-floating-content .elite-chat-form,.elite-floating-content .elite-voice-controls{border-top:1px solid var(--line)}
+.elite-floating-content .elite-message.is-agent{border:0;background:transparent;box-shadow:none}
+.elite-widget-avatar img{pointer-events:none;-webkit-user-drag:none}
+@media(max-width:600px){.elite-floating-panel{right:12px;bottom:12px;width:calc(100vw - 24px);height:min(680px,calc(100dvh - 24px));max-height:calc(100dvh - 24px)}.elite-floating-content .elite-heading{grid-template-columns:minmax(0,44%) minmax(0,1fr);padding:10px 36px 10px 10px}.elite-floating-content .elite-heading .elite-portrait{height:min(34dvh,260px);max-height:min(34dvh,260px)}.elite-floating-content .elite-heading>div{gap:6px;padding:6px 2px 6px 10px}.elite-floating-content .elite-chat-log{min-height:44px}}
+
+/* Vanessa's launcher: remove its glow and center a less magnified face. */
+.elite-widget-launch{box-shadow:0 0 10px 2px rgba(205,212,222,.28),0 3px 10px rgba(0,0,0,.22)}
+.elite-widget-avatar img{transform:scale(1.12);transform-origin:center;object-position:center;filter:none}
+
+/* Keep the floating portrait as it was; enlarge only the full Vanessa profile card. */
+.elite-floating-panel{width:min(620px,calc(100vw - 32px));border:0;border-radius:0;box-shadow:none}
+.elite-floating-content .elite-heading{grid-template-columns:minmax(0,360px) minmax(0,1fr)}
+.elite-floating-content .elite-heading .elite-portrait{width:100%;height:min(50dvh,340px);max-height:min(50dvh,340px);aspect-ratio:auto;object-fit:cover;object-position:center top;border:0;border-radius:0;box-shadow:none}
+@media(max-width:600px){.elite-floating-panel{width:calc(100vw - 24px)}.elite-floating-content .elite-heading{grid-template-columns:minmax(0,42%) minmax(0,1fr)}.elite-floating-content .elite-heading .elite-portrait{height:auto;max-height:min(42dvh,300px);object-fit:contain;object-position:center top}}
+.elite-profile-heading .elite-portrait{width:min(430px,100%);max-width:100%;height:auto;max-height:none;aspect-ratio:1122/1402;flex:0 1 min(430px,100%);align-self:stretch;object-fit:contain;object-position:center top;mask-image:none;border:0;border-radius:0;box-shadow:none}
+@media(max-width:850px){.elite-profile-heading .elite-portrait{width:min(380px,100%);max-width:100%;flex:0 1 min(380px,100%);align-self:flex-start}}
+.elite-profile-heading+.elite-grid{align-items:start}
+.elite-profile-heading+.elite-grid .elite-chat-log{height:clamp(150px,22vh,190px);min-height:150px;max-height:190px;overflow:auto}
+.elite-profile-heading+.elite-grid .elite-shortcuts{flex-wrap:nowrap;gap:.35rem;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin}
+.elite-profile-heading+.elite-grid .elite-shortcuts button{flex:0 0 auto;padding:.42rem .55rem;font-size:.78rem}
+.elite-profile-heading>div{align-self:center;padding:0 1rem}
+.elite-widget-launch{width:80px;height:80px}
+.elite-widget-avatar img{object-fit:cover;object-position:50% 50%;transform:translate(-2%,-2.5%) scale(1.08);transform-origin:center center}
+@media(max-width:600px){.elite-widget-launch,.elite-widget-avatar{width:76px;height:76px}}
+.elite-floating-content .elite-heading{padding:0}
+.elite-floating-content .elite-heading{position:relative;z-index:5;overflow:visible}
+.elite-floating-content .elite-heading .elite-portrait{height:min(58dvh,380px);max-height:min(58dvh,380px);border:0;border-radius:0;box-shadow:none;mask-image:radial-gradient(ellipse 100% 150% at 50% 50%,#000 74%,transparent 100%);-webkit-mask-image:radial-gradient(ellipse 100% 150% at 50% 50%,#000 74%,transparent 100%)}
+.elite-floating-content .elite-heading>div{position:relative;z-index:5;box-sizing:border-box;width:100%;padding:8px 18px}
+.elite-floating-content .elite-heading .elite-mode{width:100%}
+.elite-floating-content .elite-heading .elite-mode select{width:100%;max-width:240px}
+@media(max-width:600px){.elite-floating-content .elite-heading{padding:0 32px 0 0}.elite-floating-content .elite-heading .elite-portrait{height:min(62dvh,340px);max-height:min(62dvh,340px);object-fit:cover;object-position:center top}}
+.elite-floating-panel{overflow-x:hidden;overflow-y:auto}
+.elite-floating-content{height:auto;min-height:100%;overflow:visible;flex:0 0 auto}
+.elite-floating-content .elite-heading{flex:none}
+.elite-floating-content .elite-grid{position:relative;z-index:1;flex:0 0 auto;min-height:0;overflow:visible}
+.elite-floating-content .elite-chat{flex:0 0 auto;min-height:0;overflow:visible}
+.elite-floating-content .elite-chat-log{flex:none;height:clamp(100px,15dvh,115px);min-height:100px;max-height:115px;overflow:auto}
+
+/* The mode list lives in the browser top layer so the chat panel cannot clip it. */
+.elite-mode{min-width:0}
+.elite-mode-trigger{display:flex;align-items:center;justify-content:space-between;gap:12px;width:min(240px,100%);min-height:44px;padding:.65rem .8rem;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.elite-mode-trigger:focus-visible,.elite-mode-menu [role="option"]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.elite-mode-trigger[aria-expanded="true"] .elite-mode-caret{transform:rotate(180deg)}
+.elite-mode-caret{transition:transform .15s ease}
+.elite-mode-menu{position:fixed;inset:auto;margin:0;padding:6px;box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);box-shadow:0 14px 32px #0008}
+.elite-mode-menu [role="option"]{display:block;width:100%;min-height:40px;padding:.55rem .65rem;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;text-align:left;white-space:normal;cursor:pointer}
+.elite-mode-menu [role="option"]:hover,.elite-mode-menu [role="option"][aria-selected="true"]{background:var(--surface2);color:var(--text)}
+@media(max-width:600px){.elite-floating-content .elite-mode-trigger{width:min(210px,100%)}}
+
+/* Round the floating chat shell while keeping its portrait and controls borderless. */
+.elite-floating-panel{border-radius:24px}
+@media(max-width:600px){.elite-floating-panel{border-radius:20px}}
+
+/* Keep live call controls and pending data changes readable in the compact chat. */
+.elite-floating-content .elite-copilot-sources{max-height:none;overflow:visible;display:grid;gap:8px}
+.elite-floating-content .elite-proposals{flex:none;margin:0;padding:12px 14px;border:0;border-top:1px solid var(--line);border-radius:0}

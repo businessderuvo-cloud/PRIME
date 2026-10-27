@@ -20,7 +20,7 @@ test('Paid Standard receives only Standard while Pro keeps Veronica and Pro APIs
   }
   async function request(session,path,method='GET',body){const response=await fetch(origin+path,{method,headers:{Cookie:session.cookie,'Content-Type':'application/json','X-CSRF-Token':session.csrf},...(body?{body:JSON.stringify(body)}:{})});return {status:response.status,body:await response.json()};}
   try{
-    const standard=account('standard','standard'),pro=account('pro','pro');
+    const standard=account('standard','standard'),pro=account('pro','pro'),vip=account('vip','vip');
     const standardMe=await request(standard,'/api/me');
     assert.equal(standardMe.body.edition,'base');
     assert.equal(standardMe.body.human_seat_limit,2);
@@ -30,5 +30,20 @@ test('Paid Standard receives only Standard while Pro keeps Veronica and Pro APIs
     assert.equal((await request(pro,'/api/me')).body.edition,'full');
     assert.equal((await request(pro,'/api/assistant/status')).status,200);
     assert.equal((await request(pro,'/api/entities/commissions')).status,200);
+    assert.equal((await request(vip,'/api/elite/status')).status,403);
+    app.db.prepare("INSERT INTO ai_subscriptions VALUES (?,?,?,?,'active')").run('tenant-vip','vip','2026-01-01T00:00:00.000Z','monthly');
+    const vipMe=(await request(vip,'/api/me')).body;
+    assert.equal(vipMe.edition,'vip');assert.equal(vipMe.human_seat_limit,null);
+    assert.equal((await request(vip,'/api/elite/status')).body.plan,'vip');
+    assert.equal((await request(vip,'/api/elite/voices')).status,403);
+    const page=await fetch(origin+'/app',{headers:{Cookie:vip.cookie}});
+    assert.match(page.headers.get('content-security-policy'),/wss:\/\/api\.elevenlabs\.io/);
+    const access=randomBytes(32).toString('hex');
+    app.db.prepare('INSERT INTO elite_access_tokens VALUES (?,?,?,?,?,?,?,?)').run(hash(access),'tenant-vip','user-vip','copilot',null,'vanessa',Date.now()+60000,new Date().toISOString());
+    const proposed=await fetch(origin+'/api/elite/tools',{method:'POST',headers:{'Content-Type':'application/json','X-Prime-Session':access},body:JSON.stringify({operation:'propose',entity:'contacts',action:'create',data_json:JSON.stringify({title:'Copilot live test',phone:'+393331234567'})})});
+    assert.equal(proposed.status,200);const proposal=await proposed.json();assert.ok(proposal.proposal?.id);
+    assert.equal(app.db.prepare("SELECT COUNT(*) n FROM contacts WHERE tenant_id='tenant-vip'").get().n,0);
+    const saved=await request(vip,`/api/assistant/manage/actions/${proposal.proposal.id}/confirm`,'POST',{});assert.equal(saved.status,200);
+    assert.equal(app.db.prepare("SELECT title FROM contacts WHERE tenant_id='tenant-vip'").get().title,'Copilot live test');
   }finally{await new Promise(resolve=>app.server.close(resolve));app.db.close();}
 });
