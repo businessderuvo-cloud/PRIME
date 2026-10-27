@@ -163,3 +163,10 @@
 /* Keep live call controls and pending data changes readable in the compact chat. */
 .elite-floating-content .elite-copilot-sources{max-height:none;overflow:visible;display:grid;gap:8px}
 .elite-floating-content .elite-proposals{flex:none;margin:0;padding:12px 14px;border:0;border-top:1px solid var(--line);border-radius:0}
+.elite-telephony{display:grid;gap:.55rem;margin-top:1rem;padding:1rem;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}
+.elite-telephony h3{margin:0}
+.elite-telephony>p{margin:.1rem 0;color:var(--muted);line-height:1.5}
+.elite-telephony button{justify-self:start}
+.elite-telephony #zdrmWPhI{position:relative!important;inset:auto!important;z-index:2!important}
+.elite-telephony #elite-zadarma-widget:empty{display:none}
+.elite-telephony #elite-zadarma-state{min-height:1.2em;font-size:.88rem;color:var(--muted)}

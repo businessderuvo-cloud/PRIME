@@ -620,7 +620,7 @@ export function createApp({
       );
       const signedForElite=['/','/app'].includes(url.pathname)&&(()=>{const active=currentSession(req);return !!active&&['vip','elite'].includes(sessionEdition(active));})();
       if(url.pathname==='/sorelle-assistenti'||signedForElite){
-        res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self'; connect-src 'self' wss://api.elevenlabs.io https://api.elevenlabs.io; media-src 'self' blob:; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+        res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://my.zadarma.com https://api.zadarma.com; style-src 'self' 'unsafe-inline' https://my.zadarma.com; img-src 'self' https://my.zadarma.com; connect-src 'self' wss://api.elevenlabs.io https://api.elevenlabs.io https://api.zadarma.com https://my.zadarma.com wss://ws.zadarma.com wss://*.zadarma.com; media-src 'self' blob:; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
         res.setHeader('Permissions-Policy','microphone=(self), camera=()');
       }
       if (production)
@@ -1165,6 +1165,7 @@ export function createApp({
         "/elite-ui.js":"elite-ui.js",
         "/elite.css":"elite.css",
         "/elite-audio.js":"elite-audio.js",
+        "/zadarma-phone.js":"zadarma-phone.js",
 "/vendor/elevenlabs/client.js":"vendor/elevenlabs/client.js",
 "/vendor/elevenlabs/client.js.LEGAL.txt":"vendor/elevenlabs/client.js.LEGAL.txt",
 "/vendor/elevenlabs/rawAudioProcessor.js":"vendor/elevenlabs/rawAudioProcessor.js",

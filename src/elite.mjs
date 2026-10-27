@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID, createHash, timingSafeEqual } from 'node:crypto';
+import { randomBytes, randomUUID, createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { schema } from '../public/schema.js';
@@ -34,6 +34,16 @@ export function eliteService({db,json,readBody,audit,management,rows,authorize,e
     if(!env.PRIME_ELEVEN_API_KEY)throw new ApiError(503,'Collegamento ElevenLabs LIVE non configurato.');
     let response;try{response=await fetcher('https://api.elevenlabs.io'+route,{method,headers:{'xi-api-key':env.PRIME_ELEVEN_API_KEY,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(25000)});}catch{throw new ApiError(502,'ElevenLabs non ha confermato la richiesta. Non verrà ripetuta automaticamente.');}
     if(!response.ok)throw new ApiError(response.status===401||response.status===403?503:502,response.status===401||response.status===403?'La chiave ElevenLabs non consente questa operazione. Controlla i permessi per agenti e voci.':'ElevenLabs non ha completato la richiesta.');return response.json();
+  }
+  async function zadarmaWebrtcKey(){
+    const key=env.PRIME_ZADARMA_API_KEY,secret=env.PRIME_ZADARMA_API_SECRET,sip=env.PRIME_ZADARMA_SUPERVISOR_SIP;
+    if(!key||!secret||!/^\d{3,6}-\d{3}$/.test(sip||''))throw new ApiError(503,'Telefono Zadarma non configurato per questa istanza PRIME.');
+    const route='/v1/webrtc/get_key/',params=new URLSearchParams({sip}).toString(),md5=createHash('md5').update(params).digest('hex');
+    const signature=createHmac('sha1',secret).update(route+params+md5).digest('base64');
+    let response;try{response=await fetcher('https://api.zadarma.com'+route+'?'+params,{headers:{Authorization:key+':'+signature},signal:AbortSignal.timeout(12000)});}catch{throw new ApiError(502,'Zadarma non ha risposto alla richiesta del telefono WebRTC.');}
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||data.status!=='success'||typeof data.key!=='string')throw new ApiError(502,'Zadarma non ha generato la chiave WebRTC per l’interno supervisore.');
+    return data.key;
   }
   function token(s,scope,a,contactId=null){
     const value=randomBytes(32).toString('hex');db.prepare('DELETE FROM elite_access_tokens WHERE expires_at<?').run(clock());
@@ -138,6 +148,9 @@ export function eliteService({db,json,readBody,audit,management,rows,authorize,e
   async function route(req,res,url,s){
     if(!url.pathname.startsWith('/api/elite/'))return false;entitled(s);
     const suffix=url.pathname.slice('/api/elite'.length),method=req.method;
+    if(suffix==='/telephony/session'&&method==='GET'){
+      json(res,200,{key:await zadarmaWebrtcKey(),sip:env.PRIME_ZADARMA_SUPERVISOR_SIP});return true;
+    }
     if(suffix==='/status'&&method==='GET'){const cfg=settings(s),plan=planFor(s),limits=plans[plan];json(res,200,{plan,quotas:limits.quotas,customVoiceAllowed:plan==='elite',name:'Vanessa',model:eliteModel,configured:!!(env.PRIME_ELEVEN_LIVE_AGENT_ID&&env.PRIME_ELEVEN_API_KEY),settings:cfg,agents:plan==='elite'?db.prepare('SELECT id,name,personality,voice_id,state,created_at FROM elite_agents WHERE tenant_id=? ORDER BY created_at').all(s.tenant_id):[],includedAgents:limits.ai,customIncluded:limits.ai-1,additionalAgentMonthly:limits.aiExtra,phoneConfigured:!!(cfg.phone_number_id||env.PRIME_ELEVEN_LIVE_PHONE_NUMBER_ID),inboundConfigured:!!(env.PRIME_ELEVEN_INBOUND_WEBHOOK_ENABLED&&cfg.phone_number_id)});return true;}
     if(suffix==='/settings'&&method==='PUT'){
       owner(s);const b=await readBody(req);if(!['lei','tu'].includes(b.addressStyle)||typeof b.autoQueue!=='boolean')throw new ApiError(400,'Impostazioni non valide.');
