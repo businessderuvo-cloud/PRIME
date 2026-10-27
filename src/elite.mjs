@@ -39,7 +39,7 @@ export function eliteService({db,json,readBody,audit,management,rows,authorize,e
     const key=env.PRIME_ZADARMA_API_KEY,secret=env.PRIME_ZADARMA_API_SECRET,sip=env.PRIME_ZADARMA_SUPERVISOR_SIP;
     if(!key||!secret||!/^\d{3,6}-\d{3}$/.test(sip||''))throw new ApiError(503,'Telefono Zadarma non configurato per questa istanza PRIME.');
     const route='/v1/webrtc/get_key/',params=new URLSearchParams({sip}).toString(),md5=createHash('md5').update(params).digest('hex');
-    const signature=createHmac('sha1',secret).update(route+params+md5).digest('base64');
+    const signature=Buffer.from(createHmac('sha1',secret).update(route+params+md5).digest('hex')).toString('base64');
     let response;try{response=await fetcher('https://api.zadarma.com'+route+'?'+params,{headers:{Authorization:key+':'+signature},signal:AbortSignal.timeout(12000)});}catch{throw new ApiError(502,'Zadarma non ha risposto alla richiesta del telefono WebRTC.');}
     const data=await response.json().catch(()=>({}));
     if(!response.ok||data.status!=='success'||typeof data.key!=='string')throw new ApiError(502,'Zadarma non ha generato la chiave WebRTC per l’interno supervisore.');
