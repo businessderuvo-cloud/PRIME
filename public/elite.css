@@ -170,3 +170,5 @@
 .elite-telephony #zdrmWPhI{position:relative!important;inset:auto!important;z-index:2!important}
 .elite-telephony #elite-zadarma-widget:empty{display:none}
 .elite-telephony #elite-zadarma-state{min-height:1.2em;font-size:.88rem;color:var(--muted)}
+.elite-mode select[hidden]{display:none!important}
+@media(max-width:600px){.elite-profile-heading{display:grid;grid-template-columns:100px minmax(0,1fr);gap:16px;align-items:start}.elite-profile-heading .elite-portrait{width:100%;height:150px;max-height:150px;aspect-ratio:auto;object-fit:cover;object-position:center top;align-self:start;flex:none}.elite-profile-heading>div{padding:0;align-self:start}.elite-profile-heading .elite-mode-trigger{width:100%}.elite-profile-heading+.elite-grid{grid-template-columns:minmax(0,1fr)}}

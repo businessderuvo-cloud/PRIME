@@ -49,7 +49,7 @@ test('HTTP: landing, asset, gestionale, account reale, CSRF e acquisto negato',a
  assert.equal((await fetch(base+'/src/provider-pricing.mjs')).status,404);
  const publicPricingSource=await(await fetch(base+'/pricing.js')).text();
  assert.doesNotMatch(publicPricingSource,/callMultiplier|llmMultiplier|callUsdPerMinute|llmUsdPerMinute/);
- for(const path of ['/','/app','/landing.css','/landing-composition.css','/landing.js','/pricing.js','/assets/prime-wordmark.svg','/assets/prime-hero-panorama.png','/assets/prime-professionals.png'])assert.equal((await fetch(base+path)).status,200,path);
+ for(const path of ['/','/app','/checkout?preview=1','/checkout.css','/checkout.js','/landing.css','/landing-composition.css','/landing.js','/pricing.js','/assets/prime-wordmark.svg','/assets/prime-hero-panorama.png','/assets/prime-professionals.png'])assert.equal((await fetch(base+path)).status,200,path);
  const html=await (await fetch(base+'/')).text();assert.match(html,/landing.js/);assert.doesNotMatch(html,/Guarda il video/);
  assert.doesNotMatch(html,/Suby|landing-reference\.png/);assert.match(html,/Conosci meglio PRIME/);
  const auth=await fetch(base+'/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'register',agency:'Agenzia test landing',email:'landing@example.test',password:'test-password-only-2026'})});

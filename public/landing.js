@@ -1,5 +1,6 @@
-import {plans,estimate,usageKeys,customerRates} from './pricing.js';
+import {plans} from './pricing.js';
 const $=s=>document.querySelector(s);
+const cryptoCoins="<span class=\"crypto-coins\"><span class=\"crypto-coin\"><span class=\"crypto-mark\"><svg viewBox=\"0 0 32 32\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"m23 14 .4-2.3c.2-2-1.3-3.1-3.5-3.8l.7-2.8-1.7-.4-.7 2.7-1.4-.3.7-2.7-1.7-.4-.7 2.8-3.5-.9-.5 1.9 1.3.3c.7.2.8.6.7 1.1l-2 8c-.1.3-.4.6-.9.5l-1.3-.3-.9 2 3.5.9-.7 2.8 1.7.4.7-2.8 1.4.4-.7 2.7 1.7.4.7-2.8c3.1.6 5.4.3 6.3-2.4.7-2.1 0-3.3-1.6-4.1 1.2-.3 2-1.1 2.3-2.6ZM19.5 19c-.5 1.9-3.7.9-4.8.6l.8-3.3c1.1.3 4.5.8 4 2.7Zm.5-6c-.4 1.8-3.1.9-4 .7l.8-3c.9.2 3.7.6 3.2 2.3Z\"/></svg></span><span class=\"sr-only\">Bitcoin</span></span><span class=\"crypto-coin\"><span class=\"crypto-mark\"><svg viewBox=\"0 0 32 32\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><path d=\"M10.5 5.7a11.7 11.7 0 0 0 0 20.6M21.5 5.7a11.7 11.7 0 0 1 0 20.6M19.4 12.3c-.8-1.8-6.5-2.1-6.5.8 0 3.1 6.5 1.6 6.5 5 0 2.8-5.6 3-6.8.7M16 8.5V11m0 10v2.5\"/></svg></span><span class=\"sr-only\">USDC</span></span></span>";
 const setPageWidth=()=>document.documentElement.style.setProperty("--page-width",document.documentElement.clientWidth+"px");
 setPageWidth();window.addEventListener("resize",setPageWidth,{passive:true});
 const paths={
@@ -34,11 +35,12 @@ const benefits={
  standard:['Gestionale Base completo','2 agenti umani inclusi','Extra umani: 50 €/mese ciascuno','Supporto solo email'],
  pro:['Tutto Standard + integrazioni','Importazione dati da altri gestionali','10 agenti umani inclusi','Extra umani: 25 €/mese ciascuno','AI Assistant base','Supporto solo email'],
  vip:['Tutte le funzionalità Pro','Agenti umani illimitati','1 agente AI · extra 100 €/mese','1.238 minuti · 225 op. semplici','50 indagini medie · 20 complesse','Email + WhatsApp prioritario','Attivazione entro 24 ore lavorative'],
- elite:['Tutte le funzionalità VIP','Agenti umani illimitati','2 agenti AI · extra 50 €/mese','Voce AI personalizzata','3.738 minuti · 675 op. semplici','150 indagini medie · 60 complesse','Email + WhatsApp prioritario','Attivazione entro 24 ore lavorative'],
- secret:['Configurazione personalizzata','Quote per grandi volumi','Integrazioni dedicate','Accordi di supporto su misura','Attivazione entro 24 ore lavorative']};
+ elite:['Tutte le funzionalità VIP','Agenti umani illimitati','2 agenti AI · extra 50 €/mese','Voce AI personalizzata','3.738 minuti · 675 op. semplici','150 indagini medie · 60 complesse','Email + WhatsApp prioritario','Assistenza remota con TeamViewer','Attivazione entro 24 ore lavorative'],
+ secret:['Configurazione personalizzata','Quote per grandi volumi','Integrazioni dedicate','Assistenza remota con TeamViewer','Accordi di supporto su misura','Attivazione entro 24 ore lavorative']};
 let annual=false;
 function drawPlans(){
- $('#plan-cards').innerHTML=[...Object.keys(plans),'secret'].map(id=>{const p=plans[id];return `<article class="plan ${id==='vip'?'featured':''}">${id==='vip'?'<span class="plan-tag">PIÙ SCELTO</span>':''}${icon(symbols[id],'plan-symbol')}<h3>${p?.name.toUpperCase()||'SECRET PLAN'}</h3><p class="plan-description">${descriptions[id]}</p><p class="price"><strong>${p?euro(annual&&p.annual?p.annual:p.monthly):'Su preventivo'}</strong>${p?` <small>/${annual&&p.annual?'anno':'mese'}</small>`:''}</p><p class="annual-note">${p?.annual?(annual?`${euro(p.annual/12,2)}/mese equivalenti · pagamento annuale`:`${euro(p.annual)}/anno con l’annuale`):id==='secret'?'Un piano disegnato sulla tua rete':'Fatturazione mensile'}</p><${id==='secret'?'button':'a'} ${id==='secret'?'type="button" data-contact':'href="#inizia"'} class="button ${id==='vip'?'primary':''}">${id==='secret'?'Richiedi informazioni':'Scopri come iniziare'}</${id==='secret'?'button':'a'}><ul>${benefits[id].map(t=>`<li>${icon('check')}<span>${t}</span></li>`).join('')}</ul></article>`;}).join('');
+ $('.crypto-promo').hidden=!annual;$('#annual-crypto-note').hidden=!annual;
+ $('#plan-cards').innerHTML=[...Object.keys(plans),'secret'].map(id=>{const p=plans[id];return `<article class="plan ${id==='vip'?'featured':''}">${id==='vip'?'<span class="plan-tag">PIÙ SCELTO</span>':''}${icon(symbols[id],'plan-symbol')}<h3>${p?.name.toUpperCase()||'SECRET PLAN'}</h3><p class="plan-description">${descriptions[id]}</p><p class="price"><strong>${p?euro(annual&&p.annual?p.annual:p.monthly):'Su preventivo'}</strong>${p?` <small>/${annual&&p.annual?'anno':'mese'}</small>`:''}</p><p class="annual-note">${p?.annual?(annual?`${euro(p.annual/12,2)}/mese equivalenti · pagamento annuale`:`${euro(p.annual)}/anno con l’annuale`):id==='secret'?'Un piano disegnato sulla tua rete':'Fatturazione mensile'}</p>${p&&annual?`<div class="crypto-offer"><span class="crypto-offer-label">PAGHI IN CRYPTO?</span>${cryptoCoins}<strong class="crypto-offer-gift">3 MESI GRATIS</strong><span class="crypto-offer-price">${euro(Math.round(p.monthly*100*(annual?9:1))/100,2)}<span>/${annual?'anno':'mese'}</span></span><p>2 mesi dell’annuale + 1 mese extra crypto. <b>Sconto già incluso.</b></p></div>`:''}<${id==='secret'?'button':'a'} ${id==='secret'?'type="button" data-contact':'href="#inizia"'} class="button ${id==='vip'?'primary':''}">${id==='secret'?'Richiedi informazioni':'Scopri come iniziare'}</${id==='secret'?'button':'a'}><ul>${benefits[id].map(t=>`<li>${icon('check')}<span>${t}</span></li>`).join('')}</ul></article>`;}).join('');
  $('[data-contact]').onclick=()=>openAccount('contact');
 }
 document.querySelectorAll('[name=billing]').forEach(x=>x.onchange=()=>{annual=x.value==='annual';drawPlans();});drawPlans();
@@ -48,6 +50,7 @@ const rows=[
  ['users','Agenti umani inclusi',['2','10','Illimitati','Illimitati']],
  ['users','Ogni agente umano extra / mese',['50 €','25 €','Incluso','Incluso']],
  ['mail','Supporto',['Solo email','Solo email','Email + WhatsApp prioritario','Email + WhatsApp prioritario']],
+ ['link','Assistenza remota con TeamViewer',[no,no,no,'Inclusa']],
  ['sparkles','Agenti AI inclusi',[no,no,'1','2']],
  ['sparkles','Ogni agente AI extra / mese',[no,no,'100 €','50 €']],
  ['phone','Minuti di conversazioni AI',[no,no,'1.238','3.738']],
@@ -84,28 +87,20 @@ const rows=[
  ['search','Detective',ai],
  ['link','API per le funzionalità AI avanzate',ai],
 ];
-$('#comparison').innerHTML=rows.map(([name,label,values])=>name==='category'?`<tr class="category"><th colspan="6">${label}</th></tr>`:`<tr><th scope="row"><span class="row-label">${icon(name)}${label}</span></th>${values.map(v=>`<td>${v===true?`${icon('check')}<span class="sr-only">Incluso</span>`:v===false?`${icon('minus')}<span class="sr-only">Non incluso</span>`:v}</td>`).join('')}<td>Su preventivo</td></tr>`).join('');
+$('#comparison').innerHTML=rows.map(([name,label,values])=>name==='category'?`<tr class="category"><th colspan="6">${label}</th></tr>`:`<tr><th scope="row"><span class="row-label">${icon(name)}${label}</span></th>${values.map(v=>`<td>${v===true?`${icon('check')}<span class="sr-only">Incluso</span>`:v===false?`${icon('minus')}<span class="sr-only">Non incluso</span>`:v}</td>`).join('')}<td>${label==='Assistenza remota con TeamViewer'?'Inclusa':'Su preventivo'}</td></tr>`).join('');
 const labels={minutes:'Minuti di conversazioni AI',simple:'Operazioni semplici',medium:'Indagini Detective medie',complex:'Indagini Detective complesse'};
-const maxes={minutes:20000,simple:3000,medium:1000,complex:500};
-const defaults={minutes:1238,simple:225,medium:50,complex:20};
-let rates={...customerRates};
-$('#usage-controls').innerHTML=usageKeys.map(k=>`<div class="usage-row"><div><label for="${k}">${labels[k]} / mese</label><input id="${k}" type="number" min="0" max="10000000" step="1" required value="${defaults[k]}" aria-label="${labels[k]} al mese"></div><input id="${k}-range" type="range" min="0" max="${maxes[k]}" step="1" value="${defaults[k]}" aria-label="Regola ${labels[k].toLowerCase()}"></div>`).join('');
+const quotaKeys=['minutes','simple','medium','complex'];
+$('#usage-controls').innerHTML='<p class="fineprint">Le quote mensili incluse sono riportate per ciascun piano. Non sono acquistabili minuti o ricerche aggiuntive nel simulatore.</p>';
 function drawEstimate(){
  if(!$('#usage-form').checkValidity())return;
- const usage=Object.fromEntries(usageKeys.map(k=>[k,Number($('#'+k).value)])),agents=Number($('#ai-agents').value);
- const results={vip:estimate('vip',agents,usage,rates),elite:estimate('elite',agents,usage,rates)};
- const complete=results.vip.total!==null&&results.elite.total!==null;
- const winner=complete?(results.vip.total<=results.elite.total?'vip':'elite'):null;
+ const agents=Number($('#ai-agents').value);
  $('#ai-minus').disabled=agents<=1;$('#ai-plus').disabled=agents>=1000;
- $('#estimate-cards').innerHTML=['vip','elite'].map(id=>{const r=results[id];return `<article class="estimate ${winner===id?'winner':''}"><h3>${icon(symbols[id])}${plans[id].name}</h3><p class="price"><strong>${euro(r.total??r.subtotal)}</strong> <small>/mese${r.total===null?' + consumi':''}</small></p><dl><dt>Canone mensile</dt><dd>${euro(r.base)}</dd><dt>Agenti AI extra (${Math.max(0,agents-plans[id].ai)})</dt><dd>${euro(r.extraAgents)}</dd><dt>Consumi oltre quota</dt><dd>${r.consumption===null?'Da quantificare':euro(r.consumption,2)}</dd>${r.extras.filter(x=>x.units>0).map(x=>`<dt>${labels[x.key]}</dt><dd>+${integer(x.units)}</dd>`).join('')}</dl><a href="#inizia" class="button ${winner===id?'primary':''}">Come attivare ${plans[id].name} ↗</a></article>`;}).join('');
- const diff=complete?Math.abs(results.vip.total-results.elite.total):null;
- $('#savings').textContent=complete?(diff===0?'Stesso totale mensile con entrambi i piani.':`Con ${plans[winner].name} risparmi ${euro(diff,2)} al mese rispetto a ${plans[winner==='vip'?'elite':'vip'].name}.`):'Quote superate: il totale dei consumi e il risparmio richiedono le tariffe extra confermate.';
- $('#rates').innerHTML=usageKeys.map(k=>`<div class="rate-row"><span>${k==='minutes'?'Chiamata AI extra · voce + elaborazione AI':labels[k]}</span><strong>${new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:5}).format(rates[k])} / ${k==='minutes'?'min':'operazione'}</strong></div>`).join('');
+ $('#estimate-cards').innerHTML=['vip','elite'].map(id=>{const plan=plans[id],extra=Math.max(0,agents-plan.ai),total=plan.monthly+extra*plan.aiExtra;return `<article class="estimate"><h3>${icon(symbols[id])}${plan.name}</h3><p class="price"><strong>${euro(total)}</strong> <small>/mese</small></p><dl><dt>Canone mensile</dt><dd>${euro(plan.monthly)}</dd><dt>Agenti AI aggiuntivi (${extra})</dt><dd>${euro(extra*plan.aiExtra)}</dd>${quotaKeys.map((key,index)=>`<dt>${labels[key]} inclusi</dt><dd>${integer(plan.quotas[index])}</dd>`).join('')}</dl><a href="#inizia" class="button">Come attivare ${plan.name} ↗</a></article>`;}).join('');
+ $('#savings').textContent='Le quote sono condivise da tutta l’agenzia: aggiungere agenti AI non aggiunge minuti o ricerche.';
+ $('#rates').textContent='Il totale comprende solo canone PRIME e agenti AI aggiuntivi. Nessun acquisto di minuti o ricerche extra. CloudTalk prevede un abbonamento e consumi separati, non compresi in questa stima.';
 }
-usageKeys.forEach(k=>{$('#'+k).addEventListener('input',()=>{if($('#'+k).checkValidity()){$('#'+k+'-range').max=Math.max(maxes[k],Number($('#'+k).value));$('#'+k+'-range').value=$('#'+k).value;}drawEstimate();});$('#'+k+'-range').addEventListener('input',()=>{$('#'+k).value=$('#'+k+'-range').value;drawEstimate();});});
 $('#ai-agents').addEventListener('input',drawEstimate);
 $('#ai-minus').onclick=()=>{$('#ai-agents').stepDown();drawEstimate();};$('#ai-plus').onclick=()=>{$('#ai-agents').stepUp();drawEstimate();};$('#usage-form').onsubmit=e=>e.preventDefault();drawEstimate();
-fetch('/api/public/pricing').then(r=>r.ok?r.json():{}).then(data=>{rates={...customerRates,...data.overage};drawEstimate();}).catch(()=>{});
 function setTheme(theme){document.documentElement.dataset.theme=theme;$('#theme').innerHTML=icon(theme==='light'?'moon':'sun');$('#theme').setAttribute('aria-label',`Attiva tema ${theme==='light'?'scuro':'chiaro'}`);try{localStorage.setItem('prime-landing-theme',theme);}catch{}}
 let savedTheme='dark';try{savedTheme=localStorage.getItem('prime-landing-theme')||'dark';}catch{}setTheme(savedTheme==='light'?'light':'dark');$('#theme').onclick=()=>setTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
 const dialog=$('#account-dialog');$('#close-dialog').onclick=()=>dialog.close();
@@ -129,6 +124,7 @@ async function openAccount(mode='register'){
 async function showStatus(){
  me=await api('/api/me');const status=await api('/api/billing/status');
  $('#account-content').innerHTML=`<p class="eyebrow">LA TUA AGENZIA</p><h2 id="account-title">${esc(me.tenant)}</h2><div class="account-status"><strong>${status.kyb==='approved'?'Verifica aziendale approvata':'Verifica aziendale da completare'}</strong><p>${status.kyb==='approved'?'Puoi ora scegliere il piano della tua agenzia.':'L’account è stato creato. La scelta del piano e il pagamento rimangono bloccati fino all’approvazione KYB.'}</p></div><div id="billing-actions"></div><p class="message" id="account-message" role="status"></p><div class="dialog-actions"><a class="button quiet" href="/app">Apri gestionale</a><button id="signout" class="text-button">Esci</button></div>`;
+ if(me.role==='owner'){const verify=document.createElement('button');verify.className='button quiet';verify.textContent='Verifica pagamento crypto';verify.onclick=async()=>{verify.disabled=true;try{const r=await api('/api/billing/payments');$('#account-message').textContent=r.payments.some(p=>p.state==='paid')?'Pagamento verificato e abbonamento attivato. Puoi aprire il gestionale.':'Pagamento ancora in attesa della conferma della rete.';}catch(e){$('#account-message').textContent=e.message;}finally{verify.disabled=false;}};$('#account-content').append(verify);}
  $('#signout').onclick=async()=>{await api('/api/logout',{});me=null;await openAccount('login');};
  const quoteButton=document.createElement('button');quoteButton.className='text-button';quoteButton.textContent='Richiedi preventivo Secret Plan';quoteButton.onclick=()=>{
   $('#billing-actions').innerHTML='<form id="quote-form"><label>Raccontaci la tua rete<textarea name="message" rows="4" minlength="10" maxlength="3000" required placeholder="Numero sedi, volumi e integrazioni richieste"></textarea></label><button class="button primary" type="submit">Salva richiesta di preventivo</button></form>';
@@ -144,10 +140,52 @@ async function showStatus(){
   $('#billing-actions').innerHTML='<button id="start-kyb" class="button primary">Avvia verifica aziendale</button>';
   $('#start-kyb').onclick=async()=>{try{const data=await api('/api/billing/kyb',{});location.assign(data.url);}catch(error){$('#account-message').textContent=error.message;}};
  }else{
-  $('#billing-actions').innerHTML='<form id="checkout-form"><label>Piano<select id="checkout-plan"><option value="standard">Standard · 53 €/mese</option><option value="pro">Pro · 105 €/mese</option><option value="vip">VIP · 522 €/mese</option><option value="elite">Elite · 1.045 €/mese</option><option value="secret">Secret Plan · su preventivo</option></select></label><label>Fatturazione<select id="checkout-cycle"><option value="monthly">Mensile</option><option value="annual">Annuale</option></select></label><label id="human-count-label">Agenti umani totali<input id="checkout-humans" type="number" min="1" max="1000" step="1" value="2" required></label><label id="ai-count-label" hidden>Agenti AI totali<input id="checkout-ai" type="number" min="1" max="1000" step="1" value="1"></label><p class="fineprint" id="checkout-summary"></p><button type="submit" class="button primary">Continua al pagamento</button></form>';
-  const syncCheckout=()=>{const id=$('#checkout-plan').value,p=plans[id],isAI=!!p?.ai;$('#human-count-label').hidden=isAI||id==='secret';$('#ai-count-label').hidden=!isAI;$('#checkout-humans').disabled=isAI||id==='secret';$('#checkout-ai').disabled=!isAI;$('#checkout-cycle').disabled=!p?.annual;if(!p?.annual)$('#checkout-cycle').value='monthly';const yearly=$('#checkout-cycle').value==='annual';const extra=p?.humans?Math.max(0,Number($('#checkout-humans').value)-p.humans)*p.humanExtra:isAI?Math.max(0,Number($('#checkout-ai').value)-p.ai)*p.aiExtra:0;$('#checkout-summary').textContent=p?`Canone: ${euro(yearly?p.annual:p.monthly)}/${yearly?'anno':'mese'}. Agenti extra: ${euro(extra)}/mese.`:'Preventivo personalizzato richiesto prima del pagamento.';$('#checkout-form button[type=submit]').textContent=id==='secret'?'Richiedi preventivo':'Continua al pagamento';};
+  $('#billing-actions').innerHTML='<form id="checkout-form"><label>Piano<select id="checkout-plan"><option value="standard">Standard · 53 €/mese</option><option value="pro">Pro · 105 €/mese</option><option value="vip">VIP · 522 €/mese</option><option value="elite">Elite · 1.045 €/mese</option><option value="secret">Secret Plan · su preventivo</option></select></label><label>Pagamento<select id="checkout-method"><option value="crypto">Crypto · rinnovo manuale</option></select></label><label>Fatturazione<select id="checkout-cycle"><option value="monthly">Mensile</option><option value="annual">Annuale</option></select></label><label id="human-count-label">Agenti umani totali<input id="checkout-humans" type="number" min="1" max="1000" step="1" value="2" required></label><label id="ai-count-label" hidden>Agenti AI totali<input id="checkout-ai" type="number" min="1" max="1000" step="1" value="1"></label><p class="fineprint" id="checkout-summary"></p><button type="submit" class="button primary">Continua al pagamento</button></form>';
+  const syncCheckout=()=>{const id=$('#checkout-plan').value,p=plans[id],isAI=!!p?.ai;$('#human-count-label').hidden=isAI||id==='secret';$('#ai-count-label').hidden=!isAI;$('#checkout-humans').disabled=isAI||id==='secret';$('#checkout-ai').disabled=!isAI;$('#checkout-cycle').disabled=!p?.annual;if(!p?.annual)$('#checkout-cycle').value='monthly';const yearly=$('#checkout-cycle').value==='annual';const extra=p?.humans?Math.max(0,Number($('#checkout-humans').value)-p.humans)*p.humanExtra:isAI?Math.max(0,Number($('#checkout-ai').value)-p.ai)*p.aiExtra:0;$('#checkout-summary').innerHTML=p?`${yearly?cryptoCoins+'<strong>3 MESI GRATIS TOTALI</strong>':''}<strong>${euro(Math.round(p.monthly*100*(yearly?9:1))/100,2)}/${yearly?'anno':'mese'}</strong>${yearly?'2 mesi di base + 1 extra crypto. Sconto già incluso.':'Canone mensile senza sconto crypto.'} Rinnovo manuale. Gli agenti extra richiedono un’offerta dedicata.`:'Preventivo personalizzato richiesto prima del pagamento.';$('#checkout-form button[type=submit]').textContent=id==='secret'?'Richiedi preventivo':'Continua al pagamento';};
   ['checkout-plan','checkout-cycle','checkout-humans','checkout-ai'].forEach(id=>$('#'+id).oninput=syncCheckout);syncCheckout();
-  $('#checkout-form').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('button[type=submit]');b.disabled=true;try{const data=await api('/api/billing/checkout',{plan:$('#checkout-plan').value,cycle:$('#checkout-cycle').value,humans:Number($('#checkout-humans').value),ai:Number($('#checkout-ai').value)});location.assign(data.url);}catch(error){$('#account-message').textContent=error.message;b.disabled=false;}};
+  $('#checkout-form').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('button[type=submit]');b.disabled=true;try{const data=await api('/api/billing/checkout',{method:'crypto',plan:$('#checkout-plan').value,cycle:$('#checkout-cycle').value,humans:Number($('#checkout-humans').value),ai:Number($('#checkout-ai').value)});location.assign(data.url);}catch(error){$('#account-message').textContent=error.message;b.disabled=false;}};
  }
 }
 document.querySelectorAll('[data-auth]').forEach(b=>b.onclick=()=>openAccount(b.dataset.auth));
+
+// Keep desktop billing controls within the photographed laptop, independent of crop.
+const billingToggle=document.querySelector('.billing-toggle');
+const billingHome=billingToggle.parentElement;
+const heroPhoto=document.querySelector('.hero-photo');
+const plansIntro=billingHome.querySelector('div');
+const heroCopy=document.querySelector('.hero-copy');
+plansIntro.classList.add('plans-intro');
+function positionBilling(){
+ const desktop=matchMedia('(min-width:1200px)').matches;
+ if(!desktop){if(plansIntro.parentElement!==billingHome)billingHome.prepend(plansIntro);if(billingToggle.parentElement!==billingHome)billingHome.append(billingToggle);billingToggle.classList.remove('on-laptop');heroPhoto.closest('.hero').style.removeProperty('--hero-photo-height');return;}
+ if(plansIntro.parentElement!==heroCopy)heroCopy.append(plansIntro);
+ if(billingToggle.parentElement!==heroPhoto)heroPhoto.append(billingToggle);
+ billingToggle.classList.add('on-laptop');
+ const w=heroPhoto.clientWidth,iw=w,ih=w*1140/1380;
+ heroPhoto.closest('.hero').style.setProperty('--hero-photo-height',Math.ceil(ih)+'px');
+ const h=heroPhoto.clientHeight;
+ heroPhoto.style.setProperty('--portrait-width',iw+'px');heroPhoto.style.setProperty('--portrait-height',ih+'px');
+ billingToggle.style.setProperty('--laptop-x',(w-iw+iw*.65)+'px');
+ billingToggle.style.setProperty('--laptop-y',(ih*.785)+'px');
+ billingToggle.style.setProperty('--laptop-width',(iw*.335)+'px');
+}
+new ResizeObserver(positionBilling).observe(heroPhoto);window.addEventListener('resize',positionBilling,{passive:true});positionBilling();
+heroPhoto.closest('.hero').insertAdjacentHTML('afterend',`<section class="cloudtalk-feature wrap" aria-labelledby="cloudtalk-title">
+ <div class="cloudtalk-card">
+  <div class="cloudtalk-main">
+   <a class="cloudtalk-brand" href="https://www.cloudtalk.io/" target="_blank" rel="noopener noreferrer" aria-label="Visita CloudTalk"><img src="/assets/cloudtalk-logo.svg" alt="CloudTalk" width="136" height="16"></a>
+  <div class="cloudtalk-copy">
+   <p class="eyebrow">DOPO I MINUTI PRIME · SERVIZIO SEPARATO</p>
+   <h2 id="cloudtalk-title">Finiti i minuti PRIME? Valuta CloudTalk.</h2>
+   <p>Quando esaurisci la quota, le chiamate AI PRIME si fermano e al momento non puoi aggiungere minuti. Consigliamo CloudTalk per proseguire con minuti aggiuntivi scegliendo un loro piano: è un servizio separato da attivare, completamente integrabile in autonomia oppure su richiesta dal team di sviluppo PRIME. Condizioni commerciali da confermare con CloudTalk.</p>
+  </div>
+  </div>
+  <div class="cloudtalk-business-email">
+   <div class="cloudtalk-email-copy">
+   <strong>Per registrarti a CloudTalk serve un’email aziendale.</strong>
+   <p>Usa un indirizzo sul dominio della tua agenzia. Per scegliere il servizio di posta aziendale, consulta i partner PRIME.</p>
+   <a class="text-link" href="/partners#partner-ufficiali">Scopri i partner per la posta aziendale <span aria-hidden="true">↗</span></a>
+   </div>
+  </div>
+ </div>
+</section>`);

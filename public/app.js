@@ -1,12 +1,13 @@
-import { renderElite, mountEliteWidget, openEliteCallDialog } from './elite-ui.js?v=20261027-36';
+import { renderElite, mountEliteWidget, openEliteCallDialog } from './elite-ui.js?v=20261029-zadarma-auto';
 import { renderUpgrade } from './upgrade.js';
 import { baseExcludedEntities, baseExcludedPages } from './edition.js';
 import {startDocumentRenewalNotifications} from './didit.js';
 import { mountOperations } from './operations.js';
-import { renderConnect } from "./connect.js";
+import { renderConnect } from "./connect.js?v=20261029-email-section";
+import { renderPortals } from "./portals.js";
 import { mountContactOutEnrichment } from "./contactout.js";
 import { assistantResultMarkup, openAssistantRecordManager } from "./assistant-management.js";
-import { renderMail } from "./mail.js";
+import { renderMail } from "./mail.js?v=20261029-mail-controls";
 import { renderMap } from "./map.js";
 import { mountRepeatableRecaps } from "./repeatable-recaps.js";
 import { schema, roleLabels } from "./schema.js";
@@ -16,7 +17,7 @@ import { finishedStatuses } from "./planner.js";
 import { renderTerritory } from "./territory.js";
 import { mountPersonRecaps } from "./person-recaps.js";
 import { startVoiceInput } from "./voice-input.js";
-import { startCustomSelects } from "./custom-selects.js";
+import { startCustomSelects } from "./custom-selects.js?v=20261029-vanessa";
 let stopWpsClock;
 let stopDocumentRenewalNotifications;
 let agendaRefreshTimer;
@@ -70,6 +71,7 @@ const icons = {
   documents: "M6 2h9l5 5v15H6zM14 2v6h6M9 13h8m-8 4h8",
   signature_requests: "M19.2 3.8a2.1 2.1 0 0 1 3 3L11 18l-4 1 1-4L19.2 3.8ZM15.5 7.5l3 3M3 21c1.2-1.4 2-.4 3-.2 1.1.2 1.8-1.7 3-.3 1 1.2 2.1.4 3-.4 1.2-1.1 2 .8 3.2.4 1.1-.3 1.6-1.2 2.8-1.7",
   connect: "M8 12h8M9 6l-3-3-4 4 3 3m10 8 3 3 4-4-3-3M7 7l10 10",
+  support: "M3 13v-2a9 9 0 0 1 18 0v2m-18 0h4v7H5a2 2 0 0 1-2-2v-5Zm18 0h-4v7h2a2 2 0 0 0 2-2v-5Zm-5 7a4 4 0 0 1-4 2h-1",
   assistant: "M12 3 14.2 9.8 21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2L12 3z",
   audit: "M5 3h14v18H5zM9 7h6m-6 5h6m-6 5h4",
   roadmap: "M4 21V4m0 1c5-6 11 6 16 0v10c-5 6-11-6-16 0",
@@ -82,6 +84,8 @@ const icons = {
 };
 const icon = (name) =>
   `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${icons[name] || icons.units}"/></svg>`;
+const dashboardIcon = (name) =>
+  `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="stat-silver-${name}" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".22" stop-color="#bac5ce"/><stop offset=".43" stop-color="#f9fcff"/><stop offset=".49" stop-color="#ffffff"/><stop offset=".53" stop-color="#7c8a96"/><stop offset=".72" stop-color="#d8e2e9"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><path stroke="url(#stat-silver-${name})" d="${icons[name] || icons.units}"/></svg>`;
 const logo = () =>
   `<img class="brand-image" src="/assets/logo-${state.me?.theme || "dark"}.png" alt="PRIME — logo ufficiale">`;
 const date = (x) =>
@@ -398,6 +402,7 @@ const globalNavigation = [
   ["valuations", "Valutazioni"],
   ["leases", "Locazioni"],
   ["commissions", "Provvigioni"],
+  ["portals", "Portali immobiliari"],
   ["documents", "Documenti"],
   ["signature_requests", "Firme elettroniche"],
   ["section", "CONNESSIONI"],
@@ -415,6 +420,9 @@ function shell() {
   stopWpsClock?.();
   document.documentElement.dataset.theme = state.me.theme;
   app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => k === "section" ? `<p class="nav-section-label">${label}</p>` : `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><div class="avatar">${esc(state.me.tenant.slice(0, 2).toUpperCase())}</div><div><strong>${esc(state.me.tenant)}</strong><small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off"><span class="key-hint">/</span><div id="global-results" class="search-results" hidden></div></div><button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button><span class="workspace-badge">ANTEPRIMA DI SVILUPPO</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><a href="mailto:phoenix@primegestionale.it">Assistenza: phoenix@primegestionale.it</a><a href="/privacy">Privacy</a><span>Versione 0.4 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
+  if (state.me.edition === 'elite') {
+    document.querySelector('.sidebar nav').insertAdjacentHTML('beforeend', '<a class="nav-item remote-support-nav" href="https://www.teamviewer.com/it/download/portal/" target="_blank" rel="noopener noreferrer">'+icon('support')+'<span>Assistenza remota</span></a>');
+  }
   if (!isBase) { mountMailInbox(); if(["vip","elite"].includes(state.me.edition)) mountEliteWidget({api,esc,state,navigate,loadData}); else mountAssistantChatWidget(); }
   if(["vip","elite"].includes(state.me.edition)) {document.querySelector('[data-page="assistant"] span').textContent="Vanessa";document.querySelector(".sidebar-label").textContent=state.me.edition === "vip" ? "PRIME VIP" : "PRIME ELITE";}
   if (isBase) { document.title = "PRIME Base · Gestionale immobiliare"; document.querySelector(".sidebar-label").textContent = "PRIME BASE · STANDARD"; }
@@ -798,7 +806,7 @@ async function renderPage() {
         .filter(([, , key]) => state.me.edition !== "base" || !baseExcludedPages.includes(key))
         .map(
           ([label, n, key]) =>
-            `<button class="stat" data-nav="${key}"><span>${label}</span><strong>${n}</strong><span class="stat-bottom">Apri sezione ${icon("arrow")}</span></button>`,
+            `<button class="stat" data-nav="${key}"><span class="stat-heading"><span class="stat-symbol stat-symbol-${key}">${dashboardIcon(key)}</span><span>${label}</span></span><strong>${n}</strong><span class="stat-bottom">Apri sezione ${icon("arrow")}</span></button>`,
         )
         .join(
           "",
@@ -814,6 +822,7 @@ async function renderPage() {
         .join(
           "",
         )}</div><p class="small-note">I contatori mostrano solo dati reali della tua agenzia.</p></section></div>`;
+    if (state.me.edition === 'elite') main.querySelector('.stats').insertAdjacentHTML('afterend', '<section class="panel remote-support-card" aria-labelledby="remote-support-title"><span class="remote-support-illustration">'+icon('support')+'</span><div><p class="eyebrow">INCLUSO DA ELITE · ANCHE SECRET PLAN</p><h2 id="remote-support-title">Assistenza remota</h2><p>Il team PRIME ti assiste da remoto su richiesta. Scarica il programma dal link e concorda la sessione con l’assistenza.</p></div><a class="primary remote-support-download" href="https://www.teamviewer.com/it/download/portal/" target="_blank" rel="noopener noreferrer">Apri assistenza remota ↗</a></section>');
     const draw = () => {
       const upcoming = d.activities
         .filter((x) => !finishedStatuses.has(x.status) && matches(x))
@@ -901,6 +910,10 @@ async function renderPage() {
   }
   if (page === "connect") {
     await renderConnect({main,state,api,esc,pageHeader,toast});
+    return;
+  }
+  if (page === "portals") {
+    await renderPortals({main,api,esc,toast});
     return;
   }
   if (page === "audit") {
@@ -1693,7 +1706,7 @@ function drawMailInbox(items) {
   if (!list || !count || !toggle) return;
   count.textContent = items.length; count.hidden = !items.length;
   toggle.setAttribute("aria-label", `Inbox email, ${items.length} notifiche`);
-  const providers = {gmail:"Gmail",outlook:"Outlook",yahoo:"Yahoo Mail"};
+  const providers = {gmail:"Gmail",outlook:"Outlook"};
   list.innerHTML = items.map(item => `<a class="mail-inbox-item" href="${esc(item.provider_url)}" target="_blank" rel="noopener noreferrer"><div><span>${esc(providers[item.provider] || "Email")}</span><time>${esc(new Date(item.received_at).toLocaleString("it-IT", {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}))}</time></div><strong>${esc(item.sender)}</strong><p>${esc(item.subject || "Senza oggetto")}</p><small>${esc(item.account_label)} · Apri email ↗</small></a>`).join("") || `<div class="mail-inbox-empty">${icon("mail")}<strong>Nessuna notifica email</strong><p>Le notifiche degli account collegati compariranno qui. Gestisci i collegamenti dalla pagina Email.</p></div>`;
 }
 async function refreshMailInbox() {
@@ -1714,7 +1727,7 @@ function startMailNotifications(){
       const item=fresh.at(-1);if(!item)return;
       let alert=document.querySelector('#mail-live-alert');
       if(!alert){alert=document.createElement('aside');alert.id='mail-live-alert';alert.className='mail-live-alert';alert.setAttribute('role','status');document.body.append(alert);}
-      const provider={gmail:'Gmail',yahoo:'Yahoo Mail',outlook:'Outlook'}[item.provider]||'Email';
+      const provider={gmail:'Gmail',outlook:'Outlook'}[item.provider]||'Email';
       alert.innerHTML=`<span class="mail-alert-dot" aria-hidden="true"></span><div><strong>Nuova email · ${esc(provider)}</strong><p><b>${esc(item.sender)}</b><br>${esc(item.subject)}</p></div><a href="${esc(item.provider_url)}" target="_blank" rel="noopener noreferrer">Apri email ↗</a><button type="button" aria-label="Chiudi notifica">×</button>`;
       alert.querySelector('button').onclick=()=>alert.remove();
       clearTimeout(state.mailNotificationHide);state.mailNotificationHide=setTimeout(()=>alert.remove(),15000);

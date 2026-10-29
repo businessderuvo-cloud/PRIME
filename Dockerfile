@@ -10,6 +10,7 @@ COPY migrations ./migrations
 COPY scripts/hosted-start.mjs ./scripts/hosted-start.mjs
 COPY scripts/backup-pc-setup.ps1 ./scripts/backup-pc-setup.ps1
 COPY scripts/import-demo.mjs ./scripts/import-demo.mjs
+COPY scripts/setup-private-demo.mjs ./scripts/setup-private-demo.mjs
 RUN mkdir -p /data && chown node:node /data
 EXPOSE 8080
 CMD ["node", "scripts/hosted-start.mjs"]

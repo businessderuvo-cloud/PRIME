@@ -354,6 +354,19 @@ small {
   margin-bottom: 30px;
   background: var(--surface);
 }
+.stat-heading{display:flex;align-items:center;gap:12px;min-height:44px}
+.stat-symbol{display:grid;place-items:center;width:48px;height:48px;flex:0 0 48px;border:1px solid #d6dee466;border-radius:12px;color:#f3f6f8;background:linear-gradient(145deg,#353b40,#181b1e 48%,#252b30);box-shadow:inset 0 1px 0 #ffffff50,inset 0 -1px 0 #0008,0 3px 9px #0003}
+.stat-symbol svg{display:block;width:31px;height:31px;fill:none;stroke-width:2;stroke-linecap:square;stroke-linejoin:miter;filter:drop-shadow(0 1px 0 #000a) drop-shadow(0 0 3px #e2e9ee33)}
+html[data-theme="light"] .stat-symbol{color:#f3f6f8;background:linear-gradient(145deg,#3d454b,#1b2024 48%,#323a41);border-color:#727e87}
+.remote-support-card{display:flex;align-items:center;gap:24px;margin-bottom:30px}
+.remote-support-card>img{flex:0 0 120px;object-fit:contain;border-radius:8px}
+.remote-support-card>div{flex:1;min-width:0}
+.remote-support-card h2{font-size:23px;margin:6px 0 10px}
+.remote-support-card p:not(.eyebrow){font-size:13px;color:var(--muted);line-height:1.6;margin:0}
+.remote-support-download{display:inline-flex;justify-content:center;align-items:center;min-height:46px;padding:12px 18px;border-radius:7px;text-decoration:none;white-space:nowrap;font-size:13px;font-weight:600}
+.remote-support-nav img{width:48px;height:24px;object-fit:contain;flex:0 0 48px;border-radius:3px}
+.remote-support-nav{text-decoration:none}
+@media(max-width:850px){.remote-support-card{flex-wrap:wrap;gap:16px}.remote-support-download{width:100%}.remote-support-card>div{flex-basis:55%}.stat-heading{flex-wrap:wrap;gap:9px}}
 .stat {
   padding: 25px;
   text-align: left;
@@ -1766,3 +1779,5 @@ select option { background:var(--surface); color:var(--text); }
 .assistant-profile{display:flex;flex-direction:column;align-items:flex-start;gap:16px}
 .assistant-profile>.assistant-avatar{width:min(460px,100%);max-width:100%;height:auto;aspect-ratio:1198 / 1313;object-fit:contain;border:0;border-radius:0;box-shadow:none}
 .assistant-profile>div{width:min(460px,100%)}
+
+.remote-support-illustration{display:grid;place-items:center;flex:0 0 64px;width:64px;height:64px;border:1px solid var(--line);border-radius:16px;background:var(--surface2);color:var(--accent)}.remote-support-illustration svg{width:34px;height:34px;stroke-width:1.7}.remote-support-nav>svg{width:20px;height:20px;color:var(--accent)}.remote-support-nav{gap:13px}

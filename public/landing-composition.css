@@ -105,3 +105,187 @@ html[data-theme=light]{--nav-text:#000;--nav-active:#000}
 @media(max-width:560px){.hero-photo{flex-shrink:0;margin-bottom:0}.plans-section{margin-top:24px;padding-top:0}}
 
 html[data-theme=light] .annual-deal{background:#eee;color:#000;border-color:#bcbcbc;box-shadow:none}html[data-theme=light] .billing-toggle label:has(input:checked) .annual-deal{background:#000;color:#fff;border-color:#888}
+
+/* Promozione crypto: importi e vantaggio leggibili in ogni scheda. */
+.crypto-promo{display:flex;gap:24px;align-items:center;margin:28px 0;padding:28px 32px;border:1px solid #687e91;border-radius:16px;background:#171f27;color:#f0f4f8}.crypto-promo-symbol{display:grid;place-items:center;flex:0 0 88px;height:88px;border-radius:50%;background:#d5e4f1;color:#101923;font-size:44px;font-weight:800;line-height:1}.crypto-promo .crypto-promo-kicker{margin:0 0 8px;font-size:12px;letter-spacing:2px;font-weight:800;color:#d5e4f1}.crypto-promo h3{font-size:clamp(26px,3vw,38px);font-weight:750;line-height:1.12}.crypto-promo p{font-size:16px;line-height:1.5;max-width:790px}.plan .crypto-offer{margin:20px 0;padding:18px 12px;border:1px solid #647b90;border-radius:12px;background:#17222d;color:#f1f5f9;text-align:center}.crypto-offer-label{display:block;font-size:11px;font-weight:800;letter-spacing:1px;color:#c5d3df}.crypto-offer-gift{display:block;margin:9px 0;font-size:clamp(17px,1.65vw,23px);font-weight:850;line-height:1.2;color:#e0eaf3}.crypto-offer-price{display:block;font-size:clamp(24px,2.1vw,30px);font-weight:800;line-height:1.25;letter-spacing:-.6px}.crypto-offer-price>span{font-size:13px;font-weight:500;letter-spacing:0}.plan .crypto-offer p{font-size:13px;line-height:1.5;margin:10px 0 0;color:#c8d3df}.crypto-offer b{display:block;margin-top:4px;font-weight:750}html[data-theme=light] .crypto-promo{background:#e5edf4;color:#172b3b;border-color:#8ca1b4}html[data-theme=light] .crypto-promo .crypto-promo-kicker{color:#344f66}html[data-theme=light] .plan .crypto-offer{background:#e5edf4;color:#172b3b;border-color:#8ca1b4}html[data-theme=light] .crypto-offer-label,html[data-theme=light] .crypto-offer-gift{color:#233f56}html[data-theme=light] .plan .crypto-offer p{color:#344b60}@media(max-width:600px){.crypto-promo{padding:22px 18px;gap:16px;align-items:flex-start}.crypto-promo-symbol{flex-basis:56px;height:56px;font-size:29px}.crypto-promo p{font-size:15px}.crypto-promo h3{font-size:26px}.plan .crypto-offer{padding:17px 12px}.crypto-offer-gift{font-size:19px}.crypto-offer-price{font-size:27px}.plan .crypto-offer p{font-size:13px}}
+
+.crypto-coins{display:flex;justify-content:center;align-items:center;gap:12px;margin-top:14px}.crypto-coin{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.4px;color:var(--text)}.crypto-coin svg{width:24px;height:24px;flex-shrink:0}.crypto-promo .crypto-coins{justify-content:flex-start;margin-top:12px}.crypto-promo .crypto-coin{font-size:12px}.crypto-promo .crypto-coin svg{width:26px;height:26px}#checkout-summary{padding:24px;border:1px solid var(--accent);border-radius:10px;background:var(--soft);font-size:14px;line-height:1.65}#checkout-summary strong{display:block;font-size:20px;color:var(--text);margin:7px 0}#checkout-summary .crypto-coins{justify-content:flex-start}#checkout-form>button{width:100%;margin-top:20px}
+
+/* PRIME outline marks: monochrome, geometric strokes matching the wordmark. */
+.crypto-coin{color:var(--accent);font-weight:500;letter-spacing:1px}.crypto-coin svg{width:26px;height:26px;stroke-linecap:butt}.crypto-promo .crypto-coin svg{width:28px;height:28px}html[data-theme=light] .crypto-coin{color:#344f66}
+
+.crypto-coins{gap:16px}.crypto-coin{gap:8px;font-size:10px;font-weight:600;letter-spacing:1.1px;color:#d5dfe8}.crypto-mark{display:grid;place-items:center;width:34px;height:34px;border:1px solid #647b9073;border-radius:9px;background:linear-gradient(145deg,#d5e4f10d,#080b0d1f);box-shadow:inset 0 1px 0 #e0eaf310}.crypto-coin .crypto-mark svg,.crypto-promo .crypto-coin .crypto-mark svg{width:26px;height:26px}.crypto-promo .crypto-mark{width:38px;height:38px;border-radius:10px}html[data-theme=light] .crypto-mark{border-color:#8ca1b4;background:linear-gradient(145deg,#ffffffa6,#c5d3df33);box-shadow:inset 0 1px 0 #fff}
+
+.crypto-mark,.crypto-promo .crypto-mark{width:30px;height:30px;border:0;border-radius:0;background:none;box-shadow:none}.crypto-coin{color:#edf3fa}.crypto-coin .crypto-mark svg,.crypto-promo .crypto-coin .crypto-mark svg{width:30px;height:30px}html[data-theme=light] .crypto-coin{color:#344f66}
+
+
+.plan .crypto-offer-gift{font-size:clamp(23px,2.15vw,30px);color:#f0f4fa;font-weight:650;letter-spacing:-.6px;line-height:1.14}.crypto-offer-price{font-size:clamp(29px,2.65vw,36px);color:#f0f4fa;font-weight:650;letter-spacing:-1px}.crypto-promo-symbol{background:linear-gradient(145deg,#344350,#131d26);border:1px solid #99aabb80;color:#edf3fa;font-family:Manrope,Inter,Arial,sans-serif;font-size:46px;font-weight:400;letter-spacing:-3px;box-shadow:inset 0 1px 0 #edf2f71a}.crypto-promo h3{color:#edf3fa}.crypto-promo h3,.crypto-offer-gift,.crypto-offer-price{text-shadow:0 1px 0 #ffffff10}html[data-theme=light] .crypto-offer-gift,html[data-theme=light] .crypto-offer-price,html[data-theme=light] .crypto-promo h3{color:#172b3b}@media(max-width:600px){.plan .crypto-offer-gift{font-size:25px}.crypto-offer-price{font-size:32px}.crypto-promo-symbol{font-size:33px;letter-spacing:-2px}}
+
+@font-face{font-family:Manrope;src:url('/assets/manrope-variable.ttf') format('truetype');font-weight:200 800;font-display:swap}
+
+/* Architectural +1 mark, drawn with the same open geometric strokes as PRIME. */
+.crypto-promo-symbol{background:radial-gradient(ellipse at 30% 15%,#35424e44,transparent 70%);border:1px solid #c8d1d955;box-shadow:inset 0 1px 0 #eff3f513,0 0 0 5px #c5d3df03;letter-spacing:0}.crypto-promo-symbol svg{display:block;width:70px;height:70px;flex-shrink:0}html[data-theme=light] .crypto-promo-symbol{background:#17232e;border-color:#7f919f}@media(max-width:600px){.crypto-promo-symbol svg{width:46px;height:46px}}
+
+/* Large desktop and ultrawide: a bounded composition with readable type. */
+.crypto-promo-symbol{position:relative;flex:0 0 104px;width:104px;height:104px;overflow:hidden;border:0;box-shadow:none;background:none}
+.crypto-promo-symbol img{position:absolute;display:block;width:135%;height:auto;max-width:none;left:-17%;top:-12.7%}
+html[data-theme=light] .crypto-promo-symbol{background:none;border:0}
+@media(min-width:1440px){
+ .wrap{width:min(1720px,calc(100% - 128px))}
+ .site-header{height:108px;gap:36px}.site-header nav{gap:30px}.site-header nav a{font-size:17px}.site-header .button{font-size:14px;min-height:46px}
+ .hero{min-height:clamp(610px,32vw,730px);padding-top:40px}.hero-copy{width:48%;max-width:810px;padding-top:50px}.hero h1{font-size:clamp(60px,4vw,80px);letter-spacing:-3px}.hero .lead{font-size:18px;max-width:630px}.hero-benefits{font-size:13px;gap:25px}
+ .hero-photo{right:-64px;width:74%;max-width:1280px;height:calc(100% + 65px)}
+ .plans-section .billing-toggle{left:0}.section-line h2{font-size:38px}.billing-toggle{font-size:14px}.plans{gap:20px}.plan{padding:32px 24px 28px}.plan-symbol{width:36px;height:36px}.plan h3{font-size:21px}.plan-description{font-size:14px;min-height:46px}.price strong{font-size:42px}.price small{font-size:14px}.annual-note{font-size:13px;min-height:42px}.plan .button{font-size:14px;min-height:48px}.plan ul{font-size:14px;gap:13px}.plan li .icon{width:17px;height:17px}.plan-tag{font-size:11px}.plan:last-child .price strong{font-size:28px}
+ .plan .crypto-offer{padding:22px 14px}.plan .crypto-offer-gift{font-size:32px}.crypto-offer-price{font-size:42px}.plan .crypto-offer p{font-size:14px}.crypto-offer-label{font-size:12px}.crypto-coin{font-size:12px}.crypto-coins{gap:20px}
+ .crypto-promo{padding:32px 38px;gap:30px}.crypto-promo h3{font-size:42px}.crypto-promo p{font-size:18px;max-width:1100px}.crypto-promo-symbol{flex-basis:120px;width:120px;height:120px}
+ .fineprint{font-size:13px}.comparison-section,.simulator-section{padding-top:90px}table{font-size:14px}thead th{font-size:15px}th,td{padding:15px 20px}tr.category th{font-size:11px}.text-link{font-size:14px}.simulator{padding:40px;gap:60px}.ai-control{font-size:16px}.usage-row label{font-size:15px}.estimate{padding:30px 24px}.estimate h3{font-size:19px}.estimate dl{font-size:14px}.estimate .price strong{font-size:38px}.estimate .button{font-size:13px}.savings{font-size:14px}.rates-details{font-size:13px}
+ .features{min-height:700px}.features-copy{width:58%;max-width:920px}.features h2{font-size:42px}.features-photo{right:0;width:600px;height:700px}.features-copy>.muted{font-size:17px;max-width:660px}.feature-grid{max-width:800px;gap:34px}.feature-grid h3{font-size:17px}.feature-grid p{font-size:14px}.muted{font-size:16px}
+ .onboarding h2,.contacts h2,.faq h2{font-size:42px}.steps h3{font-size:19px}.steps p{font-size:15px}.contact-card p{font-size:15px}.faq summary{font-size:16px}.faq details p{font-size:15px;max-width:90ch}.site-footer{font-size:13px}
+}
+@media(min-width:2200px){.hero-photo{right:-90px}.hero{min-height:730px}.site-header{height:120px}.crypto-promo{margin-block:36px}.plans-section{margin-top:0}}
+@media(max-width:600px){.crypto-promo-symbol{flex-basis:64px;width:64px;height:64px}}
+@media(min-width:1440px) and (max-width:1699px){.plans{gap:16px}.plan{padding-inline:18px}.plan .crypto-offer-price{font-size:32px}.crypto-offer-price>span{font-size:11px}.plan .crypto-offer-gift{font-size:26px}.plan .crypto-offer p{font-size:13px}.plan h3{font-size:19px}.plan-description{font-size:13px}.price strong{font-size:37px}.annual-note{font-size:12px}.plan ul{font-size:13px}.plan:last-child .price strong{font-size:24px}}
+@media(min-width:1440px){.hero-photo{mask:linear-gradient(90deg,transparent 0%,#00000040 3%,#00000099 8%,#000000d9 13%,#000 20%,#000 94%,transparent 100%),linear-gradient(180deg,#000 0%,#000 89%,transparent 100%);mask-composite:intersect}}
+@media(min-width:601px) and (max-width:1439px){.plan .crypto-offer{container-type:inline-size}.plan .crypto-offer-price{font-size:clamp(18px,16cqi,36px)}.crypto-offer-price>span{display:block;font-size:12px;line-height:1.5}}
+@media(max-width:600px){.plans{grid-template-columns:minmax(0,1fr);gap:24px}.plan{padding:26px 24px}.plan-description{min-height:0}.plan .crypto-offer{padding:22px 16px}.plan .crypto-offer-gift{font-size:30px}.plan .crypto-offer-price{font-size:36px}.plan .crypto-offer p{font-size:14px}.plan ul{font-size:13px}.plan .button{min-height:46px;font-size:13px}.plan h3{font-size:20px}}
+
+/* Compact billing controls sit on the photographed laptop; symbols keep accessible names. */
+.billing-toggle{max-width:100%;align-items:center;gap:3px;background:#10161de8;border-color:#b5c4d044;color:#eef2f7;box-shadow:0 8px 24px #0003}
+.billing-toggle label{min-height:44px;padding:8px 10px;font-size:12px;flex-shrink:0}
+.billing-toggle label:has(input:checked){background:#31404e;color:#f4f6fa}
+.billing-toggle label:has([value="annual"]){grid-template-columns:12px auto auto;gap:5px;min-width:0}
+.billing-toggle .annual-deal{margin:0;padding:5px 7px;font-size:10px!important;letter-spacing:.3px}
+.billing-toggle label:has(input:checked) .annual-deal{background:#e4ebf1;color:#14202b;border-color:#e4ebf1}
+.billing-toggle .annual-crypto-extra{gap:8px;font-size:11px;line-height:1.3;grid-column:2/-1;color:#e9eff6}
+.billing-toggle .annual-crypto-extra .crypto-coins{gap:7px;margin:0}
+.billing-toggle .annual-crypto-extra .crypto-coin{gap:0}
+.billing-toggle .annual-crypto-extra .crypto-mark,.billing-toggle .annual-crypto-extra .crypto-mark svg{width:23px;height:23px;flex-basis:23px;color:#edf3fa;filter:none}
+.billing-toggle .annual-crypto-extra .crypto-or{font-size:10px;color:#aebcc9}
+.crypto-coin .sr-only{position:absolute}
+@media(min-width:1200px){.hero-photo{overflow:visible;mask:none;isolation:auto;z-index:3;pointer-events:none}.hero-photo img{object-position:right bottom;mask:linear-gradient(90deg,transparent,#000 22%,#000 94%,transparent),linear-gradient(180deg,#000,#000 87%,transparent);mask-composite:intersect}.billing-toggle.on-laptop{pointer-events:auto;position:absolute;left:var(--laptop-x);top:var(--laptop-y);width:var(--laptop-width);justify-content:center;padding:4px;z-index:4}.billing-toggle.on-laptop label{font-size:11px;padding:6px;gap:5px}.billing-toggle.on-laptop .annual-deal{font-size:9px!important;padding:5px}.billing-toggle.on-laptop .annual-crypto-extra{font-size:10px;gap:5px}.billing-toggle.on-laptop .annual-crypto-extra .crypto-coins{gap:5px}.billing-toggle.on-laptop .crypto-mark,.billing-toggle.on-laptop .crypto-mark svg{width:21px;height:21px;flex-basis:21px}}
+@media(max-width:1199px){.plans-section>.section-line{flex-wrap:wrap}.billing-toggle{margin-left:auto}}
+/* Mobile layout: readable copy, natural grids and generous touch targets. */
+@media(max-width:760px){
+ .wrap{width:calc(100% - 32px)}.site-header{gap:12px;padding-block:16px}.site-header .brand{width:140px;flex-basis:140px}.site-header .header-actions{gap:5px}.header-actions .button{min-height:44px;padding:10px 12px}.site-header>nav{gap:4px 16px;justify-content:center;flex-wrap:wrap;overflow:visible;white-space:normal;padding-top:8px}.site-header>nav a{font-size:14px;min-height:44px}
+ .section-line{flex-direction:column;align-items:stretch;gap:20px}.section-line h2{font-size:clamp(26px,6.7vw,34px);line-height:1.18}.billing-toggle{width:100%;margin:0;justify-content:center;padding:6px}.billing-toggle label{padding:9px 10px}.billing-toggle .annual-deal{font-size:10px!important}.billing-toggle .annual-crypto-extra{font-size:11px;gap:8px}
+ .hero-copy{max-width:100%}.hero .lead{font-size:16px;line-height:1.65}.hero-benefits{font-size:12px;gap:15px 18px}.hero-photo{pointer-events:none}.hero .button{min-height:48px}.plans-section{padding-top:10px}
+ .plan{min-width:0}.plan-description{font-size:14px}.plan .price strong{font-size:36px}.price small,.annual-note{font-size:13px}.plan ul{font-size:14px;line-height:1.65;gap:12px}.plan li .icon{width:17px;height:17px}.plan:last-child ul{grid-template-columns:1fr}.fineprint{font-size:13px;line-height:1.7}
+ .crypto-promo{display:grid;grid-template-columns:56px minmax(0,1fr);gap:16px;padding:22px 18px}.crypto-promo-symbol{width:56px;height:56px}.crypto-promo h3{font-size:27px;line-height:1.15}.crypto-promo p{font-size:15px}.crypto-promo .crypto-promo-kicker{font-size:10px;letter-spacing:1.4px}.crypto-coins{gap:18px}
+ .comparison-section,.simulator-section{padding-top:48px}.table-scroll{max-width:100%;margin-right:0;border-radius:10px;overscroll-behavior-x:contain}.mobile-hint{display:block;font-size:13px;line-height:1.6}table{font-size:13px}thead th{font-size:13px}th,td{padding:14px}tbody th{position:sticky;left:0;z-index:1;background:var(--panel);max-width:200px}thead th:first-child{position:sticky;left:0;z-index:2}tr.category th{position:static}
+ .simulator{grid-template-columns:minmax(0,1fr);padding:24px 18px;gap:28px}.ai-control{font-size:14px;flex-wrap:wrap;gap:12px}.stepper{height:44px}.stepper button{width:44px}.stepper input{font-size:16px}.usage-row{margin-top:24px}.usage-row label{font-size:14px}.usage-row input[type=number]{font-size:16px;min-height:44px;width:88px}.usage-row input[type=range]{height:28px}.estimate-cards{grid-template-columns:1fr;gap:18px}.estimate{padding:24px}.estimate h3{font-size:20px}.estimate .price strong{font-size:34px}.estimate dl{font-size:14px;gap:12px}.estimate .button{font-size:14px;min-height:46px}.savings,.rates-details,.rate-row{font-size:13px}.rates-details summary{min-height:44px;padding-block:10px}.tag{white-space:normal;align-self:flex-start;font-size:12px}
+ .feature-grid{grid-template-columns:1fr;gap:24px}.feature-grid h3{font-size:17px}.feature-grid p{font-size:14px;line-height:1.7}.features-copy>.muted{font-size:15px}.features h2{font-size:30px;line-height:1.18}.steps{grid-template-columns:1fr;gap:26px}.steps li{padding:0 0 0 52px;min-height:44px}.steps li>span{width:36px;height:36px}.steps h3{font-size:17px}.steps p{font-size:14px;line-height:1.7}.muted{font-size:15px}.onboarding{padding-block:40px}
+ .contact-card{padding:22px 18px;gap:14px}.contact-card p,.contact-card .contact-note{font-size:14px}.contact-card .button{width:100%;min-height:48px}.contact-email{font-size:18px}.faq summary{font-size:16px;line-height:1.5;padding-right:18px}.faq details p{font-size:15px;line-height:1.75}.footer-links a{font-size:14px;min-height:46px}.footer-identity p{font-size:13px}
+ dialog{width:calc(100% - 24px);max-height:calc(100dvh - 24px);padding:38px 22px 26px}dialog h2{font-size:27px}dialog label{font-size:14px}dialog input,dialog select,dialog textarea{font-size:16px;min-height:46px}dialog input[type=checkbox]{min-height:0}dialog .button{min-height:46px}dialog .dialog-close{min-width:44px;min-height:44px}#checkout-summary{padding:18px;font-size:14px}
+}
+@media(max-width:380px){.site-header .brand{width:112px;flex-basis:112px}.header-actions .button{font-size:11px;padding-inline:8px}.header-actions{gap:3px}.billing-toggle label{font-size:11px;padding-inline:6px}.billing-toggle .annual-deal{font-size:9px!important;padding:5px}.billing-toggle .annual-crypto-extra{font-size:10px;gap:5px}.crypto-promo{grid-template-columns:minmax(0,1fr)}.crypto-promo-symbol{width:64px;height:64px}.hero h1{font-size:38px}.plan{padding-inline:20px}}
+
+@media(min-width:761px) and (max-width:1199px){.plans-section>.section-line{flex-direction:column;align-items:stretch}.plans-section .billing-toggle{align-self:flex-end;width:max-content;margin:0}}
+@media(max-width:760px){.hero{display:flex;flex-direction:column;min-height:0;padding:24px 0 0}.hero-copy{order:1;width:100%;max-width:none;padding:12px 0 0}.hero h1{font-size:clamp(38px,8vw,48px)}.hero-photo{order:2;position:relative;inset:auto;transform:none;width:calc(100% + 32px);height:clamp(300px,100vw,520px);aspect-ratio:auto;margin:12px -16px 0;mask:linear-gradient(180deg,transparent,#000 6%,#000 86%,transparent);mask-composite:add}.hero-photo img{width:100%;height:100%;inset:0;object-fit:cover;object-position:83% top}.plans-section{margin-top:24px}}
+
+@media(min-width:1200px){.hero-photo img{object-fit:contain;object-position:right bottom}.billing-toggle.on-laptop{max-width:var(--laptop-width)}.billing-toggle.on-laptop label{font-size:10px;padding-inline:5px}.billing-toggle.on-laptop .annual-deal{font-size:8px!important}.billing-toggle.on-laptop .annual-crypto-extra{font-size:10px}}
+
+@media(min-width:1200px){.hero-photo img{inset:auto;left:auto;right:0;top:auto;bottom:0;width:var(--portrait-width,100%);height:var(--portrait-height,100%);object-fit:fill;mask:linear-gradient(90deg,transparent,#000 23%,#000 94%,transparent),linear-gradient(180deg,#000,#000 87%,transparent);mask-composite:intersect}}
+
+/* Restore the original soft perimeter while preserving the full portrait. */
+@media(min-width:1200px){.hero-photo img{mask:linear-gradient(90deg,transparent 0%,#00000008 8%,#0000001f 16%,#00000052 23%,#000000ad 30%,#000 38%,#000 91%,transparent 100%),linear-gradient(180deg,#000 0%,#000 84%,transparent 100%);mask-composite:intersect}}
+
+/* Reference composition: full-size portrait extends left into the copy's background. */
+@media(min-width:1200px){.hero{min-height:calc(var(--hero-photo-height,800px) - 90px)}.hero-photo{width:80%;max-width:1380px}.hero-photo img{top:0;bottom:auto;mask:linear-gradient(90deg,transparent 0%,#00000014 5%,#00000055 12%,#000000a6 20%,#000000e6 27%,#000 34%,#000 100%),linear-gradient(180deg,#000 0%,#000 90%,transparent 100%);mask-composite:intersect}}
+
+/* Each option fills its complete segment, including the annual bonus. */
+.billing-toggle{display:grid;grid-template-columns:minmax(68px,.8fr) minmax(0,2fr);align-items:stretch;justify-content:normal;gap:4px;padding:4px}
+.billing-toggle label{width:100%;height:100%;min-width:0;align-self:stretch;justify-content:center;margin:0}
+.billing-toggle label:has([value="annual"]){grid-template-columns:13px auto minmax(0,1fr);align-content:center;justify-content:normal;column-gap:7px;row-gap:7px}
+.billing-toggle .annual-deal{text-align:center}.billing-toggle .annual-crypto-extra{justify-content:center}
+@media(min-width:1200px){.billing-toggle.on-laptop{display:grid;grid-template-columns:minmax(72px,.8fr) minmax(0,2fr);justify-content:normal;padding:5px;min-height:88px;gap:4px}.billing-toggle.on-laptop label{font-size:13px;padding:10px 8px}.billing-toggle.on-laptop .annual-deal{font-size:10px!important;padding:6px}.billing-toggle.on-laptop .annual-crypto-extra{font-size:12px;gap:8px}.billing-toggle.on-laptop .annual-crypto-extra .crypto-coins{gap:7px}.billing-toggle.on-laptop .annual-crypto-extra .crypto-mark,.billing-toggle.on-laptop .annual-crypto-extra .crypto-mark svg{width:25px;height:25px;flex-basis:25px}}
+@media(max-width:380px){.billing-toggle label:has([value="annual"]){column-gap:5px}.billing-toggle .annual-crypto-extra{gap:5px}.billing-toggle label{padding-inline:6px}}
+
+@media(min-width:1200px){.hero-copy>.plans-intro{margin-top:54px;max-width:100%}.hero-copy>.plans-intro .eyebrow{margin-bottom:18px}.hero-copy>.plans-intro h2{font-size:30px;line-height:1.18;letter-spacing:-1.2px}.plans-section>.section-line{margin-bottom:24px}.plans-section>.section-line:empty{display:none}}
+
+@media(min-width:1440px){.hero-copy>.plans-intro h2{font-size:38px}}
+
+html[data-theme=light] .hero-photo{opacity:1}
+
+.plans-title-break{display:none}@media(min-width:1200px){.hero-copy>.plans-intro{width:min(100%,460px)}.hero-copy>.plans-intro h2{max-width:100%;overflow-wrap:normal}.hero-copy .plans-title-break{display:initial}}
+
+@media(min-width:1200px){.plans-section{padding-top:24px}}
+/* PRIME professionista video: poster stays visible until playback starts. */
+.features-photo{cursor:pointer}
+.features-photo-video{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:cover!important;opacity:0!important;pointer-events:none;transition:none}
+.features-photo.is-playing .features-photo-video{opacity:1!important;transition:none}
+.features-photo.is-playing .features-photo-poster{opacity:0!important}
+@media(prefers-reduced-motion:reduce){.features-photo-video{transition:none}}
+/* Shared hover playback for both PRIME portraits. Keep the poster visible during startup. */
+.hero-photo-video,.features-photo-video{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;object-fit:cover!important;object-position:center top!important;opacity:0!important;filter:none!important;mix-blend-mode:normal!important;pointer-events:none;transition:none!important}
+.hero-photo.is-playing .hero-photo-video,.features-photo.is-playing .features-photo-video{opacity:1!important;transition:none!important}
+.hero-photo.is-playing .hero-photo-poster,.features-photo.is-playing .features-photo-poster{opacity:0!important;transition:none!important}
+@media(min-width:1200px){.hero-photo-video{inset:auto!important;left:auto!important;right:0!important;top:0!important;bottom:auto!important;width:var(--portrait-width,100%)!important;height:var(--portrait-height,100%)!important;object-fit:contain!important;object-position:right top!important;mask:linear-gradient(90deg,transparent 0%,#00000014 5%,#00000055 12%,#000000a6 20%,#000000e6 27%,#000 34%,#000 100%),linear-gradient(180deg,#000 0%,#000 90%,transparent 100%);mask-composite:intersect}}
+@media(max-width:1100px) and (min-width:561px){.hero-photo-video{object-position:center top!important}}
+@media(max-width:760px){.hero-photo-video{inset:0!important;width:100%!important;height:100%!important;object-fit:cover!important;object-position:83% top!important;mask:none!important}}
+.portrait-audio-toggle{position:absolute!important;z-index:5;right:14px;bottom:14px;padding:9px 12px;border:1px solid #ffffff70;border-radius:999px;background:#101719d9;color:#fff;font:600 12px/1.1 inherit;cursor:pointer;opacity:0;pointer-events:none}
+.hero-photo:hover .portrait-audio-toggle,.hero-photo:focus-within .portrait-audio-toggle,.features-photo:hover .portrait-audio-toggle,.features-photo:focus-within .portrait-audio-toggle{opacity:1;pointer-events:auto}
+@media(max-width:760px){.portrait-audio-toggle{opacity:1;pointer-events:auto}}
+.portrait-audio-toggle{position:absolute!important;z-index:5;right:18px;top:18px;bottom:auto;width:42px;height:42px;display:grid;place-items:center;padding:0;border:1px solid #ffffff70;border-radius:50%;background:#10171999;color:#fff;backdrop-filter:blur(5px);cursor:pointer;opacity:0;pointer-events:none}
+.portrait-audio-toggle .audio-icon{width:21px;height:21px;fill:currentColor}
+.portrait-audio-toggle.is-muted:after{content:"";position:absolute;width:25px;height:2px;background:#fff;transform:rotate(-45deg);border-radius:2px}
+.hero-photo:hover .portrait-audio-toggle,.hero-photo:focus-within .portrait-audio-toggle{opacity:1;pointer-events:auto}
+@media(max-width:760px){.hero-photo .portrait-audio-toggle{opacity:1;pointer-events:auto}}
+.portrait-audio-toggle--hero{left:clamp(165px,14vw,230px)!important;right:auto!important;top:10px!important;bottom:auto!important}
+.hero:hover .portrait-audio-toggle--hero,.hero:focus-within .portrait-audio-toggle--hero{opacity:1;pointer-events:auto}
+@media(max-width:760px){.hero .portrait-audio-toggle--hero{opacity:1;pointer-events:auto}}
+.portrait-audio-toggle--hero{left:auto!important;right:-54px!important;top:18px!important}
+@media(max-width:760px){.portrait-audio-toggle--hero{right:8px!important;top:10px!important}}
+.portrait-audio-toggle--hero{left:-54px!important;right:auto!important;top:18px!important}
+@media(max-width:760px){.portrait-audio-toggle--hero{left:8px!important;right:auto!important;top:10px!important}}
+.hero-copy{position:relative}
+.hero-copy>.portrait-audio-toggle--hero{left:50%!important;right:auto!important;top:-58px!important;bottom:auto!important;transform:translateX(-50%)}
+@media(max-width:760px){.hero-copy>.portrait-audio-toggle--hero{left:50%!important;top:-54px!important;right:auto!important}}
+.hero-copy>.portrait-audio-toggle--hero{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;margin:0 auto 12px;opacity:0;pointer-events:none}
+.hero:hover .hero-copy>.portrait-audio-toggle--hero,.hero:focus-within .hero-copy>.portrait-audio-toggle--hero{opacity:.72;pointer-events:auto}
+@media(max-width:760px){.hero-copy>.portrait-audio-toggle--hero{opacity:.72;pointer-events:auto}}
+.features{position:relative}
+.portrait-audio-toggle--features{position:absolute!important;z-index:6;width:42px;height:42px;display:grid;place-items:center;padding:0;border:1px solid #ffffff70;border-radius:50%;background:#10171999;color:#fff;backdrop-filter:blur(5px);cursor:pointer;opacity:0;pointer-events:none}
+.features:hover .portrait-audio-toggle--features,.features:focus-within .portrait-audio-toggle--features{opacity:.78;pointer-events:auto}
+@media(max-width:760px){.portrait-audio-toggle--features{opacity:.78;pointer-events:auto}}
+/* Both audio controls stay anchored to their own video, at its upper-left corner. */
+.hero-photo>.portrait-audio-toggle--hero,.features-photo>.portrait-audio-toggle--features{position:absolute!important;left:10px!important;right:auto!important;top:10px!important;bottom:auto!important;transform:none!important;margin:0!important;opacity:0!important;pointer-events:none!important}
+.hero-photo:hover>.portrait-audio-toggle--hero,.hero-photo:focus-within>.portrait-audio-toggle--hero,.features-photo:hover>.portrait-audio-toggle--features,.features-photo:focus-within>.portrait-audio-toggle--features{opacity:.78!important;pointer-events:auto!important}
+@media(max-width:760px){.hero-photo>.portrait-audio-toggle--hero,.features-photo>.portrait-audio-toggle--features{opacity:.78!important;pointer-events:auto!important}}
+
+/* Reveal the hero control when the cursor is over the visual, without blocking the hero links. */
+.hero-photo.is-pointer-over-video>.portrait-audio-toggle--hero,.hero-photo:focus-within>.portrait-audio-toggle--hero,.hero:hover>.hero-photo>.portrait-audio-toggle--hero,.hero:focus-within>.hero-photo>.portrait-audio-toggle--hero{opacity:.78!important;pointer-events:auto!important}
+.features-photo-rewind-video{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;object-fit:cover!important;object-position:center top!important;opacity:0!important;pointer-events:none;transition:none!important}
+.features-photo.is-rewinding .features-photo-video{opacity:0!important}
+.features-photo.is-rewinding .features-photo-rewind-video{opacity:1!important}
+.features-photo.is-rewinding .features-photo-poster{opacity:0!important}
+
+/* Bring the feature copy and portrait together on desktop and medium screens. */
+@media(min-width:901px){
+ .features{grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);column-gap:clamp(20px,2vw,32px);align-items:center;min-height:0;margin-top:48px;padding-block:12px}
+ .features-copy{grid-column:1;grid-row:1;width:100%;max-width:650px;padding:0}
+ .features h2{font-size:clamp(30px,3vw,38px);line-height:1.12}
+ .features-copy>.muted{max-width:100%;font-size:14px;line-height:1.6}
+ .feature-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 18px;margin-top:22px;max-width:100%}
+ .feature-grid p{font-size:12px;line-height:1.55}
+ .features-photo{grid-column:2;grid-row:1;position:relative;inset:auto;transform:none;width:min(100%,560px);max-width:560px;height:auto;aspect-ratio:819/951;justify-self:end;align-self:center;margin:0}
+ .features-photo{mask:linear-gradient(90deg,transparent 0%,#000 7%,#000 96%,transparent 100%),linear-gradient(180deg,transparent 0%,#000 3%,#000 96%,transparent 100%)!important;mask-composite:intersect!important}
+}
+@media(min-width:561px) and (max-width:900px){
+ .features{display:grid;grid-template-columns:minmax(0,1fr);gap:22px;min-height:0;margin-top:42px;padding-block:16px}
+ .features-copy{grid-column:1;grid-row:1;width:100%;max-width:740px;padding:0}
+ .features-photo{grid-column:1;grid-row:2;position:relative;inset:auto;transform:none;width:min(100%,480px);max-width:480px;height:auto;aspect-ratio:819/951;justify-self:center;margin:0}
+ .features h2{font-size:clamp(30px,4vw,36px)}
+ .feature-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-width:740px}
+}
+
+/* The top control follows the bull marker in the hero; the lower one returns to its frame corner. */
+.hero>.portrait-audio-toggle--hero{position:absolute!important;left:calc(30% + 103px)!important;right:auto!important;top:calc(13% + 151px)!important;bottom:auto!important;transform:translate(-50%,-50%)!important;margin:0!important;z-index:8!important;opacity:0!important;pointer-events:none!important}
+.hero.is-pointer-over-video>.portrait-audio-toggle--hero,.hero:hover>.portrait-audio-toggle--hero,.hero:focus-within>.portrait-audio-toggle--hero{opacity:.78!important;pointer-events:auto!important}
+.features-photo>.portrait-audio-toggle--features{left:10px!important;right:auto!important;top:10px!important;bottom:auto!important;transform:none!important}
+@media(max-width:760px){.hero>.portrait-audio-toggle--hero{opacity:.78!important;pointer-events:auto!important}}
+
+/* Keep the hero audio control just outside the video's upper-left corner. */
+.hero .portrait-audio-toggle--hero{position:absolute!important;z-index:2147483001!important;left:28%!important;right:auto!important;top:62px!important;bottom:auto!important;width:42px;height:42px;transform:none!important;margin:0!important;opacity:0;pointer-events:none}
+.hero:hover .portrait-audio-toggle--hero,.hero:focus-within .portrait-audio-toggle--hero,.hero.is-pointer-over-video .portrait-audio-toggle--hero{opacity:.78!important;pointer-events:auto!important}
+@media(max-width:760px){.hero .portrait-audio-toggle--hero{left:16px!important;top:calc(100% - clamp(300px,100vw,520px) - 54px)!important;opacity:.78!important;pointer-events:auto!important}}
+.hero .portrait-audio-toggle--hero{left:var(--hero-audio-left,28%)!important;top:var(--hero-audio-top,62px)!important}

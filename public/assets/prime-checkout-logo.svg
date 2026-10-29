@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 110" role="img" aria-label="PRIME">
+ <g fill="none" stroke="#172b3b" stroke-width="7" stroke-linejoin="miter">
+  <path d="M8 95V18h70a21 21 0 0 1 0 42H8M139 95V18h70a21 21 0 0 1 0 42h-70m48 0 48 35M280 18v77M555 18h96M555 18v77h96M555 56h86"/>
+ </g>
+ <g fill="#172b3b">
+  <path d="m328 45 52-43 52 43 52-43 52 43v16L484 18l-52 43-52-43-52 43zM335 52h10v49h-10zM519 52h10v49h-10zM342 8h8v22h-8zM515 8h8v22h-8z"/>
+  <path d="M367 47h10v10h-10zm14 0h10v10h-10zm-14 14h10v10h-10zm14 0h10v10h-10zm90-14h10v10h-10zm14 0h10v10h-10zm-14 14h10v10h-10zm14 0h10v10h-10z"/>
+ </g>
+</svg>

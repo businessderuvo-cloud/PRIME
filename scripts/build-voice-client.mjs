@@ -1,6 +1,6 @@
 import fs from 'node:fs';import {build} from 'esbuild';
 fs.mkdirSync('public/vendor/elevenlabs',{recursive:true});
-await build({stdin:{contents:"export { Conversation } from '@elevenlabs/client';",resolveDir:process.cwd()},bundle:true,format:'esm',platform:'browser',target:['es2022'],minify:true,legalComments:'linked',outfile:'public/vendor/elevenlabs/client.js'});
+await build({stdin:{contents:"export { Conversation, Scribe, AudioFormat, CommitStrategy, RealtimeEvents } from '@elevenlabs/client';",resolveDir:process.cwd()},bundle:true,format:'esm',platform:'browser',target:['es2022'],minify:true,legalComments:'linked',outfile:'public/vendor/elevenlabs/client.js'});
 for(const file of ['rawAudioProcessor.js','audioConcatProcessor.js'])fs.copyFileSync('node_modules/@elevenlabs/client/worklets/'+file,'public/vendor/elevenlabs/'+file);
 fs.copyFileSync('node_modules/@alexanderolsen/libsamplerate-js/dist/libsamplerate.worklet.js','public/vendor/elevenlabs/libsamplerate.worklet.js');
 const pkg=JSON.parse(fs.readFileSync('node_modules/@elevenlabs/client/package.json'));console.log('Browser SDK bundled: '+pkg.version);

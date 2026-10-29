@@ -1,3 +1,5 @@
+import {customerDemoService,customerDemoApi,customerDemoEdition} from './src/customer-demo.mjs';
+import { cpayService } from './src/cpay.mjs';
 import { eliteService } from './src/elite.mjs';
 import { demoCallbackService } from './src/demo-callback.mjs';
 import { planUpgradeService } from './src/plan-upgrades.mjs';
@@ -10,6 +12,8 @@ import { backupService } from './src/backups.mjs';
 import { portalService } from './src/portals.mjs';
 import http from "node:http";
 import { connectService } from "./src/connect/service.mjs";
+import { telephonyService } from "./src/connect/telephony.mjs";
+import { privateDemoAccess } from "./src/private-demo-access.mjs";
 import { assistantService } from "./src/assistant.mjs";
 import { readFileSync, createReadStream, statSync } from "node:fs";
 import path from "node:path";
@@ -97,6 +101,7 @@ export function createApp({
   production = process.env.NODE_ENV === "production",
   demo = process.env.PRIME_DEMO === "1",
   connectFetch = fetch,
+  connectProviderApi,
   connectInterval = 60000,
   assistantFetch = fetch,
   assistantApiKey = process.env.PRIME_OPENAI_API_KEY || "",
@@ -105,11 +110,13 @@ export function createApp({
   authEmailApiKey = process.env.PRIME_RESEND_API_KEY || "",
   authEmailFrom = process.env.PRIME_EMAIL_FROM || "",
   diditOptions,
+  publicDemo = null,
 } = {}) {
   if (!['full','base','vip','elite'].includes(edition)) throw new Error('Edizione PRIME non valida');
   if (!Number.isSafeInteger(baseExtraSeats) || baseExtraSeats < 0) throw new Error('Posti aggiuntivi Base non validi');
   const isBase = edition === 'base';
   function sessionEdition(s) {
+    if(publicDemo)return customerDemoEdition(publicDemo.plan);
     if (edition === 'base' || edition === 'vip' || edition === 'elite') return edition;
     if (production) {
       const paid = db.prepare("SELECT plan FROM plan_subscriptions WHERE tenant_id=? AND state='active' AND period_end>? ORDER BY revision DESC LIMIT 1").get(s.tenant_id, new Date().toISOString());
@@ -133,6 +140,7 @@ export function createApp({
     authVault = createVault({ directory: dataDirectory || undefined }),
     authMailer = createAuthMailer({ fetcher: authEmailFetch, apiKey: authEmailApiKey, from: authEmailFrom, production });
   const handleDemoCallback = demoCallbackService({db,json,readBody,production});
+  const cpay = cpayService({db,json,readBody});
   const handleBilling = billingService({db,json,readBody});
   const handlePlanUpgrade = planUpgradeService({db,json,readBody});
   const geocodeCache = new Map();
@@ -186,10 +194,12 @@ export function createApp({
   }
   function createSession(res,userId,tenantId,now=Date.now()) {
     const token = randomBytes(32).toString("hex"), csrf = randomBytes(32).toString("hex");
+    const lifetime=privateAccess.lifetime(userId);
     db.prepare("DELETE FROM sessions WHERE expires<?").run(now);
-    db.prepare("INSERT INTO sessions(token,user_id,tenant_id,expires,csrf) VALUES (?,?,?,?,?)").run(hash(token),userId,tenantId,now+86400000,csrf);
-    res.setHeader("Set-Cookie",`prime_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400${production ? "; Secure" : ""}`);
+    db.prepare("INSERT INTO sessions(token,user_id,tenant_id,expires,csrf) VALUES (?,?,?,?,?)").run(hash(token),userId,tenantId,now+lifetime*1000,csrf);
+    res.setHeader("Set-Cookie",`prime_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${lifetime}${production ? "; Secure" : ""}`);
   }
+  const privateAccess=privateDemoAccess({db,directory:dataDirectory,root,enabled:edition==='elite'&&!publicDemo,json,readBody,createSession});
   function authorize(s, entity, record) {
     if (entity === "activities" && record && record.agent_id !== s.user_id)
       throw new ApiError(403, "Il WPS è privato: puoi accedere solo alle tue attività");
@@ -601,13 +611,15 @@ export function createApp({
 
   const insights = insightsService(db);
   const importer = importService({db,previewEntity,saveEntity,audit});
-  const backupDevices = deviceBackupService({db,database:database||path.join(root,'data/prime.sqlite'),readBody,json,audit});
-  const backups = backupService({db,database:database||path.join(root,'data/prime.sqlite')});
-  const connect = connectService({db,directory:database===':memory:'?null:path.dirname(path.resolve(database||path.join(root,'data/prime.sqlite'))),fetcher:connectFetch,json,readBody,audit,interval:isBase?0:connectInterval,saveAppointment:(session,record,delta)=>saveEntity('appointments',{data:{...Object.fromEntries(Object.keys(schema.appointments.fields).map(key=>[key,record?.[key]])),...delta},version:record?.version},session,record?.id)});
+  const backupDevices = deviceBackupService({db,database:database||path.join(root,'data/prime.sqlite'),readBody,json,audit,...(publicDemo?{directory:path.join(dataDirectory,'backups')}: {})});
+  const backups = backupService({db,database:database||path.join(root,'data/prime.sqlite'),...(publicDemo?{directory:path.join(dataDirectory,'backups'),key:randomBytes(32).toString('base64'),defaultEnabled:false}:{})});
+  const connect = connectService({db,directory:database===':memory:'?null:path.dirname(path.resolve(database||path.join(root,'data/prime.sqlite'))),fetcher:connectFetch,providerApi:connectProviderApi,json,readBody,audit,interval:isBase?0:connectInterval,saveAppointment:(session,record,delta)=>saveEntity('appointments',{data:{...Object.fromEntries(Object.keys(schema.appointments.fields).map(key=>[key,record?.[key]])),...delta},version:record?.version},session,record?.id)});
   const portalRoute = portalService({db,readBody,json});
   const assistantManager = assistantManagement({db,readBody,json,audit,previewSave:previewEntity,saveEntity,deleteEntity,authorize,rows});
-  const elite = eliteService({db,json,readBody,audit,management:assistantManager,rows,authorize,edition,production,fetcher:connectFetch,directory:dataDirectory});
-  const assistant = assistantService({db,fetcher:assistantFetch,apiKey:assistantApiKey,model:assistantModel,readBody,json,audit,management:assistantManager});
+  const telephony=telephonyService({db,vault:authVault,json,readBody,audit,editionFor:sessionEdition,fetcher:connectFetch,demo:!!publicDemo});
+  const elite = eliteService({db,json,readBody,audit,management:assistantManager,rows,authorize,edition:publicDemo?customerDemoEdition(publicDemo.plan):edition,production,fetcher:publicDemo?fetch:connectFetch,directory:dataDirectory,demoChatOnly:publicDemo||false,telephonyCredentials:telephony.credentials});
+  const assistant = assistantService({db,fetcher:assistantFetch,apiKey:assistantApiKey,model:assistantModel,readBody,json,audit,management:publicDemo?undefined:assistantManager});
+  const customerDemos=publicDemo?null:customerDemoService({createApp,root,production,json,readBody});
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, "http://localhost"),
@@ -618,9 +630,11 @@ export function createApp({
         "Content-Security-Policy",
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       );
+      if(customerDemos&&await customerDemos.route(req,res,url))return;
+      if(await privateAccess.route(req,res,url))return;
       const signedForElite=['/','/app'].includes(url.pathname)&&(()=>{const active=currentSession(req);return !!active&&['vip','elite'].includes(sessionEdition(active));})();
       if(url.pathname==='/sorelle-assistenti'||signedForElite){
-        res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://my.zadarma.com https://api.zadarma.com; style-src 'self' 'unsafe-inline' https://my.zadarma.com; img-src 'self' https://my.zadarma.com; connect-src 'self' wss://api.elevenlabs.io https://api.elevenlabs.io https://api.zadarma.com https://my.zadarma.com wss://ws.zadarma.com wss://*.zadarma.com; media-src 'self' blob:; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+        res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self'; connect-src 'self' wss://api.elevenlabs.io https://api.elevenlabs.io; media-src 'self' blob:; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
         res.setHeader('Permissions-Policy','microphone=(self), camera=()');
       }
       if (production)
@@ -807,11 +821,13 @@ export function createApp({
             403,
             "Sessione di sicurezza non valida: aggiorna la pagina",
           );
+        if(publicDemo&&await customerDemoApi({req,res,url,s,db,config:publicDemo,json,readBody}))return;
         const accountEdition=sessionEdition(s);
         if(accountEdition==='base' && !baseApiAllowed(url.pathname)) throw new ApiError(403,'Questa funzione è inclusa da PRIME Pro in su.');
         if(await backupDevices.route(req,res,url,s))return;
         if(await didit.route(req,res,url,s))return;
         if(await handlePlanUpgrade(req,res,url,s))return;
+        if(await cpay.route(req,res,url,s))return;
         if(await handleBilling(req,res,url,s))return;
         if (url.pathname === "/api/me" && method === "GET")
           return json(res, 200, {
@@ -823,7 +839,8 @@ export function createApp({
             theme: s.theme,
             csrf: s.csrf,
             edition: accountEdition,
-            human_seat_limit: accountEdition==='base' ? 2 + baseExtraSeats : null,
+            ...(publicDemo?{customer_demo:true,demo_plan:publicDemo.plan,vanessa_chat_only:true}:{}),
+            human_seat_limit: publicDemo&&publicDemo.plan==='pro'?10:accountEdition==='base' ? 2 + baseExtraSeats : null,
             environment: demo ? "demo" : "local",
             server_now: Date.now(),
           });
@@ -1010,6 +1027,7 @@ export function createApp({
           audit(s, "territory_zone.delete", zone.id);
           return json(res, 200, { ok: true });
         }
+        if (await telephony.route(req,res,url,s)) return;
         if (await connect.route(req,res,url,s)) return;
         if (await signatures.route(req,res,url,s)) return;
         if (await contactOut.route(req,res,url,s)) return;
@@ -1160,12 +1178,18 @@ export function createApp({
       }
       if (method !== "GET") throw new ApiError(405, "Metodo non consentito");
       const files = {
+        "/customer-demo-runtime.js":"customer-demo-runtime.js",
+        "/partner-mail.js":"partner-mail.js",
+        "/customer-demo-ui.js":"customer-demo-ui.js",
+        "/elite-view.js":"elite-view.js",
+        "/zoho-pec.js":"zoho-pec.js",
+        "/assets/zoho-mail-logo.svg":"assets/zoho-mail-logo.svg",
+        "/customer-demo.css":"customer-demo.css",
         "/edition.js":"edition.js",
         "/upgrade.js":"upgrade.js",
         "/elite-ui.js":"elite-ui.js",
         "/elite.css":"elite.css",
         "/elite-audio.js":"elite-audio.js",
-        "/zadarma-phone.js":"zadarma-phone.js",
 "/vendor/elevenlabs/client.js":"vendor/elevenlabs/client.js",
 "/vendor/elevenlabs/client.js.LEGAL.txt":"vendor/elevenlabs/client.js.LEGAL.txt",
 "/vendor/elevenlabs/rawAudioProcessor.js":"vendor/elevenlabs/rawAudioProcessor.js",
@@ -1174,12 +1198,40 @@ export function createApp({
 "/vanessa-browser.js":"vanessa-browser.js",
 "/sorelle-assistenti":"sisters.html",
 "/landing.css":"landing.css",
+        "/landing-professionista-video.js":"landing-professionista-video.js",
+        "/assets/prime-professionista-kling4.mp4":"assets/prime-professionista-kling4.mp4",
+        "/assets/prime-professionista-kling4-rewind.mp4":"assets/prime-professionista-kling4-rewind.mp4",
+        "/assets/prime-professionista-top-kling4.mp4":"assets/prime-professionista-top-kling4.mp4",
+        "/money-cursor.css":"money-cursor.css",
+        "/money-cursor.js":"money-cursor.js",
+        "/assets/charging-bull-silver-sheet.png":"assets/charging-bull-silver-sheet.png",
+        "/assets/charging-bull-original-silver.png":"assets/charging-bull-original-silver.png",
+        "/assets/charging-bull-natural-gait.png":"assets/charging-bull-natural-gait.png",
+        "/assets/charging-bull-preparation.png":"assets/charging-bull-preparation.png",
+        "/partners.css":"partners.css",
+        "/partners-test.css":"partners-test.css",
+        "/partners-test.js":"partners-test.js",
+        "/assets/contactout-logo.png":"assets/contactout-logo.png",
+        "/assets/contactout-official.svg":"assets/contactout-official.svg",
+        "/brands/providers/letterasenzabusta-official.svg":"brands/providers/letterasenzabusta-official.svg",
+"/cloudtalk-feature.css":"cloudtalk-feature.css",
+"/assets/cloudtalk-logo.svg":"assets/cloudtalk-logo.svg",
+"/assets/zadarma-logo.svg":"assets/zadarma-logo.svg",
+"/assets/google-workspace-official.svg":"assets/google-workspace-official.svg",
+        "/partners": "partners.html",
+        "/partners/": "partners.html",
+        "/partners/test": "partners-test.html",
+        "/partners/test/": "partners-test.html",
+"/telephony-connect.js":"telephony-connect.js",
+"/assets/teamviewer-official.png":"assets/teamviewer-official.png",
 "/landing-composition.css":"landing-composition.css",
 "/landing.js":"landing.js",
 "/pricing.js":"pricing.js",
 "/sisters.css":"sisters.css",
 "/sisters.js":"sisters.js",
 "/sisters-chat.js":"sisters-chat.js",
+"/assets/prime-bonus-chrome.png":"assets/prime-bonus-chrome.png",
+"/assets/prime-checkout-logo.svg":"assets/prime-checkout-logo.svg",
 "/assets/prime-wordmark.svg":"assets/prime-wordmark.svg",
 "/assets/prime-hero-panorama.png":"assets/prime-hero-panorama.png",
 "/assets/prime-professionals.png":"assets/prime-professionals.png",
@@ -1196,6 +1248,9 @@ export function createApp({
         "/": isBase ? "base.html" : "landing.html",
         "/app": isBase?"base.html":"index.html",
         "/landing": "landing.html",
+        "/checkout":"checkout.html",
+        "/checkout.css":"checkout.css",
+        "/checkout.js":"checkout.js",
         "/privacy": "privacy.html",
         "/app.js": "app.js",
         "/operations.js": "operations.js",
@@ -1214,7 +1269,6 @@ export function createApp({
         "/brands/providers/calendly.svg": "brands/providers/calendly.svg",
         "/brands/providers/whatsapp.svg": "brands/providers/whatsapp.svg",
         "/brands/providers/gmail.svg": "brands/providers/gmail.svg",
-        "/brands/providers/yahoo.svg": "brands/providers/yahoo.svg",
         "/brands/providers/outlook.svg": "brands/providers/outlook.svg",
         "/brands/providers/datagma.svg": "brands/providers/datagma.svg",
         "/brands/providers/contactout.png": "brands/providers/contactout.png",
@@ -1226,6 +1280,8 @@ export function createApp({
         "/brands/providers/protonmail.svg": "brands/providers/protonmail.svg",
         "/brands/providers/virgilio.svg": "brands/providers/virgilio.svg",
         "/brands/providers/pec.svg": "brands/providers/pec.svg",
+        "/brands/providers/infomaniak-wordmark.svg": "brands/providers/infomaniak-wordmark.svg",
+        "/brands/providers/legalmail.svg": "brands/providers/legalmail.svg",
         "/brands/providers/datagma.svg": "brands/providers/datagma.svg",
         "/brands/providers/namirial.svg": "brands/providers/namirial.svg",
         "/assistant-avatar.png": "assistant-avatar.png",
@@ -1333,7 +1389,10 @@ export function createApp({
   server.on("close",elite.close);
   server.on("close",backups.close);
   server.on("close",connect.close);
-  return { server, db, connect };
+  const cpayTimer=publicDemo?null:setInterval(()=>{cpay.poll().catch(()=>{});},30000);cpayTimer?.unref();
+  server.on('close',()=>clearInterval(cpayTimer));
+  server.on('close',()=>customerDemos?.close());
+  return { server, db, connect, ...(publicDemo?{demoSave:(entity,data,session)=>saveEntity(entity,{data},session)}:{}) };
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { server } = createApp();

@@ -4,11 +4,10 @@ export async function renderContactOutSettings({ main, state, api, esc }) {
   const panel = document.createElement('section');
   panel.className = 'panel datagma-panel contactout-panel';
   panel.innerHTML = `<p class="eyebrow">ARRICCHIMENTO CRM</p><h2 class="provider-brand-title">${brand('ContactOut', 'contactout.png')}</h2><p>Trova email, telefoni e dati professionali a partire da un’email, un numero o un profilo LinkedIn già salvato nel CRM. Ogni ricerca parte dalla scheda della persona e può consumare crediti ContactOut.</p><span class="pill" data-contactout-state>Controllo del collegamento…</span><div data-contactout-settings></div><p class="connect-feedback" data-contactout-feedback role="status" aria-live="polite"></p>`;
-  main.querySelector('.mail-panel')?.before(panel);
   const external = document.createElement('section');
   external.className = 'panel datagma-panel';
   external.innerHTML = `<p class="eyebrow">SERVIZI ESTERNI</p><h2>Ricerche su persone e immobili</h2><div class="external-service-grid"><article><h3 class="provider-brand-title">${brand('Telecontact', 'telecontact.png')}</h3><p>Consulta il servizio per le tue ricerche su proprietari e recapiti.</p><a class="secondary" href="https://telecontact.it/" target="_blank" rel="noopener noreferrer">Apri Telecontact ↗</a></article><article><h3 class="provider-brand-title">${brand('WHUIS', 'whuis.png?v=official-black')}</h3><p>Accedi alle ricerche e ai documenti del tuo account WHUIS.</p><a class="secondary" href="https://app.whuis.com/login" target="_blank" rel="noopener noreferrer">Apri WHUIS ↗</a></article></div><p class="small-note">I servizi si aprono sui rispettivi siti. PRIME non invia dati del CRM e non importa risultati da questi collegamenti.</p>`;
-  panel.after(external);
+  main.append(panel, external);
   const status = panel.querySelector('[data-contactout-feedback]');
   const badge = panel.querySelector('[data-contactout-state]');
   try {

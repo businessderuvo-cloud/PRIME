@@ -3,7 +3,7 @@ const openMenus = new Set();
 let nextId = 0;
 
 function enhance(select) {
-  if (!(select instanceof HTMLSelectElement) || enhanced.has(select) || select.multiple) return;
+  if (!(select instanceof HTMLSelectElement) || enhanced.has(select) || select.multiple || select.id==='elite-mode') return;
 
   const wrapper = document.createElement("span");
   wrapper.className = "prime-select-wrap";

@@ -1,0 +1,31 @@
+@media (hover:hover) and (pointer:fine){
+  body.money-cursor-enabled,body.money-cursor-enabled *{cursor:none!important}
+  body.money-cursor-enabled input,body.money-cursor-enabled textarea,body.money-cursor-enabled [contenteditable="true"]{cursor:text!important}
+  body.money-cursor-enabled select{cursor:pointer!important}
+  .money-cursor{position:fixed;z-index:2147483000;top:0;left:0;width:54px;height:46px;pointer-events:none;opacity:0;transform:translate3d(-100px,-100px,0);transition:opacity .12s ease;will-change:transform}
+  .money-cursor.is-visible{opacity:1}
+  .money-cursor svg{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 3px 5px #0008)}
+}
+.wallstreet-bull-photo{display:block;width:100%;height:100%;overflow:hidden!important;object-fit:contain;transform-origin:55% 70%}
+.money-cursor.is-bull{width:48px;height:36px}
+.money-cursor.is-bull .wallstreet-bull-photo{filter:none;shape-rendering:geometricPrecision}
+.money-cursor.is-bull.is-charging .wallstreet-bull-photo{animation:bull-ready .7s ease-in-out infinite}
+.money-cursor.is-bull.is-tap .wallstreet-bull-photo{animation:bull-original-nod .34s ease-out}
+.wallstreet-bull-prep{display:none}
+.money-cursor.is-bull.is-charging.has-prep .wallstreet-bull-photo{opacity:0;animation:none}
+.money-cursor.is-bull.is-charging.has-prep .wallstreet-bull-prep{display:block;position:absolute;left:-6%;top:-6%;width:112%;height:112%;background:url('/assets/charging-bull-preparation.png') 0 0 / 200% 200% no-repeat;animation:bull-prepare-charge .85s steps(1,end) infinite}
+@keyframes bull-prepare-charge{0%{background-position:0 0}25%{background-position:100% 0}55%{background-position:0 100%}80%{background-position:100% 100%}}
+.money-cursor.is-released{opacity:0!important}
+@keyframes bull-ready{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(2px) rotate(-1deg)}}
+@keyframes bull-original-nod{40%{transform:translateY(3px) scale(1.04)}75%{transform:translateY(-1px)}}
+.money-bull-runner{position:fixed;z-index:2147482998;width:104px;height:78px;pointer-events:none;transform-origin:55% 70%;will-change:transform,opacity;animation:bull-front-charge var(--bull-run-time,1200ms) cubic-bezier(.55,.02,.85,.4) forwards}
+.money-bull-runner .wallstreet-bull-photo{filter:drop-shadow(0 3px 3px #0005)}
+.wallstreet-bull-gait{position:absolute;left:-6%;top:-6%;width:112%;height:112%;display:block;opacity:0;background:url('/assets/charging-bull-natural-gait.png') 0 0 / 400% 200% no-repeat;filter:drop-shadow(0 3px 3px #0005)}
+.money-bull-runner.has-natural-gait .wallstreet-bull-photo{opacity:0}
+.money-bull-runner.has-natural-gait .wallstreet-bull-gait{opacity:1}
+@keyframes bull-front-charge{0%{opacity:1;transform:translate3d(0,0,0) scale(var(--bull-start-scale,.1))}85%{opacity:1}100%{opacity:0;transform:translate3d(var(--bull-run-x),var(--bull-run-y),0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.money-cursor{transition:none}.money-note-drop{animation-duration:850ms!important}.money-cursor svg,.money-note-drop svg{filter:none}.money-cursor.is-bull.is-charging:after{animation:none}.money-cursor.is-bull.is-tap svg{animation:none}.money-bull-runner{animation-duration:650ms!important}}
+
+@media(prefers-reduced-motion:reduce){.money-cursor.is-charging .wallstreet-bull-photo,.money-cursor.is-tap .wallstreet-bull-photo,.money-bull-runner .wallstreet-bull-photo{animation:none}}
+@media(prefers-reduced-motion:reduce){.money-cursor.is-bull.is-charging .wallstreet-bull-photo,.money-cursor.is-bull.is-tap .wallstreet-bull-photo,.money-bull-runner .wallstreet-bull-photo{animation:none}.money-bull-runner{animation:bull-front-fade 600ms ease-out forwards}}@keyframes bull-front-fade{from{opacity:1}to{opacity:0}}
+@media(prefers-reduced-motion:reduce){.money-cursor.is-bull.is-charging.has-prep .wallstreet-bull-photo{opacity:1;animation:none}.money-cursor.is-bull.is-charging.has-prep .wallstreet-bull-prep{display:none;animation:none}}

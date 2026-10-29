@@ -47,64 +47,71 @@ function waitForPhone() {
   });
 }
 
-export function mountZadarmaPhone({ api, container, status }) {
-  let timer = 0, stopped = false;
-  const launch = container.querySelector('#elite-zadarma-launch');
-  const supervisor = container.querySelector('#elite-zadarma-supervisor');
-  const listen = container.querySelector('#elite-zadarma-listen');
-  const update = () => {
-    if (stopped) return;
-    const sdk = window.zdrmWebPhone;
-    const connection = sdk?.webCallSession?.connection;
-    const tracks = connection?.getReceivers?.().map(receiver => receiver.track)
-      .filter(track => track?.kind === 'audio' && track.readyState === 'live') || [];
-    listen.disabled = !tracks.length;
-    if (tracks.length) status.textContent = 'Audio del centralino pronto per il copilot.';
-    else if (sdk?.callState === 'incoming') status.textContent = 'Chiamata in arrivo sull’interno supervisore.';
-    else if (sdk?.callState === 'outgoing') status.textContent = 'Chiamata supervisore in corso. Segui il menu vocale.';
-    timer = setTimeout(update, 500);
+export function mountZadarmaPhone({api,container,status}) {
+  let stopped=false,pending=null,ownedPhone=null,supervising=false,callSession=null;
+  const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const message=text=>{if(!stopped)status.textContent=text;};
+  const waitUntil=async(predicate,timeout,error)=>{
+    const deadline=Date.now()+timeout;
+    while(!stopped&&Date.now()<deadline){if(predicate())return;await pause(200);}
+    throw Error(stopped?'Collegamento Zadarma chiuso.':error);
   };
-  launch.onclick = async () => {
-    launch.disabled = true;
-    status.textContent = 'Collegamento al centralino Zadarma…';
-    try {
-      const session = await api('/api/elite/telephony/session');
-      await loadLibrary();
-      if (window.zdrmWebPhone?.unreg) window.zdrmWebPhone.unreg();
-      document.getElementById('zdrmWPhI')?.remove();
-      window.zadarmaWidgetFn(session.key, session.sip, 'rounded', 'it', false, { left: '0px', top: '0px' });
-      const phone = await waitForPhone();
-      container.querySelector('#elite-zadarma-widget').append(phone);
-      window.primeZadarmaPhone = {
-        getMonitorStream() {
-          const receivers = window.zdrmWebPhone?.webCallSession?.connection?.getReceivers?.() || [];
-          const tracks = receivers.map(receiver => receiver.track)
-            .filter(track => track?.kind === 'audio' && track.readyState === 'live')
-            .map(track => track.clone());
-          return tracks.length ? new MediaStream(tracks) : null;
-        }
-      };
-      supervisor.disabled = false;
-      status.textContent = 'Telefono Zadarma connesso sull’interno supervisore.';
-      launch.hidden = true;
-      void update();
-    } catch (error) {
-      status.textContent = error.message;
-      launch.disabled = false;
+  const stream=()=>{
+    const connection=window.zdrmWebPhone?.webCallSession?.connection;
+    const tracks=connection?.getReceivers?.().map(receiver=>receiver.track)
+      .filter(track=>track?.kind==='audio'&&track.readyState==='live')||[];
+    return tracks.length?new MediaStream(tracks.map(track=>track.clone())):null;
+  };
+  async function prepare(){
+    // Recheck the agency's real connection before opening WebRTC or monitoring.
+    const connection=await api('/api/connect/telephony');
+    if(connection.demo||!connection.providers.some(p=>p.provider==='zadarma'&&p.configured&&!p.demo&&p.verified_at&&p.sip))
+      throw Error('Collega e verifica Zadarma in PRIME Connect prima di avviare il copilot.');
+    if(stopped)throw Error('Collegamento Zadarma chiuso.');
+    if(supervising&&callSession===window.zdrmWebPhone?.webCallSession){
+      const audio=stream();if(audio)return audio;
     }
-  };
-  supervisor.onclick = () => {
-    const sdk = window.zdrmWebPhone;
-    if (!sdk?.apiWidget) return;
-    document.getElementById('zdrm-webphone-phonenumber-input').value = '007';
+    message('Collego automaticamente l’audio della chiamata Zadarma…');
+    if(!ownedPhone){
+      const session=await api('/api/elite/telephony/session');
+      await loadLibrary();
+      if(stopped)throw Error('Collegamento Zadarma chiuso.');
+      if(window.zdrmWebPhone?.unreg)window.zdrmWebPhone.unreg();
+      document.getElementById('zdrmWPhI')?.remove();
+      window.zadarmaWidgetFn(session.key,session.sip,'rounded','it',false,{left:'0px',top:'0px'});
+      const phone=await waitForPhone();
+      if(stopped){phone.remove();window.zdrmWebPhone?.unreg?.();throw Error('Collegamento Zadarma chiuso.');}
+      ownedPhone=phone;
+      // The SDK stays mounted; PRIME owns the single copilot start control.
+      phone.hidden=true;container.append(phone);
+    }
+    await waitUntil(()=>typeof window.zdrmWebPhone?.apiWidget?.call==='function'&&window.zdrmWebPhone.webPhoneUA?.isRegistered?.(),15000,'Il telefono Zadarma non è connesso. Verifica il centralino e riprova.');
+    const sdk=window.zdrmWebPhone;
     sdk.apiWidget.call('007');
-    status.textContent = 'Chiama l’interno 100 e poi premi 4 per il solo ascolto.';
+    await waitUntil(()=>sdk.callState==='talking'&&sdk.webCallSession,30000,'Impossibile collegare l’audio Zadarma. Verifica la chiamata attiva e i permessi del centralino.');
+    await pause(500);
+    for(const digit of ['1','0','0']){if(stopped)throw Error('Collegamento Zadarma chiuso.');sdk.apiWidget.sendDTMF(digit);await pause(300);}
+    await pause(1200);if(stopped)throw Error('Collegamento Zadarma chiuso.');
+    sdk.apiWidget.sendDTMF('4');
+    await waitUntil(()=>sdk.webCallSession?.connection?.getReceivers?.().some(receiver=>receiver.track?.kind==='audio'&&receiver.track.readyState==='live'),12000,'La chiamata Zadarma non fornisce audio. Verifica che sia attiva e riprova.');
+    supervising=true;callSession=sdk.webCallSession;
+    message('Audio Zadarma collegato al copilot.');
+    return stream();
+  }
+  const endMonitoring=()=>{
+    supervising=false;callSession=null;
+    if(ownedPhone){window.zdrmWebPhone?.unreg?.();ownedPhone.remove();ownedPhone=null;}
   };
-  return () => {
-    stopped = true;
-    clearTimeout(timer);
-    if (window.zdrmWebPhone?.unreg) window.zdrmWebPhone.unreg();
-    document.getElementById('zdrmWPhI')?.remove();
-    delete window.primeZadarmaPhone;
+  return {
+    endMonitoring,
+    ensureMonitorStream(){
+      if(stopped)return Promise.reject(Error('Collegamento Zadarma chiuso.'));
+      if(!pending)pending=prepare().catch(error=>{endMonitoring();message(error.message);throw error;}).finally(()=>{pending=null;});
+      return pending;
+    },
+    dispose(){
+      if(stopped)return;stopped=true;
+      endMonitoring();
+    }
   };
 }
