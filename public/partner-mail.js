@@ -1,10 +1,9 @@
 const partners=[
   {id:'infomaniak',name:'Infomaniak',key:'infomaniak',logo:'/brands/providers/infomaniak-wordmark.svg',site:'https://www.infomaniak.com/it/ksuite',defaultType:'personal'},
-  {id:'proton',name:'Proton Mail',key:'protonMail',logo:'/brands/providers/protonmail.svg',site:'https://proton.me/mail',defaultType:'personal'},
   {id:'zoho',name:'Zoho Mail',key:'zohoMail',logo:'/assets/zoho-mail-logo.svg',site:'https://www.zoho.com/mail/',defaultType:'personal'},
   {id:'infocert',name:'InfoCert PEC',key:'infoCertPec',logo:'/brands/providers/legalmail.svg',site:'https://www.infocert.it/prodotti/legalmail-pec',defaultType:'pec'},
 ];
-export const partnerUrls=Object.freeze({infomaniak:'https://www.infomaniak.com/goto/it/hosting.mail?utm_term=6ae2e98984b6c',protonMail:'',zohoMail:'',infoCertPec:''});
+export const partnerUrls=Object.freeze({infomaniak:'https://www.infomaniak.com/goto/it/hosting.mail?utm_term=6ae2e98984b6c',zohoMail:'',infoCertPec:''});
 
 export function renderPartnerMail(main,{data,api,refresh}){
   const grid=main.querySelector('.mail-provider-grid');
@@ -24,9 +23,7 @@ export function renderPartnerMail(main,{data,api,refresh}){
     const logo=['infomaniak','zoho'].includes(provider.id)?genericMailIcon:`<span class="integration-brand-icon${logoClass}"><img src="${provider.logo}" alt="Logo ${provider.name}" width="${logoSize}" height="${logoSize}"></span>`;
     const switchMarkup=`<div class="partner-switch" role="group" aria-label="Tipo di casella per ${provider.name}"><button type="button" data-mode="personal" class="${type==='personal'?'active':''}" aria-pressed="${type==='personal'}">Personale</button><button type="button" data-mode="pec" class="${type==='pec'?'active':''}" aria-pressed="${type==='pec'}">PEC</button></div><p class="small-note" data-description>${type==='pec'?'In PRIME questa casella è classificata come PEC.':'In PRIME questa casella è classificata come email personale.'}</p>`;
     let accountMarkup;
-    if(provider.id==='proton'){
-      accountMarkup=`<span class="pill">${account?'Account collegato':'Bridge richiesto'}</span>${account?`<p>${escapeHtml(email||account.account_label)}</p><div class="partner-actions"><button class="secondary" type="button" data-check="${escapeHtml(account.id)}">Controlla ora</button><button class="text-button" type="button" data-unlink="${escapeHtml(account.id)}">Scollega</button></div>`:''}<p class="small-note">Proton Mail richiede Proton Mail Bridge. PRIME è ospitato online e non può raggiungere il Bridge installato sul tuo computer; il collegamento diretto non è disponibile.</p>`;
-    }else if(account){
+    if(account){
       accountMarkup=`<span class="pill">${account.status==='error'||account.status==='reauthorize'?'Controllo da verificare':'Account collegato'}</span><p>${escapeHtml(email||account.account_label)}</p><p class="small-note">${account.last_sync_at?'Ultimo controllo: '+escapeHtml(new Date(account.last_sync_at).toLocaleString('it-IT')):account.last_error?escapeHtml(account.last_error):'In attesa del primo controllo.'}</p><button class="primary" type="button" data-open-form>Aggiorna accesso account</button>${formMarkup(provider,email,type,true)}<div class="partner-actions"><button class="secondary" type="button" data-check="${escapeHtml(account.id)}">Controlla ora</button><button class="text-button" type="button" data-unlink="${escapeHtml(account.id)}">Scollega</button></div>`;
     }else{
       accountMarkup=`<span class="pill">Da collegare</span><button class="primary" type="button" data-open-form>Collega account ${provider.name}</button>${formMarkup(provider,'',type,false)}`;

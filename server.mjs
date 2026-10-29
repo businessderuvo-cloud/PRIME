@@ -1277,7 +1277,6 @@ export function createApp({
         "/brands/providers/namirial.svg": "brands/providers/namirial.svg",
         "/brands/providers/namirial-mark.svg": "brands/providers/namirial-mark.svg",
         "/brands/providers/letterasenzabusta.png": "brands/providers/letterasenzabusta.png",
-        "/brands/providers/protonmail.svg": "brands/providers/protonmail.svg",
         "/brands/providers/virgilio.svg": "brands/providers/virgilio.svg",
         "/brands/providers/pec.svg": "brands/providers/pec.svg",
         "/brands/providers/infomaniak-wordmark.svg": "brands/providers/infomaniak-wordmark.svg",

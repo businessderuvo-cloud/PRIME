@@ -7,7 +7,7 @@ import { renderConnect } from "./connect.js?v=20261029-email-section";
 import { renderPortals } from "./portals.js";
 import { mountContactOutEnrichment } from "./contactout.js";
 import { assistantResultMarkup, openAssistantRecordManager } from "./assistant-management.js";
-import { renderMail } from "./mail.js?v=20261029-mail-controls";
+import { renderMail } from "./mail.js?v=20261029-no-proton";
 import { renderMap } from "./map.js";
 import { mountRepeatableRecaps } from "./repeatable-recaps.js";
 import { schema, roleLabels } from "./schema.js";

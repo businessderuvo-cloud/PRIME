@@ -22,7 +22,7 @@ Calendly usa una singola app OAuth di PRIME condivisa da tutte le agenzie e un�
 
 ## Richieste altri provider email
 
-Nella pagina Connect si possono richiedere Proton Mail, Virgilio Mail o PEC dalla sezione “Altri provider, su richiesta”. Per PEC si seleziona anche il gestore (Aruba PEC, Legalmail, Register.it PEC, InfoCert PEC o altro). La richiesta viene salvata come feedback sull’app e arriva solo alla inbox riservata allo sviluppatore. Questi provider non sono collegati finché non viene implementata e verificata la relativa integrazione; la schermata non raccoglie password o credenziali email.
+Nella pagina Connect si possono richiedere Virgilio Mail o PEC dalla sezione “Altri provider, su richiesta”. Per PEC si seleziona anche il gestore (Aruba PEC, Legalmail, Register.it PEC, InfoCert PEC o altro). La richiesta viene salvata come feedback sull’app e arriva solo alla inbox riservata allo sviluppatore. Questi provider non sono collegati finché non viene implementata e verificata la relativa integrazione; la schermata non raccoglie password o credenziali email.
 
 L’autorizzazione Yahoo richiede la lettura dell’informativa pubblica `/privacy` e il consenso esplicito prima di avviare OAuth. PRIME registra la scelta nel registro di audit.
 
