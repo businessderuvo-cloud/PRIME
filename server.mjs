@@ -1252,6 +1252,7 @@ export function createApp({
         "/checkout.css":"checkout.css",
         "/checkout.js":"checkout.js",
         "/privacy": "privacy.html",
+        "/termini": "privacy.html",
         "/app.js": "app.js",
         "/operations.js": "operations.js",
         "/backup-settings.js": "backup-settings.js",
