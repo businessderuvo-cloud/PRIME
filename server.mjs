@@ -1252,6 +1252,8 @@ export function createApp({
         "/checkout.css":"checkout.css",
         "/checkout.js":"checkout.js",
         "/privacy": "privacy.html",
+        "/legal.css": "legal.css",
+        "/legal.js": "legal.js",
         "/termini": "privacy.html",
         "/app.js": "app.js",
         "/operations.js": "operations.js",
