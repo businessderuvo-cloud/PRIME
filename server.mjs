@@ -1280,6 +1280,7 @@ export function createApp({
         "/mail.js": "mail.js",
         "/connect.js": "connect.js",
         "/stripe-agency.js": "stripe-agency.js",
+        "/stripe-chart.js": "stripe-chart.js",
         "/contactout.js": "contactout.js",
         "/portals.js": "portals.js",
         "/brands/immobiliare.png": "brands/immobiliare.png",
