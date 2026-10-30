@@ -1316,6 +1316,7 @@ export function createApp({
         "/stripe.css": "stripe.css",
         "/brands/stripe-wordmark-slate.svg": "brands/stripe-wordmark-slate.svg",
         "/brands/stripe-wordmark-white.svg": "brands/stripe-wordmark-white.svg",
+        "/brands/klarna-badge.svg": "brands/klarna-badge.svg",
         "/didit.js": "didit.js",
         "/datagma.css": "datagma.css",
         "/map.css": "map.css",

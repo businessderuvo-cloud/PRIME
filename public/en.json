@@ -484,7 +484,7 @@
   "AI Assistant base": "Basic AI Assistant",
   "10 agenti umani inclusi": "10 human team members included",
   "Supporto solo email": "Email support only",
-  "Email + WhatsApp prioritario": "Email + WhatsApp priority",
+  "Email + WhatsApp prioritario": "Priority email + WhatsApp",
   "Attivazione entro 24 ore lavorative": "Activation within 24 working hours",
   "Tutte le funzionalità Pro": "All Pro features",
   "1 agente AI · extra 100 €/mese": "1 AI agent · extra €100/month",
@@ -870,5 +870,12 @@
   "PRIME: territorio, immobili, clienti e attività in un’unica piattaforma. Confronta i piani e stima i costi AI della tua agenzia.": "PRIME: territory, properties, customers and activities in a single platform. Compare plans and estimate your agency's AI costs.",
   "Conosci Veronica e Vanessa, le sorelle assistenti di PRIME. Scopri i video, prova la chat informativa e confronta le funzionalità AI dei piani.": "Meet Veronica and Vanessa, PRIME's assistant sisters. Check out videos, try informational chat, and compare plans' AI features.",
   "Il checkout con carte e Klarna tramite Stripe è attualmente in modalità test: non addebita importi reali e non attiva abbonamenti reali. Stripe riceve i dati del test e il recapito email dell’account utilizzato. Le opzioni Klarna dipendono da disponibilità e approvazione del fornitore.": "Card and Klarna checkout through Stripe currently operates in test mode: it does not charge real funds or activate real subscriptions. Stripe receives the test data and the email address of the account used. Klarna options depend on availability and provider approval.",
-  "Ambiente di test Stripe non disponibile. Contatta l’assistenza.": "The Stripe test environment is unavailable. Please contact support."
+  "Ambiente di test Stripe non disponibile. Contatta l’assistenza.": "The Stripe test environment is unavailable. Please contact support.",
+  "Inclusa": "Included",
+  "Incluse": "Included",
+  "Inclusi": "Included",
+  "Disponibile": "Available",
+  "Non disponibile": "Unavailable",
+  "Illimitati": "Unlimited",
+  "Supporto": "Support"
 }
