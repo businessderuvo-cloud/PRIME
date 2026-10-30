@@ -92,13 +92,21 @@ $('#comparison').innerHTML=rows.map(([name,label,values])=>name==='category'?`<t
 const labels={minutes:'Minuti di conversazioni AI',simple:'Operazioni semplici',medium:'Indagini Detective medie',complex:'Indagini Detective complesse'};
 const quotaKeys=['minutes','simple','medium','complex'];
 let rates={...customerRates};
-$('#usage-controls').innerHTML=usageKeys.map(key=>`<label class="usage-field" for="usage-${key}">${labels[key]} / mese<input id="usage-${key}" name="${key}" type="number" min="0" max="10000000" step="1" value="${key==='minutes'?2500:0}" required></label>`).join('');
+const usageMaximums={minutes:20000,simple:3000,medium:1000,complex:500};
+const usageDefaults={minutes:1238,simple:225,medium:50,complex:20};
+$('#usage-controls').innerHTML=usageKeys.map(key=>`<div class="usage-row"><div><label for="usage-${key}">${labels[key]} / mese</label><input id="usage-${key}" name="${key}" type="number" min="0" max="10000000" step="1" value="${usageDefaults[key]}" required></div><input id="usage-${key}-range" type="range" min="0" max="${usageMaximums[key]}" step="1" value="${usageDefaults[key]}" aria-label="Regola ${labels[key].toLowerCase()}"></div>`).join('');
+for(const key of usageKeys){
+ const field=$('#usage-'+key),slider=$('#usage-'+key+'-range');
+ slider.addEventListener('input',()=>{field.value=slider.value;});
+ field.addEventListener('input',()=>{if(!field.validity.valid||field.value==='')return;slider.max=Math.max(usageMaximums[key],Number(field.value));slider.value=field.value;});
+}
 function drawEstimate(){
  if(!$('#usage-form').checkValidity())return;
  const agents=Number($('#ai-agents').value),usage=Object.fromEntries(usageKeys.map(key=>[key,Number($('#usage-'+key).value)]));
  $('#ai-minus').disabled=agents<=1;$('#ai-plus').disabled=agents>=1000;
  const quotes=Object.fromEntries(['vip','elite'].map(id=>[id,estimate(id,agents,usage,rates)]));
- $('#estimate-cards').innerHTML=['vip','elite'].map(id=>{const plan=plans[id],quote=quotes[id],extra=Math.max(0,agents-plan.ai);return `<article class="estimate"><h3>${icon(symbols[id])}${plan.name}</h3><p class="price"><strong>${euro(quote.total,2)}</strong> <small>/mese</small></p><dl><dt>Canone mensile</dt><dd>${euro(plan.monthly)}</dd><dt>Agenti AI aggiuntivi (${extra})</dt><dd>${euro(quote.extraAgents)}</dd>${quotaKeys.map((key,index)=>`<dt>${labels[key]} inclusi</dt><dd>${integer(plan.quotas[index])}</dd><dt>${labels[key]} extra (${integer(quote.extras[index].units)})</dt><dd>${euro(quote.extras[index].cents/100,2)}</dd>`).join('')}<dt>Totale consumi extra</dt><dd>${euro(quote.consumption,2)}</dd></dl><a href="#inizia" class="button">Come attivare ${plan.name} ↗</a></article>`;}).join('');
+ const winner=quotes.vip.total<=quotes.elite.total?'vip':'elite';
+ $('#estimate-cards').innerHTML=['vip','elite'].map(id=>{const plan=plans[id],quote=quotes[id],extra=Math.max(0,agents-plan.ai);return `<article class="estimate ${winner===id?'winner':''}"><h3>${icon(symbols[id])}${plan.name}</h3><p class="price"><strong>${euro(quote.total,2)}</strong> <small>/mese</small></p><dl><dt>Canone mensile</dt><dd>${euro(plan.monthly)}</dd><dt>Agenti AI aggiuntivi (${extra})</dt><dd>${euro(quote.extraAgents)}</dd>${quotaKeys.map((key,index)=>`<dt>${labels[key]} inclusi</dt><dd>${integer(plan.quotas[index])}</dd><dt>${labels[key]} extra (${integer(quote.extras[index].units)})</dt><dd>${euro(quote.extras[index].cents/100,2)}</dd>`).join('')}<dt>Totale consumi extra</dt><dd>${euro(quote.consumption,2)}</dd></dl><a href="#inizia" class="button">Come attivare ${plan.name} ↗</a></article>`;}).join('');
  const difference=Math.round((quotes.vip.total-quotes.elite.total)*100)/100;
  $('#savings').textContent=difference===0?'VIP ed Elite hanno lo stesso totale per questi consumi.':`Con questi consumi ${difference>0?'Elite':'VIP'} costa ${euro(Math.abs(difference),2)} in meno al mese.`;
  $('#rates').textContent=`Minuti AI extra (voce + elaborazione AI): ${euro(rates.minutes,5)}/min. Operazioni semplici: ${euro(rates.simple,4)} ciascuna; indagini medie: ${euro(rates.medium,3)}; complesse: ${euro(rates.complex,3)}. Si paga solo il consumo oltre la rispettiva quota inclusa. Le quote sono condivise dall’agenzia e non aumentano aggiungendo agenti AI. Costi telefonici e abbonamenti esterni separati.`;
