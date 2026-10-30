@@ -8,9 +8,9 @@ Comprende dashboard, ricerca contestuale e universale, censimento vie/civici/pia
 
 Esclude AI Assistant, Detective e arricchimento esterno, chiamate, importazioni da altri gestionali, posta e calendari esterni, portali, integrazioni esterne, firme elettroniche e contabilità/provvigioni. Le API interne necessarie al gestionale rimangono disponibili; quelle dei servizi esclusi restituiscono 403. I connettori non eseguono sincronizzazioni in background. I backup restano disponibili al titolare.
 
-Due agenti umani inclusi, titolare compreso. Gli inviti pendenti occupano un posto. Il limite è controllato sul server, anche per inviti simultanei. Solo l'operatore può attivare posti aggiuntivi con `PRIME_BASE_EXTRA_SEATS`, dopo l'accordo commerciale: 50 €/mese per posto. Il browser non può cambiare edizione o limite.
+Due agenti umani inclusi, titolare compreso. Gli inviti pendenti occupano un posto. Il limite è controllato sul server, anche per inviti simultanei. Solo l'operatore può attivare posti aggiuntivi con `PRIME_BASE_EXTRA_SEATS`, dopo l'accordo commerciale: 55,25 €/mese per posto. Il browser non può cambiare edizione o limite.
 
-Prezzo Standard: 53 €/mese oppure 530 €/anno; supporto via email a phoenix@primegestionale.it. Questa preparazione non crea automaticamente abbonamenti, pagamenti o un nuovo servizio Fly.
+Prezzo Standard: 55,58 €/mese oppure 552,76 €/anno; supporto via email a phoenix@primegestionale.it. Questa preparazione non crea automaticamente abbonamenti, pagamenti o un nuovo servizio Fly.
 
 Per un'installazione dedicata usare il launcher Base e un volume/archivio dedicato; configurare normalmente URL pubblico, provider email e segreti di autenticazione. `PRIME_BASE_DB` cambia esclusivamente il percorso Base, `PORT` e `HOST` l'ascolto. Il servizio completo continua a usare il proprio avvio e archivio.
 

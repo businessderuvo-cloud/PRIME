@@ -20,7 +20,7 @@ test('VIP exposes one AI, VIP prices and quotas, and blocks free agents and cust
   const f=fixture();
   try{
     const {payload}=await f.request('/status');
-    assert.equal(payload.plan,'vip');assert.equal(payload.includedAgents,1);assert.equal(payload.customIncluded,0);assert.equal(payload.additionalAgentMonthly,100);assert.equal(payload.customVoiceAllowed,false);assert.deepEqual(payload.quotas,[1238,225,50,20]);
+    assert.equal(payload.plan,'vip');assert.equal(payload.includedAgents,1);assert.equal(payload.customIncluded,0);assert.equal(payload.additionalAgentMonthly,110.49);assert.equal(payload.customVoiceAllowed,false);assert.deepEqual(payload.quotas,[1238,225,50,20]);
     for(const [path,method,body] of [['/agents','POST',{name:'Extra',personality:'Test'}],['/voices','GET',{}],['/session','POST',{mode:'copilot',agentId:'custom-agent'}]])await assert.rejects(f.request(path,method,body),e=>e.status===403);
     assert.equal(f.providerCalls,0);
     await assert.rejects(f.service.route({method:'GET'},{},new URL('https://prime.test/api/elite/status'),{...f.session,role:'external'}),e=>e.status===403);
@@ -55,5 +55,5 @@ test('VIP paid and AI plans must match in shared production; Elite keeps its lar
     f.db.prepare("UPDATE plan_subscriptions SET plan='pro'").run();await assert.rejects(request(),e=>e.status===403);
   }finally{f.db.close();}
   const elite=fixture('elite');
-  try{const status=(await elite.request('/status')).payload;assert.equal(status.includedAgents,2);assert.equal(status.additionalAgentMonthly,50);assert.equal(status.customVoiceAllowed,true);}finally{elite.db.close();}
+  try{const status=(await elite.request('/status')).payload;assert.equal(status.includedAgents,2);assert.equal(status.additionalAgentMonthly,55.25);assert.equal(status.customVoiceAllowed,true);}finally{elite.db.close();}
 });

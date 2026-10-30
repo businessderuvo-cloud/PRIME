@@ -8,12 +8,12 @@ const paid={plan:'standard',cycle:'monthly',period_start:'2028-02-01T12:00:00Z',
 test('upgrade prorates actual monthly and annual cycles, including leap years',()=>{
   const halfway=(Date.parse(paid.period_start)+Date.parse(paid.period_end))/2;
   const q=upgradeQuote(paid,'pro',halfway);
-  assert.equal(q.creditCents,2650);assert.equal(q.chargeCents,5250);assert.equal(q.dueCents,2600);assert.equal(q.renewalCents,10500);assert.equal(q.periodEnd,paid.period_end);
+  assert.equal(q.creditCents,2650);assert.equal(q.chargeCents,5541);assert.equal(q.dueCents,2891);assert.equal(q.renewalCents,11082);assert.equal(q.periodEnd,paid.period_end);
   const annual={...paid,cycle:'annual',paid_plan_cents:53000,period_start:'2028-01-01T00:00:00Z',period_end:'2029-01-01T00:00:00Z'};
   const middle=(Date.parse(annual.period_start)+Date.parse(annual.period_end))/2;
-  assert.equal(upgradeQuote(annual,'pro',middle).dueCents,26000);
-  assert.equal(upgradeQuote(annual,'elite',middle).dueCents,496000);
-  assert.equal(upgradeQuote(paid,'vip',Date.parse(paid.period_start)).dueCents,46900);
+  assert.equal(upgradeQuote(annual,'pro',middle).dueCents,28760);
+  assert.equal(upgradeQuote(annual,'elite',middle).dueCents,525942);
+  assert.equal(upgradeQuote(paid,'vip',Date.parse(paid.period_start)).dueCents,49976);
   assert.equal(upgradeQuote({...paid,paid_plan_cents:5000},'pro',halfway).creditCents,2500);
 });
 test('upgrade rejects unavailable, expired, future, malformed and lower-tier subscriptions',()=>{
@@ -45,11 +45,11 @@ test('Base upgrade endpoints bind quotes to verified paid cycles and never grant
     const start=new Date(Date.now()-15*86400000).toISOString(),end=new Date(Date.now()+15*86400000).toISOString();
     for(const s of [a,b])app.db.prepare("INSERT INTO plan_subscriptions(tenant_id,plan,cycle,period_start,period_end,paid_plan_cents,payment_reference,state) VALUES (?,'standard','monthly',?,?,5300,'test-paid','active')").run(s.tenant,start,end);
     const result=await request(a,'/api/billing/upgrade/quote',{plan:'pro',dueCents:1,periodEnd:'2099-01-01',cycle:'annual'});
-    assert.equal(result.status,200);assert.equal(result.body.dueCents,2600);assert.equal(result.body.cycle,'monthly');assert.equal(result.body.periodEnd,end);
+    assert.equal(result.status,200);assert.equal(result.body.dueCents,2891);assert.equal(result.body.cycle,'monthly');assert.equal(result.body.periodEnd,end);
     const id=result.body.id;
     assert.equal((await request(b,'/api/billing/upgrade/request',{quoteId:id})).status,409);
     const accepted=await request(a,'/api/billing/upgrade/request',{quoteId:id,dueCents:0,edition:'full'});
-    assert.equal(accepted.status,200);assert.equal(accepted.body.dueCents,2600);assert.equal(accepted.body.paymentUrl,null);
+    assert.equal(accepted.status,200);assert.equal(accepted.body.dueCents,2891);assert.equal(accepted.body.paymentUrl,null);
     assert.equal((await request(a,'/api/billing/upgrade/request',{quoteId:id})).status,200);
     assert.equal(app.db.prepare('SELECT plan FROM plan_subscriptions WHERE tenant_id=?').get(a.tenant).plan,'standard');
     assert.equal((await request(a,'/api/me')).body.edition,'base');

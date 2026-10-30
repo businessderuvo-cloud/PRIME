@@ -1,8 +1,8 @@
 export const plans = {
-  standard: { name: 'Standard', monthly: 53, annual: 530, humans: 2, humanExtra: 50 },
-  pro: { name: 'Pro', monthly: 105, annual: 1050, humans: 10, humanExtra: 25 },
-  vip: { name: 'VIP', monthly: 522, annual: 5220, humans: null, ai: 1, aiExtra: 100, quotas: [1238,225,50,20] },
-  elite: { name: 'Elite', monthly: 1045, annual: 10450, humans: null, ai: 2, aiExtra: 50, quotas: [3738,675,150,60] },
+  standard: { name: 'Standard', monthly: 55.58, annual: 552.76, humans: 2, humanExtra: 55.25 },
+  pro: { name: 'Pro', monthly: 110.82, annual: 1105.19, humans: 10, humanExtra: 27.63 },
+  vip: { name: 'VIP', monthly: 552.76, annual: 5524.59, humans: null, ai: 1, aiExtra: 110.49, quotas: [1238,225,50,20] },
+  elite: { name: 'Elite', monthly: 1105.19, annual: 11048.84, humans: null, ai: 2, aiExtra: 55.25, quotas: [3738,675,150,60] },
 };
 export const usageKeys = ['minutes','simple','medium','complex'];
 // Final EUR tariff per excess minute includes both voice and AI processing.

@@ -13,7 +13,7 @@ test('Veronica follows small talk, playful follow-ups and plan context without m
   assert.match(reply('ok aiutami a scegliere... il piano'),/gestionale completo parti da Standard/);
   assert.match(reply('E lei?'),/Vanessa.*VIP ed Elite/);
   reply('Cosa include Pro?');
-  const price=reply('Quanto costa?');assert.match(price,/Pro: 105/);assert.doesNotMatch(price,/522/);
+  const price=reply('Quanto costa?');assert.match(price,/Pro: 110,82/);assert.doesNotMatch(price,/522/);
   assert.match(reply('sì'),/10 agenti umani/);
   reply('E per Elite quanto costa?');
   assert.match(reply('Sì'),/3.738 minuti/);

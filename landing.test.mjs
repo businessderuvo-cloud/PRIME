@@ -9,21 +9,21 @@ import {publicOverage,billingService} from './src/billing.mjs';
 test('quote e agenti AI: soglie, extra, arrotondamento e risparmio',()=>{
  const rates={minutes:.5,simple:.25,medium:2,complex:5}; // Test fixture, not merchant tariffs.
  const base={minutes:1238,simple:225,medium:50,complex:20};
- assert.equal(estimate('vip',1,base,rates).total,522);
- assert.equal(estimate('elite',2,base,rates).total,1045);
- assert.equal(estimate('vip',3,base,rates).extraAgents,200);
- assert.equal(estimate('elite',3,base,rates).extraAgents,50);
+ assert.equal(estimate('vip',1,base,rates).total,552.76);
+ assert.equal(estimate('elite',2,base,rates).total,1105.19);
+ assert.equal(estimate('vip',3,base,rates).extraAgents,220.98);
+ assert.equal(estimate('elite',3,base,rates).extraAgents,55.25);
  const usage={minutes:2500,simple:300,medium:80,complex:25};
- assert.equal(estimate('vip',3,usage,rates).total,1456.75);
- assert.equal(estimate('elite',3,usage,rates).total,1095);
- assert.equal(estimate('vip',3,usage,rates).total-estimate('elite',3,usage,rates).total,361.75);
+ assert.equal(estimate('vip',3,usage,rates).total,1508.49);
+ assert.equal(estimate('elite',3,usage,rates).total,1160.44);
+ assert.equal(Math.round((estimate('vip',3,usage,rates).total-estimate('elite',3,usage,rates).total)*100),34805);
  assert.equal(estimate('vip',1,{...base,minutes:1239},{}).total,null);
- assert.equal(estimate('vip',1,base,{}).total,522);
+ assert.equal(estimate('vip',1,base,{}).total,552.76);
  assert.equal(estimate('vip',1,{...base,simple:226},{simple:.123}).consumption,.12);
  assert.throws(()=>estimate('vip',-1,base,rates));
  assert.throws(()=>estimate('vip',1,{...base,minutes:NaN},rates));
  assert.throws(()=>estimate('pro',1,base,rates));
- assert.equal(plans.standard.annual,530);assert.equal(plans.pro.annual,1050);assert.equal(plans.vip.annual,5220);assert.equal(plans.elite.annual,10450);
+ assert.equal(plans.standard.annual,552.76);assert.equal(plans.pro.annual,1105.19);assert.equal(plans.vip.annual,5524.59);assert.equal(plans.elite.annual,11048.84);
 });
 test('configurazione pubblica espone solo tariffe finali valide',()=>{
  assert.deepEqual(publicOverage(),customerRates);
@@ -60,9 +60,9 @@ test('HTTP: landing, asset, gestionale, account reale, CSRF e acquisto negato',a
 test('tariffe cliente esatte e calcolo oltre soglia',()=>{
  const usage={minutes:2500,simple:300,medium:80,complex:25};
  const vip=estimate('vip',3,usage),elite=estimate('elite',3,usage);
- assert.equal(vip.consumption,476.15);assert.equal(vip.total,1198.15);
- assert.equal(elite.consumption,0);assert.equal(elite.total,1095);
- assert.equal(Math.round((vip.total-elite.total)*100)/100,103.15);
+ assert.equal(vip.consumption,476.15);assert.equal(vip.total,1249.89);
+ assert.equal(elite.consumption,0);assert.equal(elite.total,1160.44);
+ assert.equal(Math.round((vip.total-elite.total)*100)/100,89.45);
  assert.equal(estimate('vip',1,{minutes:1239,simple:226,medium:51,complex:21}).consumption,8.15);
 });
 
