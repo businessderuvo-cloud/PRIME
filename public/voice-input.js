@@ -38,7 +38,7 @@ export function startVoiceInput() {
       button.setAttribute("aria-label", "Detta in questo campo");
       button.setAttribute("aria-pressed", "false");
       button.innerHTML =
-        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3.25 3.25 0 0 0-3.25 3.25v5.5a3.25 3.25 0 0 0 6.5 0v-5.5A3.25 3.25 0 0 0 12 3Z"/><path d="M5.5 10.5v1.25a6.5 6.5 0 0 0 13 0V10.5M12 18.25V22m-4 0h8"/></svg>';
+        '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v3M9 21h6"/></svg>';
       const status = document.createElement("span");
       status.className = "voice-input-status";
       status.setAttribute("role", "status");

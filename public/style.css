@@ -39,6 +39,14 @@ select,
 textarea {
   font: inherit;
 }
+/* Shared field baseline also covers inputs wrapped by voice dictation. */
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]),select,textarea){
+  min-height:44px;max-width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;transition:border-color .15s ease,box-shadow .15s ease;
+}
+:where(input,textarea)::placeholder{color:var(--muted);opacity:.8}
+:where(select) option,:where(select) optgroup{background:var(--surface);color:var(--text)}
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),select,textarea):focus-visible{border-color:var(--muted);outline:2px solid color-mix(in srgb,var(--muted) 40%,transparent);outline-offset:2px}
+:where(input,select,textarea):disabled{opacity:.6;cursor:not-allowed}
 button {
   cursor: pointer;
 }
@@ -1781,3 +1789,10 @@ select option { background:var(--surface); color:var(--text); }
 .assistant-profile>div{width:min(460px,100%)}
 
 .remote-support-illustration{display:grid;place-items:center;flex:0 0 64px;width:64px;height:64px;border:1px solid var(--line);border-radius:16px;background:var(--surface2);color:var(--accent)}.remote-support-illustration svg{width:34px;height:34px;stroke-width:1.7}.remote-support-nav>svg{width:20px;height:20px;color:var(--accent)}.remote-support-nav{gap:13px}
+/* One discreet dictation control across all editable fields and assistants. */
+:root .voice-input-wrap > .voice-input-button{width:36px;height:36px;min-height:36px;padding:8px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--muted);box-shadow:none}
+:root .voice-input-wrap > .voice-input-button svg{display:block;width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+:root .voice-input-wrap > .voice-input-button:hover,:root .voice-input-wrap > .voice-input-button:focus-visible{background:var(--surface2);border-color:var(--line);color:var(--text);box-shadow:none}
+:root .voice-input-wrap > .voice-input-button:focus-visible{outline:2px solid var(--muted);outline-offset:2px}
+:root .voice-input-wrap > .voice-input-button.listening{color:#f3a5ad;background:color-mix(in srgb,#aa3945 18%,var(--surface));border-color:color-mix(in srgb,#aa3945 65%,var(--line));animation:none;box-shadow:none}
+@media(pointer:coarse){:root .voice-input-wrap > .voice-input-button{width:40px;height:40px}}

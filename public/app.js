@@ -18,7 +18,7 @@ import { startWpsClock } from "./wps-clock.js";
 import { finishedStatuses } from "./planner.js";
 import { renderTerritory } from "./territory.js";
 import { mountPersonRecaps } from "./person-recaps.js";
-import { startVoiceInput } from "./voice-input.js";
+import { startVoiceInput } from "./voice-input.js?v=20261030-outline-mic";
 import { startCustomSelects } from "./custom-selects.js?v=20261029-vanessa";
 let stopWpsClock;
 let stopDocumentRenewalNotifications;
