@@ -1,4 +1,4 @@
-import { wireStripeChart } from './stripe-chart.js?v=20261030-stripe-chart-classic4';
+import { wireStripeChart } from './stripe-chart.js?v=20261030-stripe-chart-classic5';
 
 const eur = value => new Intl.NumberFormat((document.documentElement.lang==='en'?'en-GB':'it-IT'),{style:'currency',currency:'EUR'}).format((value||0)/100);
 const chartText = (it,en) => document.documentElement.lang==='en' ? en : it;

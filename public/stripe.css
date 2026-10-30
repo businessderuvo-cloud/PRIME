@@ -79,3 +79,6 @@
 .stripe-chart-legend .income-key,.stripe-chart-summary-item.stripe-summary-income .stripe-chart-summary-label,.stripe-pie-row.stripe-summary-income>span{color:#27875f!important;font-weight:650}
 .stripe-chart-legend .pending-key,.stripe-chart-summary-item.stripe-summary-pending .stripe-chart-summary-label,.stripe-pie-row.stripe-summary-pending>span{color:#bf792b!important;font-weight:650}
 .stripe-chart-legend .cost-key,.stripe-chart-summary-item.stripe-summary-cost .stripe-chart-summary-label,.stripe-pie-row.stripe-summary-cost>span{color:#b8545b!important;font-weight:650}
+.stripe-chart-summary-item.stripe-summary-income>strong,.stripe-pie-row.stripe-summary-income>strong{color:#27875f!important}
+.stripe-chart-summary-item.stripe-summary-pending>strong,.stripe-pie-row.stripe-summary-pending>strong{color:#bf792b!important}
+.stripe-chart-summary-item.stripe-summary-cost>strong,.stripe-pie-row.stripe-summary-cost>strong{color:#b8545b!important}
