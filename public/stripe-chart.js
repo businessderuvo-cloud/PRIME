@@ -1,13 +1,13 @@
 const COLORS = {
-  income: '#64a887',
-  cost: '#bd686e',
-  payout: '#7293b4',
+  income: '#27875f',
+  pending: '#bf792b',
+  cost: '#b8545b',
 };
 
 const SERIES = [
   { key: 'income', label: 'Entrate', color: COLORS.income },
+  { key: 'pending', label: 'In attesa', color: COLORS.pending },
   { key: 'cost', label: 'Uscite', color: COLORS.cost },
-  { key: 'payout', label: 'Accrediti', color: COLORS.payout },
 ];
 
 const finiteAmount = value => {
@@ -20,8 +20,8 @@ export function normalizeStripeSeries(rows) {
   return rows.slice(-12).map((row, index) => ({
     month: String(row?.month ?? String(index + 1).padStart(2, '0')),
     income: finiteAmount(row?.income),
+    pending: finiteAmount(row?.pending),
     cost: finiteAmount(row?.cost ?? (finiteAmount(row?.fees) + finiteAmount(row?.refunds))),
-    payout: finiteAmount(row?.payout ?? row?.payouts),
   }));
 }
 
@@ -94,9 +94,19 @@ function renderLines(rows) {
       value: row[series.key],
       share: monthTotal(row) ? row[series.key] / monthTotal(row) * 100 : 0,
     }));
-    const path = points.map((point, index) => `${index ? 'L' : 'M'}${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' ');
-    const dots = points.map(point => `<circle class="stripe-${series.key}" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="3.8" tabindex="0" aria-label="${esc(point.row.month)} · ${series.label}: ${esc(euro(point.value))}, ${percent(point.share)} del mese"><title>${esc(point.row.month)} · ${series.label}: ${esc(euro(point.value))} · ${percent(point.share)} del mese</title></circle>`).join('');
-    return `<path class="stripe-line stripe-${series.key}" d="${path}"/>${dots}`;
+    const path = points.map((point, index) => {
+      if (!index) return `M${point.x.toFixed(2)},${point.y.toFixed(2)}`;
+      const previous = points[index - 1];
+      const beforePrevious = points[Math.max(0, index - 2)];
+      const next = points[Math.min(points.length - 1, index + 1)];
+      const c1x = previous.x + (point.x - beforePrevious.x) / 6;
+      const c1y = previous.y + (point.y - beforePrevious.y) / 6;
+      const c2x = point.x - (next.x - previous.x) / 6;
+      const c2y = point.y - (next.y - previous.y) / 6;
+      return `C${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${point.x.toFixed(2)},${point.y.toFixed(2)}`;
+    }).join(' ');
+    const hitAreas = points.map(point => `<circle class="stripe-line-hit" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="8" fill="transparent" stroke="transparent" tabindex="0" aria-label="${esc(point.row.month)} · ${series.label}: ${esc(euro(point.value))}, ${percent(point.share)} del mese"><title>${esc(point.row.month)} · ${series.label}: ${esc(euro(point.value))} · ${percent(point.share)} del mese</title></circle>`).join('');
+    return `<path class="stripe-line stripe-${series.key}" d="${path}"/>${hitAreas}`;
   }).join('');
   const months = rows.map((row, index) => {
     const x = plot.left + groupWidth * (index + 0.5);
@@ -119,16 +129,16 @@ function renderSummary(rows) {
 function renderPie(rows) {
   const { sums, total } = totals(rows);
   if (!(total > 0)) return '<div class="stripe-pie-empty">Nessun movimento nel periodo</div>';
-  const cx = 130, cy = 130, radius = 80, circumference = 2 * Math.PI * radius;
-  let offset = 0;
-  const rings = SERIES.map((series, index) => {
-    const length = sums[index] / total * circumference;
-    const ring = `<circle class="stripe-${series.key}" cx="${cx}" cy="${cy}" r="${radius}" stroke-dasharray="${length.toFixed(2)} ${(circumference - length).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}"><title>${series.label}: ${esc(euro(sums[index]))} · ${percent(sums[index] / total * 100)}</title></circle>`;
-    offset += length;
-    return ring;
-  }).join('');
   const items = SERIES.map((series, index) => `<div class="stripe-pie-row stripe-summary-${series.key}"><i aria-hidden="true"></i><span>${series.label}</span><strong>${esc(euro(sums[index]))}</strong><small>${percent(sums[index] / total * 100)}</small></div>`).join('');
-  return `<div class="stripe-pie-layout"><svg class="stripe-pie-svg" viewBox="0 0 260 260" role="img" aria-label="Ripartizione: ${SERIES.map((series, i) => `${series.label} ${esc(euro(sums[i]))}, ${percent(sums[i] / total * 100)}`).join('; ')}"><circle class="stripe-pie-track" cx="${cx}" cy="${cy}" r="${radius}"/><g transform="rotate(-90 ${cx} ${cy})">${rings}</g><text class="stripe-pie-center-label" x="${cx}" y="122" text-anchor="middle">TOTALE</text><text class="stripe-pie-center-value" x="${cx}" y="148" text-anchor="middle">${esc(euro(total))}</text></svg><div class="stripe-pie-legend">${items}<p>Quote calcolate sul totale dei movimenti visualizzati.</p></div></div>`;
+  let edge = 0;
+  const stops = SERIES.map((series, index) => {
+    const next = edge + (sums[index] / total * 100);
+    const stop = `${series.color} ${edge.toFixed(2)}% ${next.toFixed(2)}%`;
+    edge = next;
+    return stop;
+  }).join(',');
+  const label = SERIES.map((series, index) => `${series.label} ${esc(euro(sums[index]))}, ${percent(sums[index] / total * 100)}`).join('; ');
+  return `<div class="stripe-pie-layout"><div class="stripe-pie-wheel" role="img" aria-label="Ripartizione: ${label}" style="background:conic-gradient(${stops})"></div><div class="stripe-pie-legend"><p class="stripe-pie-total"><span>Totale periodo</span><strong>${esc(euro(total))}</strong></p>${items}<p>Quote calcolate sul totale dei movimenti visualizzati.</p></div></div>`;
 }
 
 export function renderStripeChartSvg(source, style = 'bars') {

@@ -40,31 +40,28 @@
 .stripe-chart-controls button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media(max-width:620px){.stripe-chart-panel{padding:18px}.stripe-chart{height:250px}.stripe-chart[data-style=pie]{height:240px}.stripe-chart-controls{justify-content:flex-start}}
 
-/* Refined charts: restrained PRIME colors, clear values and percentages. */
-.stripe-chart-legend .income-key:before{background:#64a887!important}
-.stripe-chart-legend .cost-key:before{background:#bd686e!important}
-.stripe-chart-legend .payout-key:before{background:#7293b4!important}
-.stripe-chart-svg .stripe-income{fill:#64a887;stroke:#64a887}
-.stripe-chart-svg .stripe-cost{fill:#bd686e;stroke:#bd686e}
-.stripe-chart-svg .stripe-payout{fill:#7293b4;stroke:#7293b4}
+/* PRIME chart colors follow the reference: green income, amber pending, red outgoings. */
+.stripe-chart-legend .income-key:before{background:#27875f!important}
+.stripe-chart-legend .pending-key:before{background:#bf792b!important}
+.stripe-chart-legend .cost-key:before{background:#b8545b!important}
+.stripe-chart-svg .stripe-income{fill:#27875f;stroke:#27875f}
+.stripe-chart-svg .stripe-pending{fill:#bf792b;stroke:#bf792b}
+.stripe-chart-svg .stripe-cost{fill:#b8545b;stroke:#b8545b}
 .stripe-chart-svg .stripe-gridline{stroke:rgba(166,176,186,.16);opacity:1}
 .stripe-chart-svg .stripe-axis-label,.stripe-chart-svg .stripe-month-label{fill:var(--muted)}
 .stripe-chart-svg .stripe-line{fill:none;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}
-.stripe-chart-svg circle.stripe-income,.stripe-chart-svg circle.stripe-cost,.stripe-chart-svg circle.stripe-payout{stroke:var(--surface2);stroke-width:2.5}
+.stripe-chart-svg .stripe-line-hit{fill:transparent;stroke:transparent;pointer-events:all}
 .stripe-chart[data-style=pie]{height:auto;min-height:0;padding:15px 20px;overflow:visible}
-.stripe-pie-layout{display:grid;grid-template-columns:minmax(190px,260px) minmax(240px,1fr);align-items:center;gap:28px;min-height:245px;max-width:760px;margin:0 auto}
-.stripe-pie-svg{display:block;width:100%;max-width:260px;height:auto;overflow:visible}
-.stripe-pie-svg .stripe-pie-track{fill:none;stroke:rgba(166,176,186,.14);stroke-width:27}
-.stripe-pie-svg .stripe-income,.stripe-pie-svg .stripe-cost,.stripe-pie-svg .stripe-payout{fill:none;stroke-width:27;stroke-linecap:butt}
-.stripe-pie-svg .stripe-income{stroke:#64a887}.stripe-pie-svg .stripe-cost{stroke:#bd686e}.stripe-pie-svg .stripe-payout{stroke:#7293b4}
-.stripe-pie-center-label{fill:var(--muted);font:600 10px system-ui,sans-serif;letter-spacing:1.5px}
-.stripe-pie-center-value{fill:var(--text);font:600 17px system-ui,sans-serif}
+.stripe-pie-layout{display:grid;grid-template-columns:minmax(210px,260px) minmax(260px,1fr);align-items:center;gap:32px;min-height:245px;max-width:760px;margin:0 auto}
+.stripe-pie-wheel{width:230px;aspect-ratio:1;margin:auto;border:1px solid rgba(255,255,255,.12);border-radius:50%;box-shadow:0 12px 36px rgba(0,0,0,.28),inset 0 0 0 1px rgba(0,0,0,.1)}
 .stripe-pie-legend{display:grid;gap:3px;min-width:0}
 .stripe-pie-row{display:grid;grid-template-columns:10px minmax(70px,1fr) minmax(70px,auto) 52px;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid rgba(166,176,186,.12);font-size:13px}
-.stripe-pie-row>i,.stripe-chart-summary-label>i{display:block;width:8px;height:8px;border-radius:50%;background:#64a887}
-.stripe-pie-row.stripe-summary-cost>i,.stripe-chart-summary-item.stripe-summary-cost .stripe-chart-summary-label>i{background:#bd686e}
-.stripe-pie-row.stripe-summary-payout>i,.stripe-chart-summary-item.stripe-summary-payout .stripe-chart-summary-label>i{background:#7293b4}
+.stripe-pie-row>i,.stripe-chart-summary-label>i{display:block;width:8px;height:8px;border-radius:50%;background:#27875f}
+.stripe-pie-row.stripe-summary-pending>i,.stripe-chart-summary-item.stripe-summary-pending .stripe-chart-summary-label>i{background:#bf792b}
+.stripe-pie-row.stripe-summary-cost>i,.stripe-chart-summary-item.stripe-summary-cost .stripe-chart-summary-label>i{background:#b8545b}
 .stripe-pie-row>span{color:var(--muted)}.stripe-pie-row>strong{color:var(--text);font-variant-numeric:tabular-nums;text-align:right}.stripe-pie-row>small{color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.stripe-pie-total{display:flex;justify-content:space-between;align-items:center;margin:0 0 2px;padding:8px 0 12px;border-bottom:1px solid rgba(166,176,186,.16)}
+.stripe-pie-total>span{color:var(--muted);font-size:11px;letter-spacing:.04em;text-transform:uppercase}.stripe-pie-total>strong{color:var(--text);font-size:16px;font-variant-numeric:tabular-nums}
 .stripe-pie-legend>p{margin:10px 0 0;color:var(--muted);font-size:11px;line-height:1.5}
 .stripe-chart-summary-wrap{margin:4px 0 14px}.stripe-chart-summary-wrap[hidden]{display:none!important}
 .stripe-chart-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
@@ -72,4 +69,4 @@
 .stripe-chart-summary-label{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:11px;letter-spacing:.04em}
 .stripe-chart-summary-item>strong{color:var(--text);font-size:15px;font-variant-numeric:tabular-nums}.stripe-chart-summary-item>small{color:var(--muted);font-size:10px}
 .stripe-chart-empty,.stripe-pie-empty{display:grid;min-height:220px;place-items:center;color:var(--muted);font-size:13px}
-@media(max-width:620px){.stripe-chart[data-style=pie]{padding:10px}.stripe-pie-layout{grid-template-columns:minmax(0,1fr);gap:6px;padding:8px}.stripe-pie-svg{width:190px;margin:auto}.stripe-pie-row{grid-template-columns:9px minmax(50px,1fr) minmax(64px,auto) 46px;gap:7px;padding:10px 0;font-size:12px}.stripe-chart-summary{grid-template-columns:minmax(0,1fr)}.stripe-chart-summary-item{padding:10px 12px}}
+@media(max-width:620px){.stripe-chart[data-style=pie]{padding:10px}.stripe-pie-layout{grid-template-columns:minmax(0,1fr);gap:14px;padding:8px}.stripe-pie-wheel{width:205px}.stripe-pie-row{grid-template-columns:9px minmax(50px,1fr) minmax(64px,auto) 46px;gap:7px;padding:10px 0;font-size:12px}.stripe-chart-summary{grid-template-columns:minmax(0,1fr)}.stripe-chart-summary-item{padding:10px 12px}}
