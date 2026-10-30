@@ -635,6 +635,7 @@ export function createApp({
         "Content-Security-Policy",
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       );
+      if(url.pathname==='/checkout'&&url.searchParams.has('test'))res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self'; img-src 'self' data: https://*.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com; connect-src 'self' https://api.stripe.com https://*.stripe.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
       if(customerDemos&&await customerDemos.route(req,res,url))return;
       if(await privateAccess.route(req,res,url))return;
       const signedForElite=['/','/app'].includes(url.pathname)&&(()=>{const active=currentSession(req);return !!active&&['vip','elite'].includes(sessionEdition(active));})();
@@ -1261,7 +1262,10 @@ export function createApp({
         "/": isBase ? "base.html" : "landing.html",
         "/app": isBase?"base.html":"index.html",
         "/landing": "landing.html",
-        "/checkout":"checkout.html",
+        "/checkout":url.searchParams.has("test")?"stripe-checkout.html":"checkout.html",
+        "/stripe-checkout.js":"stripe-checkout.js",
+        "/stripe-checkout.css":"stripe-checkout.css",
+        "/assets/checkout-lake.png":"assets/checkout-lake.png",
         "/checkout.css":"checkout.css",
         "/checkout.js":"checkout.js",
         "/privacy": "privacy.html",

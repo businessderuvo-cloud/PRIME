@@ -11,3 +11,10 @@ Prezzo = arrotondamento al centesimo superiore di (base netta + 0,30) / 0,9051. 
 Crypto mantiene la regola attualmente implementata: nessuno sconto mensile; annuale a nove mensilità del listino aggiornato. Gli extra crypto restano su offerta dedicata. Le tariffe di consumo AI conservano la politica separata dei costi provider per tre.
 
 Il collegamento plugin Prime test è acct_1UVxIXIyyuOuJYcz. La chiave sul server è una chiave claimable sandbox: non consente la lettura dell'account; la sua appartenenza a Prime non è verificata. Manca inoltre PRIME_STRIPE_TEST_BILLING_WEBHOOK_SECRET. Le pagine esistenti restano invariate nel flusso e nel layout. I test applicativi simulati non costituiscono pagamenti Stripe completati.
+
+## Checkout originale ripristinato — 30 ottobre 2026
+Il checkout Stripe con sfondo lago e Payment Element originale è servito su /checkout?test=1&order=...; crypto resta su /checkout?order=... . La selezione avviene nell'account dopo KYB. Il server crea Checkout Sessions ui_mode=elements con price_data dal listino aggiornato, senza dipendere dai vecchi Price IDs del catalogo locale.
+
+Usata la sandbox collegata al plugin Sandbox di Phoenix, acct_1UVxImRR3Km8xre8, già configurata per il checkout originale e consentita dall'utente. Chiave test recuperata dal deposito DPAPI esistente, passata al secret store Fly senza salvarla nel codice. Configurati chiave pubblicabile e webhook firmato /api/billing/stripe-test/webhook. Restano solo acquisti sandbox: nessuna attivazione reale.
+
+La lingua segue lang=it/en dalla selezione del sito, con fallback alla preferenza prime-language. Stripe riceve locale corrispondente. Adaptive Pricing è abilitato sulla sessione e nel client; il Currency Selector è montato e il riepilogo legge currency e minorUnitsAmount dalla sessione Stripe, aggiornandosi quando cambia. La disponibilità di valute locali dipende dall'idoneità Stripe; i prezzi base e gli ordini restano in EUR. Crypto conserva EUR come valuta fiat di riferimento e CPAY determina gli importi BTC/USDC.
