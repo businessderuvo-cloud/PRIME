@@ -9,3 +9,5 @@
 
 /* Make the house-shaped language flag the only visible, easy-to-hit control. */
 .language-trigger .language-house{width:38px;height:38px;flex-basis:38px}@media(max-width:780px){.language-trigger .language-house{width:34px;height:34px;flex-basis:34px}}
+
+.site-header .header-actions>.language-control{transform:translateX(20px)}
