@@ -1,3 +1,4 @@
+import { initializeAppLanguage, mountAppLanguage } from './app-locale.js';
 import { renderElite, mountEliteWidget, openEliteCallDialog } from './elite-ui.js?v=20261029-zadarma-auto';
 import { renderUpgrade } from './upgrade.js';
 import { baseExcludedEntities, baseExcludedPages } from './edition.js';
@@ -92,13 +93,13 @@ const logo = () =>
   `<img class="brand-image" src="/assets/logo-${state.me?.theme || "dark"}.png" alt="PRIME — logo ufficiale">`;
 const date = (x) =>
   x
-    ? new Intl.DateTimeFormat("it-IT", {
+    ? new Intl.DateTimeFormat((document.documentElement.lang==='en'?'en-GB':'it-IT'), {
         dateStyle: "medium",
         timeStyle: "short",
       }).format(new Date(x))
     : "";
 const money = (x) =>
-  new Intl.NumberFormat("it-IT", {
+  new Intl.NumberFormat((document.documentElement.lang==='en'?'en-GB':'it-IT'), {
     style: "currency",
     currency: "EUR",
     maximumFractionDigits: 0,
@@ -263,6 +264,7 @@ function localDay(x = new Date()) {
 }
 function refLabel(entity, id) {
   if (!id) return "—";
+  const t=value=>window.primeI18n?.t(value)??value;
   const row = (
     entity === "members" ? state.members : state.data[entity] || []
   ).find((x) => x.id === id);
@@ -274,9 +276,9 @@ function refLabel(entity, id) {
       refLabel("buildings", row.building_id) +
       " · " +
       [
-        row.staircase ? "Scala " + row.staircase : "",
-        row.floor ? "Piano " + row.floor : "",
-        "Interno " + row.title,
+        row.staircase ? t("Scala") + " " + row.staircase : "",
+        row.floor ? t("piano") + " " + row.floor : "",
+        t("Interno") + " " + String(row.title).replace(/^interno\s+/i, ""),
       ]
         .filter(Boolean)
         .join(" · ")
@@ -291,7 +293,7 @@ function displayValue(entity, key, value) {
   if (f?.type === "checkbox") return value ? "Sì" : "No";
   if (entity === "signature_requests" && key === "signature_format") return value === "Cades" ? "P7M (CAdES)" : "PDF firmato (PAdES)";
   if (f?.type === "number" && f.label.includes("€")) return value === null || value === undefined || value === "" ? "—" : money(value);
-  if (f?.type === "number") return value === null || value === undefined || value === "" ? "—" : new Intl.NumberFormat("it-IT", { maximumFractionDigits: 2 }).format(Number(value));
+  if (f?.type === "number") return value === null || value === undefined || value === "" ? "—" : new Intl.NumberFormat((document.documentElement.lang==='en'?'en-GB':'it-IT'), { maximumFractionDigits: 2 }).format(Number(value));
   return value || "—";
 }
 function recordCell(entity, key, value) {
@@ -448,6 +450,7 @@ function shell() {
       "AMBIENTE DEMO · Dati di esempio in un database separato";
     document.querySelector(".topbar").after(banner);
   }
+  mountAppLanguage();
   if (innerWidth < 850) document.body.classList.add("nav-collapsed");
   document
     .querySelector("#menu")
@@ -638,7 +641,8 @@ async function renderPage() {
   if (page === "agents") {
     if (state.me.role !== "owner") { main.innerHTML = pageHeader("TEAM", "Agenti", "Pagina riservata al titolare."); return; }
     const agents = await api("/api/agents");
-    main.innerHTML = pageHeader("IL TEAM DELLA TUA AGENZIA", "Agenti", "Invita i tuoi agenti via email e assegna a ciascuno le zone di competenza dalla mappa.") + `<section class="agents-layout"><form id="agent-create" class="panel agent-create-panel"><h2>Invita un agente</h2><label>Email<input name="email" type="email" maxlength="254" required autocomplete="off" placeholder="nome@agenzia.it"></label><p class="small-note">L’agente riceverà un link per impostare in autonomia una password personale.</p><button class="primary" type="submit">Invia invito</button><p id="agent-create-status" role="status" class="small-note"></p></form><section class="panel agent-list-panel"><div class="map-sidebar-heading"><h2>Agenti (${agents.length})</h2><button id="agents-open-map" class="text-button">Assegna zone sulla mappa ↗</button></div><label>Cerca agente<input id="agent-search" type="search" placeholder="Cerca per email…"></label><div id="agent-list"></div></section></section>`;
+    const t=value=>window.primeI18n?.t(value)??value;
+    main.innerHTML = pageHeader("IL TEAM DELLA TUA AGENZIA", "Agenti", "Invita i tuoi agenti via email e assegna a ciascuno le zone di competenza dalla mappa.") + `<section class="agents-layout"><form id="agent-create" class="panel agent-create-panel"><h2>Invita un agente</h2><label>Email<input name="email" type="email" maxlength="254" required autocomplete="off" placeholder="nome@agenzia.it"></label><p class="small-note">L’agente riceverà un link per impostare in autonomia una password personale.</p><button class="primary" type="submit">Invia invito</button><p id="agent-create-status" role="status" class="small-note"></p></form><section class="panel agent-list-panel"><div class="map-sidebar-heading"><h2>${t('Agenti')} (${agents.length})</h2><button id="agents-open-map" class="text-button">Assegna zone sulla mappa ↗</button></div><label>Cerca agente<input id="agent-search" type="search" placeholder="Cerca per email…"></label><div id="agent-list"></div></section></section>`;
     if (state.me.edition === 'base') {
       const used = state.members.length, limit = state.me.human_seat_limit;
       const note = document.createElement('p'); note.className = 'small-note';
@@ -735,7 +739,7 @@ async function renderPage() {
         "Veronica",
         "Cerca informazioni, gestisci le schede di PRIME e conserva appunti per le prossime conversazioni.",
       ) +
-      `<section class="assistant-panel panel"><div class="assistant-profile"><img class="assistant-avatar" src="${assistantAvatarSrc()}" alt="Veronica" width="240" height="360" loading="eager" fetchpriority="high" decoding="async"><div><p class="eyebrow">VERONICA</p><h2>Il tuo lavoro, sotto controllo.</h2><p>Immobili, contatti e appuntamenti: partiamo dai dati della tua agenzia.</p><span class="pill">Solo dati interni</span></div></div><p class="assistant-privacy">Veronica lavora sui dati interni di PRIME. Può preparare creazioni, modifiche, note ed eliminazioni: ogni proposta viene salvata solo dopo la tua conferma, con i permessi del tuo account. Le informazioni aggiunte con “Ricorda che…” rimangono nella tua memoria privata per questa agenzia e puoi rimuoverle. Il feedback sull’app viene recapitato allo sviluppatore.</p><div class="assistant-prompts" role="group" aria-label="Azioni rapide di Veronica">${assistantShortcutsMarkup()}</div><div id="assistant-thread" class="assistant-thread" aria-live="polite"></div><p id="assistant-feedback" class="connect-feedback" role="status">${status.configured ? "Veronica è pronta 😉" : "Veronica non è disponibile."}</p><form id="assistant-form" class="assistant-form"><label for="assistant-question">La tua domanda</label><textarea id="assistant-question" rows="3" maxlength="2000" placeholder="Chiedi di immobili, WPS, appuntamenti o CRM. Aggiungi città, budget o locali per una ricerca mirata." required ${status.configured ? "" : "disabled"}></textarea><div class="assistant-submit"><small>${status.configured ? "Modalità base · dati interni" : "Riprova tra poco."}</small><button class="primary" type="submit" ${status.configured ? "" : "disabled"}>Invia domanda</button></div></form></section>${feedbackItems ? `<section class="panel developer-feedback"><p class="eyebrow">PRIME · SVILUPPO</p><h2>Feedback sull’app ricevuti</h2><p>Inbox riservata allo sviluppatore · ${feedbackItems.length} segnalazioni</p>${feedbackItems.length ? feedbackItems.map(item => `<article class="developer-feedback-item"><header><strong>${esc(item.agency)}</strong><time>${esc(new Date(item.created_at).toLocaleString("it-IT"))}</time></header><p>${esc(item.message)}</p><small>${esc(item.email)}</small></article>`).join("") : `<p class="muted">Non ci sono ancora segnalazioni.</p>`}</section>` : ""}`;
+      `<section class="assistant-panel panel"><div class="assistant-profile"><img class="assistant-avatar" src="${assistantAvatarSrc()}" alt="Veronica" width="240" height="360" loading="eager" fetchpriority="high" decoding="async"><div><p class="eyebrow">VERONICA</p><h2>Il tuo lavoro, sotto controllo.</h2><p>Immobili, contatti e appuntamenti: partiamo dai dati della tua agenzia.</p><span class="pill">Solo dati interni</span></div></div><p class="assistant-privacy">Veronica lavora sui dati interni di PRIME. Può preparare creazioni, modifiche, note ed eliminazioni: ogni proposta viene salvata solo dopo la tua conferma, con i permessi del tuo account. Le informazioni aggiunte con “Ricorda che…” rimangono nella tua memoria privata per questa agenzia e puoi rimuoverle. Il feedback sull’app viene recapitato allo sviluppatore.</p><div class="assistant-prompts" role="group" aria-label="Azioni rapide di Veronica">${assistantShortcutsMarkup()}</div><div id="assistant-thread" class="assistant-thread" aria-live="polite"></div><p id="assistant-feedback" class="connect-feedback" role="status">${status.configured ? "Veronica è pronta 😉" : "Veronica non è disponibile."}</p><form id="assistant-form" class="assistant-form"><label for="assistant-question">La tua domanda</label><textarea id="assistant-question" rows="3" maxlength="2000" placeholder="Chiedi di immobili, WPS, appuntamenti o CRM. Aggiungi città, budget o locali per una ricerca mirata." required ${status.configured ? "" : "disabled"}></textarea><div class="assistant-submit"><small>${status.configured ? "Modalità base · dati interni" : "Riprova tra poco."}</small><button class="primary" type="submit" ${status.configured ? "" : "disabled"}>Invia domanda</button></div></form></section>${feedbackItems ? `<section class="panel developer-feedback"><p class="eyebrow">PRIME · SVILUPPO</p><h2>Feedback sull’app ricevuti</h2><p>Inbox riservata allo sviluppatore · ${feedbackItems.length} segnalazioni</p>${feedbackItems.length ? feedbackItems.map(item => `<article class="developer-feedback-item"><header><strong>${esc(item.agency)}</strong><time>${esc(new Date(item.created_at).toLocaleString((document.documentElement.lang==='en'?'en-GB':'it-IT')))}</time></header><p>${esc(item.message)}</p><small>${esc(item.email)}</small></article>`).join("") : `<p class="muted">Non ci sono ancora segnalazioni.</p>`}</section>` : ""}`;
     const thread = document.querySelector("#assistant-thread");
     const drawMessages = () => {
       drawAssistantMessages(thread);
@@ -1093,8 +1097,9 @@ function drawRecords() {
     records = records
       .filter((r) => inPeriod(r.starts_at))
       .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const t=value=>window.primeI18n?.t(value)??value;
   document.querySelector("#result-count").textContent =
-    records.length + " risultati";
+    records.length + " " + t(records.length===1?"risultato":"risultati");
   const out = document.querySelector("#record-list");
   out.innerHTML = records.length
     ? `<div class="table-wrap records-table-wrap"><table class="records-table"><thead><tr><th>${entity === "units" ? "Interno" : entity === "buildings" ? "Civico" : "Titolo"}</th>${columns[entity].map((k) => `<th>${schema[entity].fields[k].label}</th>`).join("")}<th><span class="sr-only">Azioni</span></th></tr></thead><tbody>${records.map((r) => `<tr data-record-status="${esc(r.status || r.marketing_status || "")}" data-record-stage="${esc(r.stage || "")}"><td><button class="record-open" data-id="${r.id}">${esc(r.title)}</button>${entity === "activities" ? `<small>${r.progress}/${r.goal} · ${esc(r.next_action || "Prossima azione da definire")}</small>` : ""}</td>${columns[entity].map((k) => `<td data-label="${schema[entity].fields[k].label}">${recordCell(entity, k, entity === "deals" && k === "stage" ? ({vinta:"conclusa",persa:"persa",annullata:"annullata"}[r.status] || r.stage) : r[k])}</td>`).join("")}<td><button class="text-button record-open" data-id="${r.id}" aria-label="Apri ${esc(r.title)}">Apri ↗</button>${entity === "signature_requests" && r.provider === "Namirial" && state.namirialConfigured ? `${r.status === "da configurare" || r.status === "bozza" ? `<button class="text-button" data-signature-action="send" data-id="${r.id}">Invia</button>` : `<button class="text-button" data-signature-action="refresh" data-id="${r.id}">Aggiorna</button>`}${r.provider_envelope_id ? `<button class="text-button" data-signature-action="link" data-id="${r.id}">Copia link</button>` : ""}` : ""}</td></tr>`).join("")}</tbody></table></div>`
@@ -1538,6 +1543,7 @@ document.addEventListener("keydown", (e) => {
 async function boot() {
   try {
     state.me = await api("/api/me");
+    await initializeAppLanguage(state.me);
     state.clockOffset = (state.me.server_now || Date.now()) - Date.now();
     document.documentElement.dataset.theme = state.me.theme;
     if (state.me.role === "external") {
@@ -1716,7 +1722,7 @@ function drawMailInbox(items) {
   count.textContent = items.length; count.hidden = !items.length;
   toggle.setAttribute("aria-label", `Inbox email, ${items.length} notifiche`);
   const providers = {gmail:"Gmail",outlook:"Outlook"};
-  list.innerHTML = items.map(item => `<a class="mail-inbox-item" href="${esc(item.provider_url)}" target="_blank" rel="noopener noreferrer"><div><span>${esc(providers[item.provider] || "Email")}</span><time>${esc(new Date(item.received_at).toLocaleString("it-IT", {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}))}</time></div><strong>${esc(item.sender)}</strong><p>${esc(item.subject || "Senza oggetto")}</p><small>${esc(item.account_label)} · Apri email ↗</small></a>`).join("") || `<div class="mail-inbox-empty">${icon("mail")}<strong>Nessuna notifica email</strong><p>Le notifiche degli account collegati compariranno qui. Gestisci i collegamenti dalla pagina Email.</p></div>`;
+  list.innerHTML = items.map(item => `<a class="mail-inbox-item" href="${esc(item.provider_url)}" target="_blank" rel="noopener noreferrer"><div><span>${esc(providers[item.provider] || "Email")}</span><time>${esc(new Date(item.received_at).toLocaleString((document.documentElement.lang==='en'?'en-GB':'it-IT'), {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}))}</time></div><strong>${esc(item.sender)}</strong><p>${esc(item.subject || "Senza oggetto")}</p><small>${esc(item.account_label)} · Apri email ↗</small></a>`).join("") || `<div class="mail-inbox-empty">${icon("mail")}<strong>Nessuna notifica email</strong><p>Le notifiche degli account collegati compariranno qui. Gestisci i collegamenti dalla pagina Email.</p></div>`;
 }
 async function refreshMailInbox() {
   try { drawMailInbox(await api("/api/connect/mail-notifications")); }

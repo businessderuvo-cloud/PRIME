@@ -1,4 +1,5 @@
 (() => {
+  const config=window.primeLocaleConfig||{},workspace=config.workspace===true;
   const query=new URLSearchParams(location.search);
   let saved='it';try{saved=localStorage.getItem('prime-language')||'it';}catch{}
   const language=['it','en'].includes(query.get('lang'))?query.get('lang'):saved==='en'?'en':'it';
@@ -13,14 +14,14 @@
     for(const [a,b] of phrases)if(result.includes(a)){const escape=a.replace(/[.*+?^$()|[\]\\]/g,'\\$&');result=result.replace(new RegExp('(?<![\\p{L}])'+escape+'(?![\\p{L}])','gu'),()=>b);}
     return result;
   }
-  const skip=node=>node.parentElement?.closest('script,style,textarea,[contenteditable],.bubble.user,.voice-line,[data-no-translate]');
+  const skip=node=>node.parentElement?.closest('script,style,textarea,[contenteditable],.bubble.user,.voice-line,[data-no-translate]'+(workspace?',.record-value,.record-open:not(.text-button),.sidebar-bottom strong,.sidebar-bottom .avatar,#global-results strong,#global-results span,.overview-row strong,.assistant-bubble p,.elite-message,.mail-body,.mail-message-body,[data-mail-body],select[data-reference] option[value]:not([value=""])':''));
   function translate(root){
     if(root.nodeType===3){if(!skip(root)&&seen.get(root)!==root.nodeValue){root.nodeValue=t(root.nodeValue);seen.set(root,root.nodeValue);}return;}
     if(root.nodeType!==1&&root.nodeType!==9)return;
     const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;
     while(node=walker.nextNode())if(!skip(node)&&seen.get(node)!==node.nodeValue){node.nodeValue=t(node.nodeValue);seen.set(node,node.nodeValue);}
     const elements=root.querySelectorAll?.('*')||[];
-    for(const el of elements)for(const attr of ['placeholder','aria-label','title','alt'])if(el.hasAttribute(attr)){const old=el.getAttribute(attr),v=t(old);if(v!==old)el.setAttribute(attr,v);}
+    for(const el of elements)for(const attr of ['placeholder','aria-label','title','alt','data-label'])if(el.hasAttribute(attr)&&!skip({parentElement:el})){const old=el.getAttribute(attr),v=t(old);if(v!==old)el.setAttribute(attr,v);}
     for(const el of root.querySelectorAll?.('meta[name="description"]')||[]){const v=t(el.content);if(v!==el.content)el.content=v;}
   }
   function change(lang){try{localStorage.setItem('prime-language',lang);}catch{}const url=new URL(location.href);url.searchParams.set('lang',lang);location.assign(url.href);}
@@ -52,23 +53,23 @@
     }
   }
   document.addEventListener('pointerdown',event=>{for(const trigger of document.querySelectorAll('.language-trigger[aria-expanded="true"]'))if(!trigger.closest('.language-picker').contains(event.target)){trigger.setAttribute('aria-expanded','false');document.getElementById(trigger.getAttribute('aria-controls')).hidden=true;}});
-  function selector(parent,label){if(!parent||parent.querySelector(':scope > .language-control'))return;const wrap=document.createElement('label');wrap.className='language-control';wrap.innerHTML='<span>'+label+'</span><select aria-label="Language / Lingua"><option value="it">Italiano</option><option value="en">English</option></select>';const select=wrap.querySelector('select');select.value=language;select.onchange=()=>change(select.value);if(parent.id==='vanessa-call')parent.prepend(wrap);else parent.append(wrap);}
+  function selector(parent,label){if(!parent||parent.querySelector(':scope > .language-control'))return;const wrap=document.createElement('label');wrap.className='language-control';wrap.innerHTML='<span>'+label+'</span><select aria-label="'+(label|| (language==='en'?'Language':'Lingua'))+'"><option value="it">Italiano</option><option value="en">English</option></select>';const select=wrap.querySelector('select');select.value=language;select.onchange=()=>change(select.value);if(parent.id==='vanessa-call')parent.prepend(wrap);else parent.append(wrap);}
   const ready=(async()=>{
     if(language==='en'){
-      const response=await fetch('/en.json');if(!response.ok)throw Error('English language file unavailable');
-      const raw=await response.json(),decode=document.createElement('textarea');
+      const responses=await Promise.all((workspace?['/en.json','/app-en.json']:['/en.json']).map(url=>fetch(url)));if(responses.some(r=>!r.ok))throw Error('English language file unavailable');
+      const raw=Object.assign({},...await Promise.all(responses.map(r=>r.json()))),decode=document.createElement('textarea');
       for(const [key,value]of Object.entries(raw)){decode.innerHTML=key;dictionary[normalize(decode.value)]=value;}
-      phrases=Object.entries(dictionary).filter(([a,b])=>a!==b&&a.length>=4&&!/[{}<>]/.test(a)).sort((a,b)=>b[0].length-a[0].length);
+      phrases=workspace?[]:Object.entries(dictionary).filter(([a,b])=>a!==b&&a.length>=4&&!/[{}<>]/.test(a)).sort((a,b)=>b[0].length-a[0].length);
     }
-    selector(document.querySelector('.header-actions')||document.querySelector('body > header')||document.querySelector('main'),'Language');
+    if(!workspace)selector(document.querySelector('.header-actions')||document.querySelector('body > header')||document.querySelector('main'),'Language');
     const callCopy=document.querySelector('#vanessa-call .call-copy');
-    if(callCopy){let slot=callCopy.querySelector('.call-language-slot');if(!slot){slot=document.createElement('div');slot.className='call-language-slot';callCopy.prepend(slot);}selector(slot,language==='en'?'Vanessa’s language':'Lingua di Vanessa');}
+    if(!workspace&&callCopy){let slot=callCopy.querySelector('.call-language-slot');if(!slot){slot=document.createElement('div');slot.className='call-language-slot';callCopy.prepend(slot);}selector(slot,language==='en'?'Vanessa’s language':'Lingua di Vanessa');}
     enhanceLanguageControls();
     translate(document);
     let queued=false;const observer=new MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;observer.disconnect();enhanceLanguageControls();translate(document);observer.observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['placeholder','aria-label','title','alt']});});});
     observer.observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['placeholder','aria-label','title','alt']});
     document.dispatchEvent(new CustomEvent('prime-language-ready',{detail:{language}}));
   })();
-  window.primeI18n={language,t,ready,change};
+  window.primeI18n={language,t,ready,change,mount(parent,label=''){selector(parent,label);enhanceLanguageControls();},translate};
   document.addEventListener('click',event=>{const a=event.target.closest('a[href]');if(!a||a.target==='_blank'||a.hasAttribute('download'))return;const u=new URL(a.href,location.href);if(u.origin!==location.origin||u.pathname==='/app'||u.pathname.startsWith('/demo'))return;u.searchParams.set('lang',language);a.href=u.href;},true);
 })();

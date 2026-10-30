@@ -1,5 +1,5 @@
-const euro=cents=>new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(cents/100);
-const date=value=>new Intl.DateTimeFormat('it-IT',{dateStyle:'long',timeZone:'Europe/Rome'}).format(new Date(value));
+const euro=cents=>new Intl.NumberFormat((document.documentElement.lang==='en'?'en-GB':'it-IT'),{style:'currency',currency:'EUR'}).format(cents/100);
+const date=value=>new Intl.DateTimeFormat((document.documentElement.lang==='en'?'en-GB':'it-IT'),{dateStyle:'long',timeZone:'Europe/Rome'}).format(new Date(value));
 export async function renderUpgrade({main,api,esc}) {
   main.innerHTML='<div class="page-header"><div><p class="eyebrow">IL TUO ABBONAMENTO</p><h1>Piano e upgrade</h1><p>Più strumenti, quando servono alla tua agenzia.</p></div></div><p role="status">Carico il tuo abbonamento…</p>';
   try {

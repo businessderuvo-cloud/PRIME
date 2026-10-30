@@ -111,7 +111,7 @@ export function startWpsClock({
     if (dialog.open || busy) return;
     reviewId = initial.id;
     let current = initial;
-    const fmt = new Intl.DateTimeFormat("it-IT", {
+    const fmt = new Intl.DateTimeFormat((document.documentElement.lang==='en'?'en-GB':'it-IT'), {
       dateStyle: "medium",
       timeStyle: "short",
     });

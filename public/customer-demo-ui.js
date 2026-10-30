@@ -15,16 +15,16 @@ export async function renderCustomerDemoVanessa({main,api,esc,state,compact=fals
   main.querySelector('#elite-mode').value='workspace';
   mountEliteModePicker({mode:main.querySelector('#elite-mode'),compact,esc,disabledModes:['copilot','copilot_voice']});
   const queue=main.querySelector('#elite-queue-list');if(queue)queue.textContent='Nessuna chiamata avviabile nella demo pubblica.';
-  const usage=main.querySelector('#elite-usage-content');if(usage)usage.innerHTML='<p>Quote mensili del piano demo: '+plans[plan].quotas.map((value,index)=>esc(new Intl.NumberFormat('it-IT').format(value))+' '+['minuti','operazioni semplici','ricerche medie','ricerche complesse'][index]).join(' · ')+'.</p>';
+  const usage=main.querySelector('#elite-usage-content');if(usage)usage.innerHTML='<p>Quote mensili del piano demo: '+plans[plan].quotas.map((value,index)=>esc(new Intl.NumberFormat((document.documentElement.lang==='en'?'en-GB':'it-IT')).format(value))+' '+['minuti','operazioni semplici','ricerche medie','ricerche complesse'][index]).join(' · ')+'.</p>';
   const phone=main.querySelector('#elite-phone-number');if(phone)phone.innerHTML='<option>Collegamento numero disattivato nella demo pubblica</option>';
-  const chatIntro=log.querySelector('.elite-message p');if(chatIntro)chatIntro.textContent='Ciao! Sono Vanessa 😊 Possiamo esplorare insieme questa agenzia dimostrativa. Da dove cominciamo?';
+  const chatIntro=log.querySelector('.elite-message p');if(chatIntro)chatIntro.textContent=document.documentElement.lang==='en'?"Hi! I'm Vanessa 😊 Let's explore this sample agency together. Where shall we start?":'Ciao! Sono Vanessa 😊 Possiamo esplorare insieme questa agenzia dimostrativa. Da dove cominciamo?';
   let session=null,starting=null,disposed=false;
   const add=(role,text)=>{const message=document.createElement('p');message.className='elite-message '+(role==='user'?'is-user':'is-agent');const who=document.createElement('strong');who.textContent=role==='user'?'Tu':'Vanessa';if(role!=='user'){const avatar=document.createElement('img');avatar.className='elite-message-avatar';avatar.src='/assets/vanessa-poster.png';avatar.alt='';message.append(avatar);}message.append(who,document.createElement('br'),document.createTextNode(text));log.append(message);log.scrollTop=log.scrollHeight;};
   async function connect(){
     if(session)return session;if(starting)return starting;
     starting=(async()=>{
       status.textContent='Collegamento a Vanessa…';
-      const data=await api('/api/elite/session',{method:'POST',body:JSON.stringify({mode:'workspace',agentId:'vanessa'})});
+      const data=await api('/api/elite/session',{method:'POST',body:JSON.stringify({mode:'workspace',agentId:'vanessa',language:document.documentElement.lang==='en'?'en':'it'})});
       const {Conversation}=await import('/vendor/elevenlabs/client.js');
       const connected=await Conversation.startSession({signedUrl:data.signedUrl,connectionType:'websocket',textOnly:true,dynamicVariables:data.dynamicVariables,overrides:{agent:{firstMessage:data.firstMessage}},onMessage:event=>{if(!disposed&&event.source==='ai'&&event.message){add('agent',event.message);status.textContent='Chat attiva.';}},onDisconnect:()=>{session=null;if(!disposed)status.textContent='Conversazione terminata. Puoi riconnetterti inviando un messaggio.';},onError:()=>{session=null;if(!disposed)status.textContent='Collegamento con Vanessa interrotto. Premi Invia per riprovare.';}});
       if(disposed){await connected.endSession();throw Error('Schermata chiusa.');}

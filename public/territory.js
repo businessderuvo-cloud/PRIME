@@ -49,6 +49,7 @@ export function renderTerritory(ctx) {
   }
   const d = state.data,
     canDelete = ["owner", "manager"].includes(state.me.role);
+  const t=value=>window.primeI18n?.t(value)??value;
   const buildingsOf = (id) =>
     sortBy(d.buildings.filter((b) => b.street_id === id));
   const unitsOf = (id) =>
@@ -127,9 +128,9 @@ export function renderTerritory(ctx) {
     );
   const unitLabel = (u) =>
     [
-      u.staircase ? "Scala " + u.staircase : "",
-      u.floor ? "Piano " + u.floor : "",
-      "Interno " + u.title,
+      u.staircase ? t("Scala") + " " + u.staircase : "",
+      u.floor ? t("piano") + " " + u.floor : "",
+      t("Interno") + " " + String(u.title).replace(/^interno\s+/i, ""),
     ]
       .filter(Boolean)
       .join(" · ");
@@ -173,9 +174,9 @@ export function renderTerritory(ctx) {
       "DAL TERRITORIO ALLE RELAZIONI",
       "Vie e territorio",
       "Una sola scheda per vie, civici, appartamenti e persone.",
-      `<button class="primary" id="territory-new-street">${icon("plus")} Aggiungi via</button>`,
+      `<button class="primary" id="territory-new-street">${icon("plus")} ${t("Aggiungi via")}</button>`,
     ) +
-    `<section class="territory-workspace"><aside class="territory-tree"><div class="territory-tree-heading"><p class="eyebrow">IL TUO TERRITORIO</p>${searchBox("Via, civico, interno, nome o telefono…")}<div class="territory-tree-meta"><span>${d.streets.length} ${d.streets.length === 1 ? "via" : "vie"} · ${d.buildings.length} ${d.buildings.length === 1 ? "civico" : "civici"}</span><select id="territory-status" aria-label="Filtra stato delle vie"><option value="">Tutti gli stati</option><option>da censire</option><option>parziale</option><option>censita</option></select></div></div><nav id="territory-nodes" aria-label="Vie, civici e appartamenti"></nav></aside><section class="territory-detail" id="territory-detail" aria-label="Scheda territorio"></section></section>`;
+    `<section class="territory-workspace"><aside class="territory-tree"><div class="territory-tree-heading"><p class="eyebrow">IL TUO TERRITORIO</p>${searchBox("Via, civico, interno, nome o telefono…")}<div class="territory-tree-meta"><span>${d.streets.length} ${t(d.streets.length === 1 ? "via" : "vie")} · ${d.buildings.length} ${t(d.buildings.length === 1 ? "civico" : "civici")}</span><select id="territory-status" aria-label="Filtra stato delle vie"><option value="">Tutti gli stati</option><option>da censire</option><option>parziale</option><option>censita</option></select></div></div><nav id="territory-nodes" aria-label="Vie, civici e appartamenti"></nav></aside><section class="territory-detail" id="territory-detail" aria-label="Scheda territorio"></section></section>`;
   document.querySelector("#territory-new-street").onclick = () =>
     openEditor("streets");
   bindSearch(draw);
@@ -245,7 +246,7 @@ export function renderTerritory(ctx) {
                           )
                           .map(
                             (u) =>
-                              `<button class="tree-unit-button ${flagClasses(u)} ${selection.unitId === u.id ? "selected" : ""}" data-pick="units" data-id="${u.id}"><span>${esc(u.floor || "—")}</span><span>Interno ${esc(u.title)}${u.staircase ? " · " + esc(u.staircase) : ""}<span class="tree-unit-highlights">${badges(flagsOf(u))}</span></span><i class="unit-state-dot ${u.commercial_status === "in vendita" ? "for-sale" : ""}"></i></button>`,
+                              `<button class="tree-unit-button ${flagClasses(u)} ${selection.unitId === u.id ? "selected" : ""}" data-pick="units" data-id="${u.id}"><span>${esc(u.floor || "—")}</span><span>${t("Interno")} ${esc(String(u.title).replace(/^interno\s+/i,""))}${u.staircase ? " · " + esc(u.staircase) : ""}<span class="tree-unit-highlights">${badges(flagsOf(u))}</span></span><i class="unit-state-dot ${u.commercial_status === "in vendita" ? "for-sale" : ""}"></i></button>`,
                           )
                           .join("")}</div>`
                       : ""
@@ -418,7 +419,7 @@ export function renderTerritory(ctx) {
                     .map((u) => {
                       const people = peopleOf(u),
                         photo = photos("units", u.id)[0];
-                      return `<button class="unit-card ${flagClasses(u)}" data-pick="units" data-id="${u.id}">${badges(flagsOf(u)) ? `<div class="unit-priority-badges">${badges(flagsOf(u))}</div>` : ""}<div class="unit-card-top">${photo ? `<img src="${photo.url}" alt="Foto appartamento" loading="lazy">` : `<span class="floor-mark">${esc(u.floor || "—")}<small>PIANO</small></span>`}<div><h3>Interno ${esc(u.title)}</h3><p>${esc([u.staircase ? "Scala " + u.staircase : "", u.property_type, u.area ? u.area + " m²" : "", u.rooms ? u.rooms + " locali" : ""].filter(Boolean).join(" · ") || "Informazioni da completare")}</p></div></div><div class="unit-card-states">${!flagsOf(u).sale && !flagsOf(u).agency ? `<span class="pill">${esc(u.commercial_status)}</span>` : ""}<span class="pill">${esc(u.occupancy_status)}</span></div><p class="unit-agent-label">Agente · ${esc(agentLabel(u))}</p><footer>${people.length ? esc(people.map((p) => p.person.title).join(", ")) : "Persone da associare"}<span>Apri ↗</span></footer></button>`;
+                      return `<button class="unit-card ${flagClasses(u)}" data-pick="units" data-id="${u.id}">${badges(flagsOf(u)) ? `<div class="unit-priority-badges">${badges(flagsOf(u))}</div>` : ""}<div class="unit-card-top">${photo ? `<img src="${photo.url}" alt="Foto appartamento" loading="lazy">` : `<span class="floor-mark">${esc(u.floor || "—")}<small>PIANO</small></span>`}<div><h3>${t("Interno")} ${esc(String(u.title).replace(/^interno\s+/i,""))}</h3><p>${esc([u.staircase ? t("Scala") + " " + u.staircase : "", u.property_type, u.area ? u.area + " m²" : "", u.rooms ? u.rooms + " " + t("locali") : ""].filter(Boolean).join(" · ") || t("Informazioni da completare"))}</p></div></div><div class="unit-card-states">${!flagsOf(u).sale && !flagsOf(u).agency ? `<span class="pill">${esc(u.commercial_status)}</span>` : ""}<span class="pill">${esc(u.occupancy_status)}</span></div><p class="unit-agent-label">${t("Agente")} · ${esc(agentLabel(u))}</p><footer>${people.length ? esc(people.map((p) => p.person.title).join(", ")) : t("Persone da associare")}<span>${t("Apri")} ↗</span></footer></button>`;
                     })
                     .join("")}</div></section>`,
               )

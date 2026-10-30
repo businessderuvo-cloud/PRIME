@@ -14,6 +14,13 @@ export function renderPlanner({
 }) {
   const entity = state.page,
     isWps = entity === "activities";
+  const t=value=>window.primeI18n?.t(value)??value;
+  const countLabel=(count,kind)=>{
+    const english=document.documentElement.lang==='en';
+    if(kind==='activity')return english?(count===1?'activity':'activities'):'attività';
+    if(kind==='appointment')return english?t(count===1?'appuntamento':'appuntamenti'):(count===1?'appuntamento':'appuntamenti');
+    return english?t(count===1?'incontro':'incontri'):(count===1?'incontro':'incontri');
+  };
   const views = (state.plannerViews ??= {
     activities: "day",
     appointments: "week",
@@ -152,18 +159,18 @@ export function renderPlanner({
         .filter((r) => isWps ? r.agent_id === state.me.id : selectedMembers.has(r.agent_id)),
       endField = isWps ? "due_at" : "ends_at";
     const segments = days.map((day) => layoutDay(all, day, { endField }));
-    const dayFmt = new Intl.DateTimeFormat("it-IT", {
+    const dayFmt = new Intl.DateTimeFormat((document.documentElement.lang==='en'?'en-GB':'it-IT'), {
       weekday: "short",
       day: "numeric",
       month: "short",
     });
-    const dateFmt = new Intl.DateTimeFormat("it-IT", {
+    const dateFmt = new Intl.DateTimeFormat((document.documentElement.lang==='en'?'en-GB':'it-IT'), {
       month: "long",
       year: "numeric",
     });
     document.querySelector("#planner-period").textContent =
       view === "day"
-        ? new Intl.DateTimeFormat("it-IT", {
+        ? new Intl.DateTimeFormat((document.documentElement.lang==='en'?'en-GB':'it-IT'), {
             weekday: "long",
             day: "numeric",
             month: "long",
@@ -173,10 +180,9 @@ export function renderPlanner({
           new Date(days[0] + "T12:00:00").getDate() +
           "–" +
           new Date(days.at(-1) + "T12:00:00").getDate();
+    const recordCount=new Set(segments.flat().map((x) => x.record.id)).size;
     document.querySelector("#planner-count").textContent =
-      new Set(segments.flat().map((x) => x.record.id)).size +
-      " " +
-      (isWps ? "attività" : "appuntamenti");
+      recordCount + " " + countLabel(recordCount,isWps?'activity':'appointment');
     let startHour = 7,
       endHour = 21;
     for (const segment of segments.flat()) {
@@ -192,7 +198,7 @@ export function renderPlanner({
     );
     const target = document.querySelector("#planner-grid"),
       previousScroll = target.querySelector(".planner-scroll")?.scrollTop || 0;
-    target.innerHTML = `<div class="planner-scroll"><div class="time-grid ${view === "day" ? "single-day" : "seven-days"}"><div class="time-grid-head"><div class="time-zone">ORA<br>LOCALE</div>${days.map((day, i) => `<div class="day-heading ${day === dayKey() ? "is-today" : ""}"><span>${esc(dayFmt.format(new Date(day + "T12:00:00")))}</span><strong>${new Date(day + "T12:00:00").getDate()}</strong><small>${segments[i].length} ${isWps ? "attività" : "incontri"}</small></div>`).join("")}</div><div class="time-grid-body"><div class="hour-labels">${hours.map((h) => `<span data-hour="${h}">${String(h).padStart(2, "0")}:00</span>`).join("")}</div>${days
+    target.innerHTML = `<div class="planner-scroll"><div class="time-grid ${view === "day" ? "single-day" : "seven-days"}"><div class="time-grid-head"><div class="time-zone">ORA<br>LOCALE</div>${days.map((day, i) => `<div class="day-heading ${day === dayKey() ? "is-today" : ""}"><span>${esc(dayFmt.format(new Date(day + "T12:00:00")))}</span><strong>${new Date(day + "T12:00:00").getDate()}</strong><small>${segments[i].length} ${countLabel(segments[i].length,isWps?'activity':'meeting')}</small></div>`).join("")}</div><div class="time-grid-body"><div class="hour-labels">${hours.map((h) => `<span data-hour="${h}">${String(h).padStart(2, "0")}:00</span>`).join("")}</div>${days
       .map(
         (day, i) =>
           `<div class="day-column ${day === dayKey() ? "today-column" : ""}" data-day="${day}">${hours.map((h) => `<button class="time-slot" data-hour="${h}" aria-label="${isWps ? "Pianifica attività" : "Nuovo appuntamento"} ${day} ore ${h}:00"></button>`).join("")}${segments[
@@ -265,7 +271,7 @@ export function renderPlanner({
   draw();
 }
 const time = (x) =>
-  new Intl.DateTimeFormat("it-IT", {
+  new Intl.DateTimeFormat((document.documentElement.lang==='en'?'en-GB':'it-IT'), {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(x));
