@@ -17,3 +17,5 @@
 
 /* Give chart series a definite plot height so percentage values render visibly. */
 .stripe-chart-month{height:auto;min-height:165px}.stripe-chart-bars{height:145px;min-height:145px;flex:0 0 145px}.stripe-chart-legend .income-key:before{background:#9be7b0!important}.stripe-chart-legend .cost-key:before{background:#ef6461!important}.stripe-chart-legend .payout-key:before{background:#85add4!important}@media(max-width:620px){.stripe-chart-month{height:auto;min-height:100px}.stripe-chart-bars{height:72px;min-height:72px;flex-basis:72px}}
+
+.stripe-chart-bars i{flex:none;height:auto}.stripe-chart-bars i.income{background:#9be7b0!important}.stripe-chart-bars i.cost{background:#ef6461!important}.stripe-chart-bars i.payout{background:#85add4!important}@media(max-width:620px){.stripe-chart-bars i{max-height:58px}}
