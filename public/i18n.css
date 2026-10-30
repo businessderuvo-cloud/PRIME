@@ -6,3 +6,6 @@
 .workspace-localized{--panel:var(--surface);--soft:var(--surface2)}.workspace-localized[data-theme=light]{--panel:#fff;--soft:#eee}.app-language-slot{flex:0 0 auto;display:flex}.app-language-slot .language-control>span:not(.language-picker){display:none}.app-language-slot .language-trigger{min-height:38px;padding:4px 8px;font-size:12px}.app-language-slot .language-house{stroke:none;stroke-width:0}.app-language-slot .language-house-outline{stroke:#bec4cb;stroke-width:1.25}.workspace-localized .topbar .global-search{min-width:80px}@media(max-width:600px){.app-language-slot .language-trigger>span{display:none}.app-language-slot .language-trigger{gap:5px;padding:4px}.workspace-localized .topbar{gap:8px}.app-language-slot .language-menu .language-option span{display:block}}
 
 .language-trigger{gap:0;padding:4px;border-color:transparent;background:transparent}.language-trigger>span,.language-trigger>.language-chevron{display:none!important}.language-trigger:hover,.language-trigger[aria-expanded=true]{background:var(--soft,#22282e);border-color:transparent}
+
+/* Make the house-shaped language flag the only visible, easy-to-hit control. */
+.language-trigger .language-house{width:38px;height:38px;flex-basis:38px}@media(max-width:780px){.language-trigger .language-house{width:34px;height:34px;flex-basis:34px}}
