@@ -70,3 +70,12 @@
 .stripe-chart-summary-item>strong{color:var(--text);font-size:15px;font-variant-numeric:tabular-nums}.stripe-chart-summary-item>small{color:var(--muted);font-size:10px}
 .stripe-chart-empty,.stripe-pie-empty{display:grid;min-height:220px;place-items:center;color:var(--muted);font-size:13px}
 @media(max-width:620px){.stripe-chart[data-style=pie]{padding:10px}.stripe-pie-layout{grid-template-columns:minmax(0,1fr);gap:14px;padding:8px}.stripe-pie-wheel{width:205px}.stripe-pie-row{grid-template-columns:9px minmax(50px,1fr) minmax(64px,auto) 46px;gap:7px;padding:10px 0;font-size:12px}.stripe-chart-summary{grid-template-columns:minmax(0,1fr)}.stripe-chart-summary-item{padding:10px 12px}}
+.stripe-chart-svg path.stripe-line.stripe-income{fill:none!important;stroke:#27875f!important}
+.stripe-chart-svg path.stripe-line.stripe-pending{fill:none!important;stroke:#bf792b!important}
+.stripe-chart-svg path.stripe-line.stripe-cost{fill:none!important;stroke:#b8545b!important}
+.stripe-chart-svg circle.stripe-line-point.stripe-income{fill:#27875f!important;stroke:var(--surface2)!important;stroke-width:2.5}
+.stripe-chart-svg circle.stripe-line-point.stripe-pending{fill:#bf792b!important;stroke:var(--surface2)!important;stroke-width:2.5}
+.stripe-chart-svg circle.stripe-line-point.stripe-cost{fill:#b8545b!important;stroke:var(--surface2)!important;stroke-width:2.5}
+.stripe-chart-legend .income-key,.stripe-chart-summary-item.stripe-summary-income .stripe-chart-summary-label,.stripe-pie-row.stripe-summary-income>span{color:#27875f!important;font-weight:650}
+.stripe-chart-legend .pending-key,.stripe-chart-summary-item.stripe-summary-pending .stripe-chart-summary-label,.stripe-pie-row.stripe-summary-pending>span{color:#bf792b!important;font-weight:650}
+.stripe-chart-legend .cost-key,.stripe-chart-summary-item.stripe-summary-cost .stripe-chart-summary-label,.stripe-pie-row.stripe-summary-cost>span{color:#b8545b!important;font-weight:650}
