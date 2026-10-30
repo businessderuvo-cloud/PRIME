@@ -10,3 +10,5 @@
 
 /* Financial chart and payment states use clear semantic colors. */
 .stripe-chart-legend .income-key:before,.stripe-chart-bars i.income{background:#9be7b0}.stripe-chart-legend .cost-key:before,.stripe-chart-bars i.cost{background:#ef6461}.stripe-chart-legend .payout-key:before,.stripe-chart-bars i.payout{background:#85add4}.stripe-chart-bars i{background:#9be7b0}.stripe-status{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-weight:650;font-size:12px;white-space:nowrap}.stripe-status-pending,.stripe-status-open{background:#f5a62330;color:#ffbd57;border:1px solid #f5a62380}.stripe-status-paid{background:#9be7b030;color:#a7efb8;border:1px solid #9be7b080}.stripe-status-refunded,.stripe-status-partially_refunded{background:#ef646130;color:#ff827d;border:1px solid #ef646180}.stripe-status-canceled,.stripe-status-expired,.stripe-status-other{background:#89919b25;color:#c4c9ce;border:1px solid #89919b70}.stripe-chart-panel{margin:20px 0;padding:24px}.stripe-chart-panel h2{margin:6px 0 16px}
+
+.stripe-demo-pending{color:#ffbd57!important}.stripe-demo-income{color:#a7efb8!important}.stripe-demo-expense{color:#ff827d!important}
