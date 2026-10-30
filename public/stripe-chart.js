@@ -148,7 +148,7 @@ function renderPie(rows) {
     angle = end;
     return shape;
   }).join('');
-  return `<div class="stripe-pie-layout"><svg class="stripe-pie-svg" width="250" height="250" viewBox="0 0 250 250" role="img" aria-label="${text('Ripartizione', 'Breakdown')}: ${label}" style="display:block;width:250px;height:250px;max-width:100%;flex:0 0 250px">${slices}</svg><div class="stripe-pie-legend"><p class="stripe-pie-total"><span>${text('Totale periodo', 'Period total')}</span><strong>${esc(euro(total))}</strong></p>${items}<p>${text('Quote calcolate sul totale dei movimenti visualizzati.', 'Percentages are based on all displayed activity.')}</p></div></div>`;
+  return `<div class="stripe-pie-layout"><svg class="stripe-chart-svg stripe-pie-svg" viewBox="0 0 250 250" role="img" aria-label="${text('Ripartizione', 'Breakdown')}: ${label}">${slices}</svg><div class="stripe-pie-legend"><p class="stripe-pie-total"><span>${text('Totale periodo', 'Period total')}</span><strong>${esc(euro(total))}</strong></p>${items}<p>${text('Quote calcolate sul totale dei movimenti visualizzati.', 'Percentages are based on all displayed activity.')}</p></div></div>`;
 }
 
 export function renderStripeChartSvg(source, style = 'bars') {
@@ -181,9 +181,6 @@ export function wireStripeChart(panel, source) {
       chart.style.display = 'block';
       chart.style.gridTemplateColumns = 'none';
       chart.style.minWidth = '0';
-      chart.style.height = style === 'pie' ? 'auto' : '280px';
-      chart.style.minHeight = style === 'pie' ? '250px' : '0';
-      chart.style.overflow = style === 'pie' ? 'visible' : 'hidden';
       chart.innerHTML = renderStripeChartSvg(rows, style);
       summary.hidden = style === 'pie' || !rows.length;
     });
@@ -192,10 +189,10 @@ export function wireStripeChart(panel, source) {
   chart.innerHTML = renderStripeChartSvg(rows, 'bars');
   chart.dataset.style = 'bars';
   chart.style.display = 'block';
-  chart.style.gridTemplateColumns = 'none';
-  chart.style.height = '280px';
-  chart.style.minHeight = '0';
-  chart.style.overflow = 'hidden';
+  chart.style.removeProperty('grid-template-columns');
+  chart.style.removeProperty('height');
+  chart.style.removeProperty('min-height');
+  chart.style.removeProperty('overflow');
   summary.hidden = !rows.length;
   panel.insertBefore(controls, chart);
   chart.after(summary);

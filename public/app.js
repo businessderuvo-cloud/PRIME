@@ -5,7 +5,7 @@ import { baseExcludedEntities, baseExcludedPages } from './edition.js';
 import {startDocumentRenewalNotifications} from './didit.js';
 import { mountOperations } from './operations.js';
 import { renderConnect } from "./connect.js?v=20261029-email-section";
-import { renderStripeAgency } from './stripe-agency.js?v=20261030-stripe-chart-classic5';
+import { renderStripeAgency } from './stripe-agency.js?v=20261030-stripe-chart-classic7';
 import { renderPortals } from "./portals.js";
 import { mountContactOutEnrichment } from "./contactout.js";
 import { assistantResultMarkup, openAssistantRecordManager } from "./assistant-management.js";
