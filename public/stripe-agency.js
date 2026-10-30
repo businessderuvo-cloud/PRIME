@@ -1,4 +1,4 @@
-import { wireStripeChart } from './stripe-chart.js?v=20261030-stripe-chart-svg1';
+import { wireStripeChart } from './stripe-chart.js?v=20261030-stripe-chart-labels1';
 
 const eur = value => new Intl.NumberFormat((document.documentElement.lang==='en'?'en-GB':'it-IT'),{style:'currency',currency:'EUR'}).format((value||0)/100);
 const labels = {pending:'In attesa',paid:'Pagato',expired:'Scaduto',canceled:'Annullato',refunded:'Rimborsato',partially_refunded:'Rimborso parziale',creating:'In preparazione',open:'Da pagare',draft:'Bozza',paid:'Pagata',void:'Annullata',uncollectible:'Non esigibile'};
