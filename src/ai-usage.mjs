@@ -1,4 +1,5 @@
 import {plans,customerRates,usageKeys,chargeCents} from '../public/pricing.js';
+import {customerCallRate} from './provider-pricing.mjs';
 import {ApiError} from './validation.mjs';
 
 const iso=date=>new Date(date).toISOString();
@@ -44,8 +45,9 @@ export function usageService(db){
    const totals=db.prepare('SELECT kind,SUM(units_micros) AS amount FROM ai_usage_ledger WHERE tenant_id=? AND cycle_start=? GROUP BY kind').all(tenantId,cycle.start);
    const lines=usageKeys.map((kind,i)=>{
     const micros=totals.find(x=>x.kind===kind)?.amount||0,quota=p.quotas[i],extra=Math.max(0,micros-quota*1000000);
-    const cents=chargeCents(extra/1000000,customerRates[kind]);
-    return {kind,used:micros/1000000,included:quota,remaining:Math.max(0,quota-micros/1000000),extra:extra/1000000,rate:customerRates[kind],extraEur:cents/100};
+    const rate=kind==='minutes'?customerCallRate():customerRates[kind];
+    const cents=chargeCents(extra/1000000,rate);
+    return {kind,used:micros/1000000,included:quota,remaining:Math.max(0,quota-micros/1000000),extra:extra/1000000,rate,extraEur:cents/100};
    });
    return {plan:s.plan,billingCycle:s.billing_cycle,cycle,lines,totalExtraEur:Math.round(lines.reduce((sum,x)=>sum+x.extraEur,0)*100)/100};
   },

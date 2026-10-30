@@ -7,7 +7,7 @@ export const plans = {
 export const usageKeys = ['minutes','simple','medium','complex'];
 // Final EUR tariff per excess minute includes both voice and AI processing.
 // Within each plan's minutes, both components are included. No provider costs here.
-export const customerRates = Object.freeze({minutes:0.27696,simple:0.2025,medium:2.025,complex:5.625});
+export const customerRates = Object.freeze({minutes:0.29483,simple:0.2025,medium:2.025,complex:5.625});
 export function chargeCents(units,rate){
  const quantity=BigInt(Math.round(units*1000000)),price=BigInt(Math.round(rate*100000));
  return Number((quantity*price+500000000n)/1000000000n);

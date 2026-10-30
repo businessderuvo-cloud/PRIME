@@ -60,10 +60,10 @@ test('HTTP: landing, asset, gestionale, account reale, CSRF e acquisto negato',a
 test('tariffe cliente esatte e calcolo oltre soglia',()=>{
  const usage={minutes:2500,simple:300,medium:80,complex:25};
  const vip=estimate('vip',3,usage),elite=estimate('elite',3,usage);
- assert.equal(vip.consumption,453.59);assert.equal(vip.total,1175.59);
+ assert.equal(vip.consumption,476.15);assert.equal(vip.total,1198.15);
  assert.equal(elite.consumption,0);assert.equal(elite.total,1095);
- assert.equal(Math.round((vip.total-elite.total)*100)/100,80.59);
- assert.equal(estimate('vip',1,{minutes:1239,simple:226,medium:51,complex:21}).consumption,8.14);
+ assert.equal(Math.round((vip.total-elite.total)*100)/100,103.15);
+ assert.equal(estimate('vip',1,{minutes:1239,simple:226,medium:51,complex:21}).consumption,8.15);
 });
 
 test('registro AI: ciclo mensile anche per annuale, quote distinte, isolamento e idempotenza',t=>{
@@ -79,11 +79,24 @@ test('registro AI: ciclo mensile anche per annuale, quote distinte, isolamento e
  assert.throws(()=>service.record({...event,units:1240},new Date('2026-02-02T12:00Z')),e=>e.status===409);
  service.record({...event,eventId:'simple-1',agentId:'ai-2',kind:'simple',units:226},new Date('2026-02-02T12:00Z'));
  const summary=service.summary('agency-a','2026-02-03T11:00Z');
- assert.equal(summary.totalExtraEur,.48);assert.equal(summary.lines[0].extra,1);assert.equal(summary.lines[1].extra,1);assert.equal(summary.lines[2].remaining,50);
+ assert.equal(summary.totalExtraEur,.49);assert.equal(summary.lines[0].extra,1);assert.equal(summary.lines[1].extra,1);assert.equal(summary.lines[2].remaining,50);
  assert.equal(service.summary('agency-b','2026-02-03T11:00Z').totalExtraEur,0);
  assert.equal(service.summary('agency-a','2026-02-28T10:15:00.000Z').lines[0].used,0);
  assert.equal(service.summary('agency-a','2026-02-28T10:15:00.000Z').lines[0].remaining,1238);
  assert.equal(service.events('agency-a','2026-02-03T11:00Z').length,2);
  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM ai_usage_ledger').get().n,2);
  assert.throws(()=>service.record({...event,eventId:'fraction',kind:'simple',units:.5},new Date('2026-02-02T12:00Z')));
+});
+
+// Verify billing policy and included-minute boundaries independently of the UI.
+test('minuti extra: costo complessivo per tre e soglie dei due piani',async()=>{
+ const {customerCallRate}=await import('./src/provider-pricing.mjs');
+ assert.equal(customerCallRate(),Math.round((.08+.03)*3/1.1193*1e5)/1e5);
+ assert.equal(customerRates.minutes,customerCallRate());
+ for(const [id,quota,agents] of [['vip',1238,1],['elite',3738,2]]){
+  assert.equal(estimate(id,agents,{minutes:quota-1}).consumption,0);
+  assert.equal(estimate(id,agents,{minutes:quota}).consumption,0);
+  assert.equal(estimate(id,agents,{minutes:quota+1}).consumption,.29);
+  assert.equal(estimate(id,agents,{minutes:quota+100}).consumption,29.48);
+ }
 });

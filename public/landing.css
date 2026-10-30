@@ -78,3 +78,5 @@ html[data-theme=light] .hero h1 span,html[data-theme=light] .features h2 span,ht
 .klarna-plan{display:flex;align-items:center;justify-content:center;gap:8px;min-height:38px;margin:4px 0 8px;color:var(--muted);font-size:9px;line-height:1.25;text-align:left}.klarna-plan img{display:block;width:58px;height:auto;flex:0 0 auto}.klarna-plan span{max-width:112px}.stripe-setup .primary{margin-top:18px}.stripe-endpoint{overflow-wrap:anywhere}
 
 @media(max-width:560px){.klarna-plan{flex-direction:column;gap:2px;min-height:48px;text-align:center}.klarna-plan img{width:50px}.klarna-plan span{max-width:130px;font-size:8px}}
+
+.usage-field{display:grid;gap:8px;margin-top:18px;font-size:13px}.usage-field input{width:100%;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--text)}.estimate dl dt{min-width:0;overflow-wrap:anywhere}.estimate dl dd{white-space:nowrap}

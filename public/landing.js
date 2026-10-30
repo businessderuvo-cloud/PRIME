@@ -1,4 +1,4 @@
-import {plans} from './pricing.js';
+import {plans,estimate,usageKeys,customerRates} from './pricing.js?v=20261030-overage-x3';
 const $=s=>document.querySelector(s);
 const cryptoCoins="<span class=\"crypto-coins\"><span class=\"crypto-coin\"><span class=\"crypto-mark\"><svg viewBox=\"0 0 32 32\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"m23 14 .4-2.3c.2-2-1.3-3.1-3.5-3.8l.7-2.8-1.7-.4-.7 2.7-1.4-.3.7-2.7-1.7-.4-.7 2.8-3.5-.9-.5 1.9 1.3.3c.7.2.8.6.7 1.1l-2 8c-.1.3-.4.6-.9.5l-1.3-.3-.9 2 3.5.9-.7 2.8 1.7.4.7-2.8 1.4.4-.7 2.7 1.7.4.7-2.8c3.1.6 5.4.3 6.3-2.4.7-2.1 0-3.3-1.6-4.1 1.2-.3 2-1.1 2.3-2.6ZM19.5 19c-.5 1.9-3.7.9-4.8.6l.8-3.3c1.1.3 4.5.8 4 2.7Zm.5-6c-.4 1.8-3.1.9-4 .7l.8-3c.9.2 3.7.6 3.2 2.3Z\"/></svg></span><span class=\"sr-only\">Bitcoin</span></span><span class=\"crypto-coin\"><span class=\"crypto-mark\"><svg viewBox=\"0 0 32 32\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><path d=\"M10.5 5.7a11.7 11.7 0 0 0 0 20.6M21.5 5.7a11.7 11.7 0 0 1 0 20.6M19.4 12.3c-.8-1.8-6.5-2.1-6.5.8 0 3.1 6.5 1.6 6.5 5 0 2.8-5.6 3-6.8.7M16 8.5V11m0 10v2.5\"/></svg></span><span class=\"sr-only\">USDC</span></span></span>";
 const setPageWidth=()=>document.documentElement.style.setProperty("--page-width",document.documentElement.clientWidth+"px");
@@ -27,7 +27,7 @@ const paths={
 };
 function icon(name,extra=''){return `<svg class="icon ${extra}" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name]||paths.check}"/></svg>`;}
 document.querySelectorAll('[data-icon]').forEach(el=>el.insertAdjacentHTML('afterbegin',icon(el.dataset.icon)));
-const euro=(v,d=0)=>new Intl.NumberFormat((window.primeI18n?.language==='en'?'en-GB':'it-IT'),{style:'currency',currency:'EUR',minimumFractionDigits:d,maximumFractionDigits:2}).format(v);
+const euro=(v,d=0)=>new Intl.NumberFormat((window.primeI18n?.language==='en'?'en-GB':'it-IT'),{style:'currency',currency:'EUR',minimumFractionDigits:d,maximumFractionDigits:Math.max(2,d)}).format(v);
 const integer=v=>new Intl.NumberFormat((window.primeI18n?.language==='en'?'en-GB':'it-IT')).format(v);
 const symbols={standard:'home',pro:'users',vip:'crown',elite:'diamond',secret:'infinity'};
 const descriptions={standard:'L’essenziale per iniziare',pro:'Più strumenti, più controllo',vip:'La tua agenzia, con l’AI',elite:'Più capacità, più possibilità',secret:'Per franchising e grandi volumi'};
@@ -91,17 +91,21 @@ const rows=[
 $('#comparison').innerHTML=rows.map(([name,label,values])=>name==='category'?`<tr class="category"><th colspan="6">${label}</th></tr>`:`<tr><th scope="row"><span class="row-label">${icon(name)}${label}</span></th>${values.map(v=>`<td>${v===true?`${icon('check')}<span class="sr-only">Incluso</span>`:v===false?`${icon('minus')}<span class="sr-only">Non incluso</span>`:v}</td>`).join('')}<td>${['Assistenza remota con TeamViewer','Stripe Connect: incassi, fatture e report finanziari'].includes(label)?'Inclusa':'Su preventivo'}</td></tr>`).join('');
 const labels={minutes:'Minuti di conversazioni AI',simple:'Operazioni semplici',medium:'Indagini Detective medie',complex:'Indagini Detective complesse'};
 const quotaKeys=['minutes','simple','medium','complex'];
-$('#usage-controls').innerHTML='<p class="fineprint">Le quote mensili incluse sono riportate per ciascun piano. Non sono acquistabili minuti o ricerche aggiuntive nel simulatore.</p>';
+let rates={...customerRates};
+$('#usage-controls').innerHTML=usageKeys.map(key=>`<label class="usage-field" for="usage-${key}">${labels[key]} / mese<input id="usage-${key}" name="${key}" type="number" min="0" max="10000000" step="1" value="${key==='minutes'?2500:0}" required></label>`).join('');
 function drawEstimate(){
  if(!$('#usage-form').checkValidity())return;
- const agents=Number($('#ai-agents').value);
+ const agents=Number($('#ai-agents').value),usage=Object.fromEntries(usageKeys.map(key=>[key,Number($('#usage-'+key).value)]));
  $('#ai-minus').disabled=agents<=1;$('#ai-plus').disabled=agents>=1000;
- $('#estimate-cards').innerHTML=['vip','elite'].map(id=>{const plan=plans[id],extra=Math.max(0,agents-plan.ai),total=plan.monthly+extra*plan.aiExtra;return `<article class="estimate"><h3>${icon(symbols[id])}${plan.name}</h3><p class="price"><strong>${euro(total)}</strong> <small>/mese</small></p><dl><dt>Canone mensile</dt><dd>${euro(plan.monthly)}</dd><dt>Agenti AI aggiuntivi (${extra})</dt><dd>${euro(extra*plan.aiExtra)}</dd>${quotaKeys.map((key,index)=>`<dt>${labels[key]} inclusi</dt><dd>${integer(plan.quotas[index])}</dd>`).join('')}</dl><a href="#inizia" class="button">Come attivare ${plan.name} ↗</a></article>`;}).join('');
- $('#savings').textContent='Le quote sono condivise da tutta l’agenzia: aggiungere agenti AI non aggiunge minuti o ricerche.';
- $('#rates').textContent='Il totale comprende solo canone PRIME e agenti AI aggiuntivi. Nessun acquisto di minuti o ricerche extra. CloudTalk prevede un abbonamento e consumi separati, non compresi in questa stima.';
+ const quotes=Object.fromEntries(['vip','elite'].map(id=>[id,estimate(id,agents,usage,rates)]));
+ $('#estimate-cards').innerHTML=['vip','elite'].map(id=>{const plan=plans[id],quote=quotes[id],extra=Math.max(0,agents-plan.ai);return `<article class="estimate"><h3>${icon(symbols[id])}${plan.name}</h3><p class="price"><strong>${euro(quote.total,2)}</strong> <small>/mese</small></p><dl><dt>Canone mensile</dt><dd>${euro(plan.monthly)}</dd><dt>Agenti AI aggiuntivi (${extra})</dt><dd>${euro(quote.extraAgents)}</dd>${quotaKeys.map((key,index)=>`<dt>${labels[key]} inclusi</dt><dd>${integer(plan.quotas[index])}</dd><dt>${labels[key]} extra (${integer(quote.extras[index].units)})</dt><dd>${euro(quote.extras[index].cents/100,2)}</dd>`).join('')}<dt>Totale consumi extra</dt><dd>${euro(quote.consumption,2)}</dd></dl><a href="#inizia" class="button">Come attivare ${plan.name} ↗</a></article>`;}).join('');
+ const difference=Math.round((quotes.vip.total-quotes.elite.total)*100)/100;
+ $('#savings').textContent=difference===0?'VIP ed Elite hanno lo stesso totale per questi consumi.':`Con questi consumi ${difference>0?'Elite':'VIP'} costa ${euro(Math.abs(difference),2)} in meno al mese.`;
+ $('#rates').textContent=`Minuti AI extra (voce + elaborazione AI): ${euro(rates.minutes,5)}/min. Operazioni semplici: ${euro(rates.simple,4)} ciascuna; indagini medie: ${euro(rates.medium,3)}; complesse: ${euro(rates.complex,3)}. Si paga solo il consumo oltre la rispettiva quota inclusa. Le quote sono condivise dall’agenzia e non aumentano aggiungendo agenti AI. Costi telefonici e abbonamenti esterni separati.`;
 }
-$('#ai-agents').addEventListener('input',drawEstimate);
+$('#usage-form').addEventListener('input',drawEstimate);
 $('#ai-minus').onclick=()=>{$('#ai-agents').stepDown();drawEstimate();};$('#ai-plus').onclick=()=>{$('#ai-agents').stepUp();drawEstimate();};$('#usage-form').onsubmit=e=>e.preventDefault();drawEstimate();
+fetch('/api/public/pricing').then(r=>{if(!r.ok)throw Error('Tariffe non disponibili');return r.json();}).then(data=>{if(usageKeys.every(key=>Number.isFinite(data.overage?.[key])&&data.overage[key]>=0)){rates=data.overage;drawEstimate();}}).catch(()=>{});
 function setTheme(theme){document.documentElement.dataset.theme=theme;$('#theme').innerHTML=icon(theme==='light'?'moon':'sun');$('#theme').setAttribute('aria-label',`Attiva tema ${theme==='light'?'scuro':'chiaro'}`);try{localStorage.setItem('prime-landing-theme',theme);}catch{}}
 let savedTheme='dark';try{savedTheme=localStorage.getItem('prime-landing-theme')||'dark';}catch{}setTheme(savedTheme==='light'?'light':'dark');$('#theme').onclick=()=>setTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
 const dialog=$('#account-dialog');$('#close-dialog').onclick=()=>dialog.close();
@@ -173,20 +177,11 @@ function positionBilling(){
 new ResizeObserver(positionBilling).observe(heroPhoto);window.addEventListener('resize',positionBilling,{passive:true});positionBilling();
 heroPhoto.closest('.hero').insertAdjacentHTML('afterend',`<section class="cloudtalk-feature wrap" aria-labelledby="cloudtalk-title">
  <div class="cloudtalk-card">
-  <div class="cloudtalk-main">
-   <a class="cloudtalk-brand" href="https://www.cloudtalk.io/" target="_blank" rel="noopener noreferrer" aria-label="Visita CloudTalk"><img src="/assets/cloudtalk-logo.svg" alt="CloudTalk" width="136" height="16"></a>
-  <div class="cloudtalk-copy">
-   <p class="eyebrow">DOPO I MINUTI PRIME · SERVIZIO SEPARATO</p>
-   <h2 id="cloudtalk-title">Finiti i minuti PRIME? Valuta CloudTalk.</h2>
-   <p>Quando esaurisci la quota, le chiamate AI PRIME si fermano e al momento non puoi aggiungere minuti. Consigliamo CloudTalk per proseguire con minuti aggiuntivi scegliendo un loro piano: è un servizio separato da attivare, completamente integrabile in autonomia oppure su richiesta dal team di sviluppo PRIME. Condizioni commerciali da confermare con CloudTalk.</p>
+  <div class="cloudtalk-copy"><p class="eyebrow">IL NUMERO PER LE TUE CHIAMATE AI</p><h2 id="cloudtalk-title">Ti serve un numero VoIP per gli AI Agent?</h2><p>Collega un numero telefonico agli agenti AI PRIME basati su ElevenLabs. Scegli una soluzione professionale con CloudTalk oppure l’alternativa più economica ed essenziale di Zadarma. I servizi telefonici hanno abbonamenti e consumi separati dai minuti AI PRIME.</p></div>
+  <div class="voip-options">
+   <article class="voip-option"><a class="cloudtalk-brand" href="https://www.cloudtalk.io/" target="_blank" rel="noopener noreferrer" aria-label="Visita CloudTalk"><img src="/assets/cloudtalk-logo.svg" alt="CloudTalk" width="136" height="16"></a><h3>La soluzione più professionale</h3><p><strong>Consigliamo CloudTalk solo per un piano senza AI Agent.</strong> Usa la telefonia insieme agli agenti AI PRIME. CloudTalk può offrire anche un proprio AI Agent, ma è più costoso e <strong>solo parzialmente integrabile con PRIME</strong>: non ha accesso autonomo ai dati del gestionale. I dati da usare in Copilot e per le ricerche devono essere caricati manualmente.</p></article>
+   <article class="voip-option"><a class="cloudtalk-brand zadarma-brand" href="https://zadarma.com/it/?ref=880d9879e576f890c9488173d439235e" target="_blank" rel="noopener noreferrer sponsored" aria-label="Visita Zadarma, link affiliato"><img src="/assets/zadarma-logo.svg" alt="Zadarma" width="116" height="30"></a><h3>L’alternativa più economica ed essenziale</h3><p>Una soluzione meno strutturata per chi cerca soprattutto un numero VoIP. <strong>L’integrazione Zadarma include SOLO il numero di telefono</strong>, senza AI Agent: l’intelligenza artificiale rimane quella degli agenti PRIME.</p><p class="fineprint">Link affiliato: PRIME può ricevere una commissione.</p></article>
   </div>
-  </div>
-  <div class="cloudtalk-business-email">
-   <div class="cloudtalk-email-copy">
-   <strong>Per registrarti a CloudTalk serve un’email aziendale.</strong>
-   <p>Usa un indirizzo sul dominio della tua agenzia. Per scegliere il servizio di posta aziendale, consulta i partner PRIME.</p>
-   <a class="text-link" href="/partners#partner-ufficiali">Scopri i partner per la posta aziendale <span aria-hidden="true">↗</span></a>
-   </div>
-  </div>
+  <div class="cloudtalk-business-email"><div class="cloudtalk-email-copy"><strong>Per registrarti a CloudTalk serve un’email aziendale.</strong><p>Usa un indirizzo sul dominio della tua agenzia. Per scegliere il servizio di posta aziendale, consulta i partner PRIME.</p><a class="text-link" href="/partners#partner-ufficiali">Scopri i partner per la posta aziendale <span aria-hidden="true">↗</span></a></div></div>
  </div>
 </section>`);
