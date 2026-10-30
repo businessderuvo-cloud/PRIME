@@ -29,3 +29,11 @@
 @media(prefers-reduced-motion:reduce){.money-cursor.is-charging .wallstreet-bull-photo,.money-cursor.is-tap .wallstreet-bull-photo,.money-bull-runner .wallstreet-bull-photo{animation:none}}
 @media(prefers-reduced-motion:reduce){.money-cursor.is-bull.is-charging .wallstreet-bull-photo,.money-cursor.is-bull.is-tap .wallstreet-bull-photo,.money-bull-runner .wallstreet-bull-photo{animation:none}.money-bull-runner{animation:bull-front-fade 600ms ease-out forwards}}@keyframes bull-front-fade{from{opacity:1}to{opacity:0}}
 @media(prefers-reduced-motion:reduce){.money-cursor.is-bull.is-charging.has-prep .wallstreet-bull-photo{opacity:1;animation:none}.money-cursor.is-bull.is-charging.has-prep .wallstreet-bull-prep{display:none;animation:none}}
+
+@media (hover:hover) and (pointer:fine){
+ body.money-cursor-enabled [data-native-cursor],body.money-cursor-enabled [data-native-cursor] *{cursor:auto!important}
+ body.money-cursor-enabled [data-native-cursor] input[type=range]{cursor:ew-resize!important}
+ body.money-cursor-enabled [data-native-cursor] input[type=number]{cursor:text!important}
+ body.money-cursor-enabled [data-native-cursor] button{cursor:pointer!important}
+ .money-cursor.is-native-area{display:none}
+}

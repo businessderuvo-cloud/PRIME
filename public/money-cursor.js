@@ -3,6 +3,7 @@
   if (!document.body) return;
 
   const bullArt = '<svg class="wallstreet-bull-photo" viewBox="128 4 1212 896" aria-hidden="true" focusable="false"><image href="/assets/charging-bull-original-silver.png" width="1735" height="906"/></svg><span class="wallstreet-bull-prep" aria-hidden="true"></span>';
+  const nativeCursorArea = target => !!target?.closest?.('[data-native-cursor]');
   let cursor = null;
   let gaitReady = false;
   let prepReady = false;
@@ -45,6 +46,7 @@
       pointerX = Math.round(event.clientX);
       pointerY = Math.round(event.clientY);
       cursor.classList.add('is-visible');
+      cursor.classList.toggle('is-native-area', nativeCursorArea(event.target));
       if (frameQueued) return;
       frameQueued = true;
       requestAnimationFrame(() => {
@@ -119,6 +121,12 @@
 
   document.addEventListener('pointerdown', (event) => {
     if (!['mouse', 'pen', 'touch'].includes(event.pointerType) || event.button !== 0) return;
+    if (nativeCursorArea(event.target)) {
+      press = null;
+      cursor?.classList.remove('is-charging', 'is-tap');
+      cursor?.classList.add('is-native-area');
+      return;
+    }
     if (bullRunning) return;
     press = {
       x: event.clientX, y: event.clientY,
