@@ -53,7 +53,7 @@ Nessun dominio o indirizzo definitivo è stato ancora indicato in questa richies
 ## 5. Collegamenti già in sospeso per l’attivazione commerciale
 
 - [ ] Completare il collegamento reale della verifica aziendale KYB e del relativo esito approvato.
-- [ ] Collegare il pagamento Suby e gli eventi di pagamento/abbonamento ai piani effettivi.
+- [ ] Collegare il pagamento Stripe e gli eventi di pagamento/abbonamento ai piani effettivi.
 - [ ] Collegare il registro consumi agli eventi reali degli agenti e alla fatturazione.
 - [ ] Applicare il flusso registrazione → KYB approvato → scelta piano → pagamento; nessun acquisto prima dell’approvazione.
 - [ ] Gestire l’attivazione di VIP, Elite e Secret entro un massimo di 24 ore conteggiate nei giorni lavorativi, escludendo sabati, domeniche e festivi, dopo verifica approvata e pagamento confermato.

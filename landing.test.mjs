@@ -28,20 +28,8 @@ test('quote e agenti AI: soglie, extra, arrotondamento e risparmio',()=>{
 test('configurazione pubblica espone solo tariffe finali valide',()=>{
  assert.deepEqual(publicOverage(),customerRates);
 });
-test('checkout Suby: blocco KYB, titolare, piano, quantità e link esatto',async()=>{
- let status='unverified',out;
- const db={prepare:()=>({get:()=>({kyb_status:status})})};
- const route=billingService({db,json:(_r,s,b)=>{out={s,b};},readBody:async req=>req.body,env:{PRIME_SUBY_VIP_MONTHLY_3_URL:'https://merchant.example/suby/exact-offer',PRIME_SUBY_VIP_ANNUAL_3_URL:'https://merchant.example/suby/annual-offer'}});
- const url=new URL('https://prime.example/api/billing/checkout'),s={tenant_id:'a',role:'owner'};
- const req={method:'POST',body:{plan:'vip',cycle:'monthly',ai:3}};
- await assert.rejects(route(req,{},url,s),e=>e.status===403);
- status='approved';await route(req,{},url,s);assert.equal(out.b.url,'https://merchant.example/suby/exact-offer');
- await assert.rejects(route(req,{},url,{...s,role:'agent'}),e=>e.status===403);
- await assert.rejects(route({...req,body:{...req.body,ai:4}},{},url,s),e=>e.status===503);
- await route({...req,body:{...req.body,cycle:'annual'}},{},url,s);assert.equal(out.b.url,'https://merchant.example/suby/annual-offer');
- await assert.rejects(route({...req,body:{...req.body,ai:0}},{},url,s),e=>e.status===400);
- await assert.rejects(route({...req,body:{...req.body,plan:'__proto__'}},{},url,s),e=>e.status===400);
-});
+test('legacy checkout preserves KYB gate and redirects users to configured providers',async()=>{let status='pending';const route=billingService({db:{prepare:()=>({get:()=>({kyb_status:status})})},readBody:async r=>r.body,json:()=>{}}),s={role:'owner',tenant_id:'agency'},url=new URL('https://prime.example/api/billing/checkout'),req={method:'POST',body:{plan:'standard',cycle:'monthly',humans:2}};await assert.rejects(route(req,{},url,s),e=>e.status===403);status='approved';await assert.rejects(route(req,{},url,s),e=>e.status===503);});
+
 test('HTTP: landing, asset, gestionale, account reale, CSRF e acquisto negato',async t=>{
  const {server,db}=createApp({database:':memory:'});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>{server.close(()=>{db.close();r();});}));
@@ -51,7 +39,7 @@ test('HTTP: landing, asset, gestionale, account reale, CSRF e acquisto negato',a
  assert.doesNotMatch(publicPricingSource,/callMultiplier|llmMultiplier|callUsdPerMinute|llmUsdPerMinute/);
  for(const path of ['/','/app','/checkout?preview=1','/checkout.css','/checkout.js','/landing.css','/landing-composition.css','/landing.js','/pricing.js','/assets/prime-wordmark.svg','/assets/prime-hero-panorama.png','/assets/prime-professionals.png'])assert.equal((await fetch(base+path)).status,200,path);
  const html=await (await fetch(base+'/')).text();assert.match(html,/landing.js/);assert.doesNotMatch(html,/Guarda il video/);
- assert.doesNotMatch(html,/Suby|landing-reference\.png/);assert.match(html,/Conosci meglio PRIME/);
+ assert.doesNotMatch(html,/landing-reference\.png/);assert.match(html,/Conosci meglio PRIME/);
  const auth=await fetch(base+'/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'register',agency:'Agenzia test landing',email:'landing@example.test',password:'test-password-only-2026'})});
  assert.equal(auth.status,201);const registration=await auth.json();
  const token=new URL(registration.verification_url).searchParams.get('verify');

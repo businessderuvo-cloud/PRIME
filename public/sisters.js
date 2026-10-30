@@ -1,3 +1,4 @@
+import {createEnglishConversation} from './sisters-chat-en.js';
 import { createVeronicaConversation } from './sisters-chat.js';
 
 function syncTheme() {
@@ -11,14 +12,14 @@ window.addEventListener('storage', event => { if (event.key === 'prime-landing-t
 
 const thread = document.querySelector('#sisters-thread');
 const input = document.querySelector('#sisters-question');
-const reply = createVeronicaConversation();
+const reply = document.documentElement.lang==='en'?createEnglishConversation():createVeronicaConversation();
 const form = document.querySelector('#sisters-chat-form');
 const sendButton = form.querySelector('button');
 const quickButtons = [...document.querySelectorAll('[data-question]')];
 let pending = false;
 function bubble(role, content) {
   const item = document.createElement('div'); item.className = `bubble ${role}`;
-  const name = document.createElement('span'); name.textContent = role === 'user' ? 'Tu' : 'Veronica';
+  const name = document.createElement('span'); name.textContent = role === 'user' ? (document.documentElement.lang==='en'?'You':'Tu') : 'Veronica';
   const text = document.createElement('p'); text.textContent = content;
   item.append(name, text); thread.append(item);
   // Keep the session local and the DOM bounded, with no persistent chat history.
@@ -50,4 +51,4 @@ document.querySelector('a[href="#veronica-chat"]').addEventListener('click', () 
 
 const callbackForm=document.querySelector('#vanessa-callback-form'),callbackStatus=document.querySelector('#call-status'),callbackButton=callbackForm.querySelector('button');let callbackChallenge=null;
 fetch('/api/public/vanessa').then(r=>r.json()).then(data=>{if(data.available){callbackChallenge=data.challenge;callbackButton.disabled=false;callbackStatus.textContent='Vanessa ti chiamerà sul numero che indichi.';}else{callbackStatus.textContent='La richiamata è momentaneamente in preparazione. Per assistenza: phoenix@primegestionale.it.';}}).catch(()=>{callbackStatus.textContent='Demo non disponibile al momento. Riprova più tardi.';});
-callbackForm.addEventListener('submit',async e=>{e.preventDefault();if(!callbackForm.reportValidity()||!callbackChallenge)return;const ready=await fetch('/api/public/vanessa').then(r=>r.json());if(!ready.available){callbackStatus.textContent='Demo non disponibile al momento.';return;}callbackChallenge=ready.challenge;const values=new FormData(callbackForm),phone=String(values.get('phone')).trim();if(!window.confirm('Vuoi ricevere una chiamata dimostrativa da Vanessa al numero '+phone+'?'))return;callbackButton.disabled=true;callbackStatus.textContent='Invio la richiesta di richiamata…';try{const r=await fetch('/api/public/vanessa/callback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone,consent:values.get('consent')==='on',website:values.get('website'),challenge:callbackChallenge})});const data=await r.json();if(!r.ok)throw Error(data.error||'Richiesta non riuscita.');callbackChallenge=null;callbackStatus.textContent=data.message;callbackButton.textContent='Richiesta inviata';}catch(error){callbackStatus.textContent=error.message+' Ricarica la pagina per verificare la disponibilità.';}});
+callbackForm.addEventListener('submit',async e=>{e.preventDefault();if(!callbackForm.reportValidity()||!callbackChallenge)return;const ready=await fetch('/api/public/vanessa').then(r=>r.json());if(!ready.available){callbackStatus.textContent='Demo non disponibile al momento.';return;}callbackChallenge=ready.challenge;const values=new FormData(callbackForm),phone=String(values.get('phone')).trim();if(!window.confirm((document.documentElement.lang==='en'?'Would you like Vanessa to call you at ':'Vuoi ricevere una chiamata dimostrativa da Vanessa al numero ')+phone+'?'))return;callbackButton.disabled=true;callbackStatus.textContent='Invio la richiesta di richiamata…';try{const r=await fetch('/api/public/vanessa/callback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone,language:document.documentElement.lang==='en'?'en':'it',consent:values.get('consent')==='on',website:values.get('website'),challenge:callbackChallenge})});const data=await r.json();if(!r.ok)throw Error(data.error||'Richiesta non riuscita.');callbackChallenge=null;callbackStatus.textContent=data.message;callbackButton.textContent='Richiesta inviata';}catch(error){callbackStatus.textContent=error.message+' Ricarica la pagina per verificare la disponibilità.';}});

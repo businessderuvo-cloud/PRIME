@@ -74,3 +74,7 @@ html[data-theme=light] .hero h1 span,html[data-theme=light] .features h2 span,ht
 .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}.hero-actions .button{min-height:50px;padding-inline:25px}.hero-actions .button.primary{font-size:15px;box-shadow:0 8px 28px #0005}@media(max-width:700px){.hero-actions{gap:10px}.hero-actions .button{min-height:48px;padding-inline:18px}}
 
 .refund-promise{display:inline-flex;align-items:center;gap:9px;margin-top:18px;padding:9px 14px;border:1px solid var(--line);border-radius:999px;color:var(--text);font-size:13px;font-weight:600}.refund-promise:before{content:'✓';color:var(--accent);font-weight:800}
+
+.klarna-plan{display:flex;align-items:center;justify-content:center;gap:8px;min-height:38px;margin:4px 0 8px;color:var(--muted);font-size:9px;line-height:1.25;text-align:left}.klarna-plan img{display:block;width:58px;height:auto;flex:0 0 auto}.klarna-plan span{max-width:112px}.stripe-setup .primary{margin-top:18px}.stripe-endpoint{overflow-wrap:anywhere}
+
+@media(max-width:560px){.klarna-plan{flex-direction:column;gap:2px;min-height:48px;text-align:center}.klarna-plan img{width:50px}.klarna-plan span{max-width:130px;font-size:8px}}

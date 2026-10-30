@@ -22,11 +22,11 @@ Il titolare trova **Piano e upgrade** nel menu. Pro, VIP ed Elite vengono confro
 
 La migrazione 027 conserva il ciclo confermato in plan_subscriptions e i preventivi separati per agenzia in plan_upgrade_quotes. Le date e gli importi correnti devono provenire da una conferma di pagamento verificata, mai dal browser. Un preventivo dura al massimo 5 minuti; una revisione dell'abbonamento lo invalida. Solo il titolare con KYB approvato può procedere.
 
-La richiesta è persistente e ripetibile senza creare un secondo upgrade. Il checkout deve essere una offerta Suby emessa per lo specifico preventivo: configurazione server PRIME_SUBY_UPGRADE_<ID_PREVENTIVO_MAIUSCOLO_CON_UNDERSCORE>_URL. Un normale link per il prezzo pieno non è utilizzato per il conguaglio. Senza tale configurazione la richiesta viene registrata, il cliente vede che l'assistenza deve predisporre il pagamento e nessun addebito o cambio di funzioni viene simulato.
+La richiesta è persistente e ripetibile senza creare un secondo upgrade. Il checkout deve essere una offerta Stripe emessa per lo specifico preventivo: configurazione server PRIME_STRIPE_UPGRADE_<ID_PREVENTIVO_MAIUSCOLO_CON_UNDERSCORE>_URL. Un normale link per il prezzo pieno non è utilizzato per il conguaglio. Senza tale configurazione la richiesta viene registrata, il cliente vede che l'assistenza deve predisporre il pagamento e nessun addebito o cambio di funzioni viene simulato.
 
-Da completare con il collegamento Suby: creazione automatica del conguaglio, verifica della notifica di pagamento, aggiornamento atomico dell'abbonamento e attivazione/accesso alla versione di destinazione Pro/VIP/Elite. Questa parte richiede le reali specifiche/credenziali merchant; nessun endpoint pubblico può auto-approvare pagamenti o cambiare edizione.
+Da completare con il collegamento Stripe: creazione automatica del conguaglio, verifica della notifica di pagamento, aggiornamento atomico dell'abbonamento e attivazione/accesso alla versione di destinazione Pro/VIP/Elite. Questa parte richiede le reali specifiche/credenziali merchant; nessun endpoint pubblico può auto-approvare pagamenti o cambiare edizione.
 
 
 ### Offerta crypto approvata — 27 ottobre 2026
 Con crypto, un mese gratuito in più: sui piani mensili lo sconto equivalente a una mensilità ogni anno è distribuito sulle 12 mensilità e già incluso nel prezzo finale. Sui piani annuali si aggiunge ai 2 mesi gratuiti di base: 3 mesi gratuiti totali, già scontati nel prezzo finale.
-La comunicazione commerciale è aggiornata; offerte merchant e importi effettivi nel checkout SUBY devono ancora essere configurati e verificati.
+La comunicazione commerciale è aggiornata; offerte merchant e importi effettivi nel checkout Stripe devono ancora essere configurati e verificati.

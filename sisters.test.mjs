@@ -24,7 +24,7 @@ test('Veronica follows small talk, playful follow-ups and plan context without m
 test('public sisters demo keeps plan entitlements and future calling accurate',()=>{
   assert.match(veronicaReply('Cosa include Pro?'), /10 agenti umani/);
   assert.match(veronicaReply('Standard'), /Non include AI Assistant, chiamate AI o Detective/);
-  assert.match(veronicaReply('Quali sono le quote?'), /0,27696/);
+  assert.match(veronicaReply('Quali sono le quote?'), /non si acquistano minuti o ricerche aggiuntive/);
   assert.match(veronicaReply('Chi è Vanessa?'), /VIP ed Elite/);
   assert.match(veronicaReply('Posso chiamare?'), /richiedere una chiamata dimostrativa/);
   assert.match(veronicaReply('Posso usare una voce personalizzata?'), /Con Elite/);

@@ -40,7 +40,7 @@ export function planUpgradeService({db,json,readBody,env=process.env,clock=Date.
       db.prepare("UPDATE plan_upgrade_quotes SET state='requested' WHERE id=? AND state='quoted'").run(row.id);
       // Only a merchant-issued checkout bound to this exact persisted quote is accepted.
       // An ordinary full-price subscription link must never replace a prorated payment.
-      const configured=env['PRIME_SUBY_UPGRADE_'+row.id.replaceAll('-','_').toUpperCase()+'_URL'];
+      const configured=env['PRIME_STRIPE_UPGRADE_'+row.id.replaceAll('-','_').toUpperCase()+'_URL'];
       let paymentUrl=null;try{const u=new URL(configured);if(u.protocol==='https:'&&!u.username&&!u.password)paymentUrl=u.href;}catch{}
       json(res,200,{requested:true,quoteId:row.id,dueCents:row.due_cents,paymentUrl,message:paymentUrl?'Completa il pagamento per attivare l’upgrade.':'Richiesta registrata. L’assistenza predisporrà il pagamento dell’importo proporzionale; il piano attuale resta attivo. Nessun addebito effettuato.'});return true;
     }

@@ -3,7 +3,7 @@ const start=document.querySelector('#browser-call-start'),stop=document.querySel
 let session=null,sequence=0,timer=null,isMuted=false;
 function reset(message){clearTimeout(timer);timer=null;session=null;isMuted=false;start.disabled=false;start.textContent='Parla con Vanessa';stop.hidden=true;mute.hidden=true;mute.textContent='Disattiva microfono';mute.setAttribute('aria-pressed','false');card.removeAttribute('data-voice-mode');status.textContent=message;}
 async function finish(message='Chiamata terminata. Puoi scegliere se riprovare o farti richiamare.'){const current=session;sequence++;reset(message);if(current)try{await current.endSession();}catch{}}
-function line(message){if(message.source!=='user'||!message.message)return;const item=document.createElement('p');item.className='voice-line';item.textContent='Tu: '+message.message;transcript.append(item);while(transcript.children.length>16)transcript.firstElementChild.remove();transcript.scrollTop=transcript.scrollHeight;}
+function line(message){if(message.source!=='user'||!message.message)return;const item=document.createElement('p');item.className='voice-line';item.textContent=(document.documentElement.lang==='en'?'You: ':'Tu: ')+message.message;transcript.append(item);while(transcript.children.length>16)transcript.firstElementChild.remove();transcript.scrollTop=transcript.scrollHeight;}
 start.addEventListener('click',async()=>{
  if(!consent.checked){status.textContent='Conferma la richiesta della conversazione AI e il consenso prima di iniziare.';consent.focus();return;}
  if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){status.textContent='Per parlare usa un browser aggiornato e apri il sito in HTTPS.';return;}
@@ -13,10 +13,10 @@ start.addEventListener('click',async()=>{
   const check=await navigator.mediaDevices.getUserMedia({audio:true});check.getTracks().forEach(track=>track.stop());if(attempt!==sequence)return;
   status.textContent='Collegamento con Vanessa…';
   const readyResponse=await fetch('/api/public/vanessa'),ready=await readyResponse.json();if(!ready.available)throw Error('La demo vocale non è disponibile al momento.');
-  const response=await fetch('/api/public/vanessa/browser',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({consent:true,challenge:ready.challenge})});const data=await response.json();if(!response.ok)throw Error(data.error||'Non riesco a collegare Vanessa.');if(attempt!==sequence)return;
+  const response=await fetch('/api/public/vanessa/browser',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({consent:true,challenge:ready.challenge,language:document.documentElement.lang==='en'?'en':'it'})});const data=await response.json();if(!response.ok)throw Error(data.error||'Non riesco a collegare Vanessa.');if(attempt!==sequence)return;
   if(attempt!==sequence)return;
   document.querySelectorAll('video').forEach(video=>video.pause());
-  const connected=await Conversation.startSession({signedUrl:data.signedUrl,connectionType:'websocket',workletPaths:{rawAudioProcessor:'/vendor/elevenlabs/rawAudioProcessor.js',audioConcatProcessor:'/vendor/elevenlabs/audioConcatProcessor.js'},libsampleratePath:'/vendor/elevenlabs/libsamplerate.worklet.js',
+  const connected=await Conversation.startSession({signedUrl:data.signedUrl,overrides:data.overrides,connectionType:'websocket',workletPaths:{rawAudioProcessor:'/vendor/elevenlabs/rawAudioProcessor.js',audioConcatProcessor:'/vendor/elevenlabs/audioConcatProcessor.js'},libsampleratePath:'/vendor/elevenlabs/libsamplerate.worklet.js',
    onConnect:()=>{if(attempt===sequence)status.textContent='Sei collegato con Vanessa. Parla pure.';},
    onDisconnect:()=>{if(attempt===sequence)reset('La chiamata è terminata.');},
    onError:()=>{if(attempt===sequence)status.textContent='La connessione audio ha un problema. Se non senti Vanessa, termina e riprova.';},

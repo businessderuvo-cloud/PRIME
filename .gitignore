@@ -8,3 +8,5 @@ node_modules/
 *.prb
 *.prb.partial
 operations.env
+
+work/

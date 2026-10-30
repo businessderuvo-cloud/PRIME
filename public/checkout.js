@@ -1,7 +1,8 @@
 import {plans} from './pricing.js';
 const $=s=>document.querySelector(s),params=new URLSearchParams(location.search),order=params.get('order'),preview=params.has('preview');
+if(params.has('test')||(!order&&!preview)){await import('./checkout-test.js');}else{
 let csrf='',data=null,symbol='BTC',working=false,refreshTimer;
-const euro=c=>new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(c/100);
+const euro=c=>new Intl.NumberFormat(window.primeI18n?.language==='en'?'en-GB':'it-IT',{style:'currency',currency:'EUR'}).format(c/100);
 const networks=[{id:'btc',symbol:'BTC',network:'Bitcoin'},{id:'eth',symbol:'USDC',network:'Ethereum · ERC20'},{id:'polygon',symbol:'USDC',network:'Polygon'},{id:'base',symbol:'USDC',network:'Base'},{id:'solana',symbol:'USDC',network:'Solana'}];
 async function api(suffix='',body){const r=await fetch('/api/billing/crypto-order/'+encodeURIComponent(order)+suffix,{method:body?'POST':'GET',cache:'no-store',headers:{'Content-Type':'application/json',...(body?{'X-CSRF-Token':csrf}:{})},...(body?{body:JSON.stringify(body)}:{})});const d=await r.json();if(!r.ok)throw Error(d.error||'Pagamento non disponibile.');return d;}
 function options(){const value=$('#network').value;$('#network').replaceChildren(...data.networks.filter(n=>n.symbol===symbol).map(n=>{const o=document.createElement('option');o.value=n.id;o.textContent=n.network;return o;}));if([...$('#network').options].some(o=>o.value===value))$('#network').value=value;document.querySelectorAll('[data-coin]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.coin===symbol)));}
@@ -21,3 +22,5 @@ $('#copy-address').onclick=()=>copy(data.payment.address,$('#copy-address'));$('
 async function start(){try{if(preview){const key=Object.hasOwn(plans,params.get('plan'))?params.get('plan'):'standard',annual=params.get('cycle')==='annual',p=plans[key];$('#preview').hidden=false;render({plan:key,name:p.name,cycle:annual?'annual':'monthly',cents:Math.round(p.monthly*100*(annual?9:1)),state:'preview',networks});return;}if(!/^[a-f0-9-]{36}$/.test(order||''))throw Error('Apri il checkout dal tuo account PRIME dopo aver scelto il piano.');const me=await fetch('/api/me',{cache:'no-store'});if(!me.ok)throw Error('Accedi a PRIME con il titolare dell’agenzia per aprire questo pagamento.');csrf=(await me.json()).csrf;render(await api());refreshTimer=setInterval(refresh,15000);}catch(e){$('#message').textContent=e.message;$('#prepare').disabled=true;$('#plan-name').textContent='Accedi al tuo account';}}
 setInterval(countdown,1000);start();
 
+
+}

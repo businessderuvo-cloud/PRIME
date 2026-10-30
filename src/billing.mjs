@@ -44,13 +44,8 @@ export function billingService({db,json,readBody,env=process.env}){
    const field=p.ai?'ai':'humans', count=b[field];
    if(!Number.isSafeInteger(count)||count<1||count>1000)throw new ApiError(400,'Numero agenti non valido');
    const included=p.ai||p.humans;
-   // Each link represents a merchant-created Suby offer with exact quantities.
-   // Never append client-controlled amounts to a hosted checkout URL.
-   const quantity=Math.max(count,included);
-   const configKey=`PRIME_SUBY_${b.plan.toUpperCase()}_${b.cycle.toUpperCase()}_${quantity}_URL`;
-   const link=httpsUrl(env[configKey]);
-   if(!link)throw new ApiError(503,'Il pagamento Suby per questa configurazione non è ancora disponibile. Nessun importo è stato addebitato.');
-   json(res,200,{url:link});return true;
+   throw new ApiError(503,'Usa Stripe in modalità test oppure il checkout crypto configurato.');
+
   }
   throw new ApiError(404,'Operazione abbonamento non disponibile');
  };

@@ -1,5 +1,8 @@
+import {stripePlanCheckout} from './src/stripe-plan-checkout.mjs';
+import {localizePublicPage,publicLocalizedPages} from './src/public-locale.mjs';
 import {customerDemoService,customerDemoApi,customerDemoEdition} from './src/customer-demo.mjs';
 import { cpayService } from './src/cpay.mjs';
+import { stripeAgencyAllowed, stripeAgencyService } from './src/stripe-agency.mjs';
 import { eliteService } from './src/elite.mjs';
 import { demoCallbackService } from './src/demo-callback.mjs';
 import { planUpgradeService } from './src/plan-upgrades.mjs';
@@ -142,6 +145,7 @@ export function createApp({
   const handleDemoCallback = demoCallbackService({db,json,readBody,production});
   const cpay = cpayService({db,json,readBody});
   const handleBilling = billingService({db,json,readBody});
+  const stripePlans=stripePlanCheckout({db,json,readBody});
   const handlePlanUpgrade = planUpgradeService({db,json,readBody});
   const geocodeCache = new Map();
   const didit = diditService({db,json,readBody,audit,fetcher:connectFetch,config:diditOptions || diditConfig({production})});
@@ -614,6 +618,7 @@ export function createApp({
   const backupDevices = deviceBackupService({db,database:database||path.join(root,'data/prime.sqlite'),readBody,json,audit,...(publicDemo?{directory:path.join(dataDirectory,'backups')}: {})});
   const backups = backupService({db,database:database||path.join(root,'data/prime.sqlite'),...(publicDemo?{directory:path.join(dataDirectory,'backups'),key:randomBytes(32).toString('base64'),defaultEnabled:false}:{})});
   const connect = connectService({db,directory:database===':memory:'?null:path.dirname(path.resolve(database||path.join(root,'data/prime.sqlite'))),fetcher:connectFetch,providerApi:connectProviderApi,json,readBody,audit,interval:isBase?0:connectInterval,saveAppointment:(session,record,delta)=>saveEntity('appointments',{data:{...Object.fromEntries(Object.keys(schema.appointments.fields).map(key=>[key,record?.[key]])),...delta},version:record?.version},session,record?.id)});
+  const stripeAgency = stripeAgencyService({db,vault:authVault,json,readBody,audit,editionFor:sessionEdition,demo:!!publicDemo,publicUrl:()=>new URL(process.env.PRIME_PUBLIC_URL||('http://127.0.0.1:'+server.address().port)).origin});
   const portalRoute = portalService({db,readBody,json});
   const assistantManager = assistantManagement({db,readBody,json,audit,previewSave:previewEntity,saveEntity,deleteEntity,authorize,rows});
   const telephony=telephonyService({db,vault:authVault,json,readBody,audit,editionFor:sessionEdition,fetcher:connectFetch,demo:!!publicDemo});
@@ -640,7 +645,9 @@ export function createApp({
       if (production)
         res.setHeader("Strict-Transport-Security", "max-age=31536000");
       if (url.pathname === '/' && method === 'GET' && ['verify','reset','invite','connect','mail'].some(key=>url.searchParams.has(key))) { res.writeHead(302,{Location:'/app'+url.search,'Cache-Control':'no-store'});res.end();return; }
-      if (isBase && (/^\/api\/(?:public|connect|assistant|portals|signatures|contactout|webhooks)(?:\/|$)/.test(url.pathname))) throw new ApiError(403,'Funzione non disponibile in PRIME Base.');
+      if(await stripePlans.publicRoute(req,res,url))return;
+      if(await stripeAgency.publicRoute(req,res,url))return;
+      if (isBase && (/^\/api\/(?:public|connect|stripe|assistant|portals|signatures|contactout|webhooks)(?:\/|$)/.test(url.pathname))) throw new ApiError(403,'Funzione non disponibile in PRIME Base.');
       if(await elite.publicRoute(req,res,url))return;
       if(!isBase && await handleDemoCallback(req,res,url))return;
       if (url.pathname === '/api/public/pricing' && method === 'GET') return json(res,200,{overage:publicOverage()});
@@ -827,6 +834,7 @@ export function createApp({
         if(await backupDevices.route(req,res,url,s))return;
         if(await didit.route(req,res,url,s))return;
         if(await handlePlanUpgrade(req,res,url,s))return;
+        if(await stripePlans.route(req,res,url,s))return;
         if(await cpay.route(req,res,url,s))return;
         if(await handleBilling(req,res,url,s))return;
         if (url.pathname === "/api/me" && method === "GET")
@@ -839,6 +847,7 @@ export function createApp({
             theme: s.theme,
             csrf: s.csrf,
             edition: accountEdition,
+            stripe_enabled: stripeAgencyAllowed(db,s,accountEdition),
             ...(publicDemo?{customer_demo:true,demo_plan:publicDemo.plan,vanessa_chat_only:true}:{}),
             human_seat_limit: publicDemo&&publicDemo.plan==='pro'?10:accountEdition==='base' ? 2 + baseExtraSeats : null,
             environment: demo ? "demo" : "local",
@@ -1028,6 +1037,7 @@ export function createApp({
           return json(res, 200, { ok: true });
         }
         if (await telephony.route(req,res,url,s)) return;
+        if (await stripeAgency.route(req,res,url,s)) return;
         if (await connect.route(req,res,url,s)) return;
         if (await signatures.route(req,res,url,s)) return;
         if (await contactOut.route(req,res,url,s)) return;
@@ -1226,10 +1236,11 @@ export function createApp({
 "/assets/teamviewer-official.png":"assets/teamviewer-official.png",
 "/landing-composition.css":"landing-composition.css",
 "/landing.js":"landing.js",
+"/i18n.js":"i18n.js","/i18n.css":"i18n.css","/en.json":"en.json","/checkout-test.js":"checkout-test.js",
 "/pricing.js":"pricing.js",
 "/sisters.css":"sisters.css",
 "/sisters.js":"sisters.js",
-"/sisters-chat.js":"sisters-chat.js",
+"/sisters-chat.js":"sisters-chat.js","/sisters-chat-en.js":"sisters-chat-en.js",
 "/assets/prime-bonus-chrome.png":"assets/prime-bonus-chrome.png",
 "/assets/prime-checkout-logo.svg":"assets/prime-checkout-logo.svg",
 "/assets/prime-wordmark.svg":"assets/prime-wordmark.svg",
@@ -1262,6 +1273,7 @@ export function createApp({
         "/map.js": "map.js",
         "/mail.js": "mail.js",
         "/connect.js": "connect.js",
+        "/stripe-agency.js": "stripe-agency.js",
         "/contactout.js": "contactout.js",
         "/portals.js": "portals.js",
         "/brands/immobiliare.png": "brands/immobiliare.png",
@@ -1301,6 +1313,9 @@ export function createApp({
 
 
         "/connect.css": "connect.css",
+        "/stripe.css": "stripe.css",
+        "/brands/stripe-wordmark-slate.svg": "brands/stripe-wordmark-slate.svg",
+        "/brands/stripe-wordmark-white.svg": "brands/stripe-wordmark-white.svg",
         "/didit.js": "didit.js",
         "/datagma.css": "datagma.css",
         "/map.css": "map.css",
@@ -1356,12 +1371,13 @@ export function createApp({
         ? "image/webp"
         : file.endsWith(".png")
         ? "image/png"
-        : file.endsWith(".js")
+        : file.endsWith(".json") ? "application/json" : file.endsWith(".js")
           ? "text/javascript"
           : file.endsWith(".css")
             ? "text/css"
             : "text/html";
-      const content = readFileSync(path.join(root, "public", file));
+      const rawContent=readFileSync(path.join(root,"public",file));
+      const content=publicLocalizedPages.has(file)?localizePublicPage(rawContent.toString('utf8'),url.searchParams.get('lang')):rawContent;
       res.writeHead(200, {
         "Content-Type": mime + ([".png", ".webp"].some((extension) => file.endsWith(extension)) ? "" : "; charset=utf-8"),
       });
