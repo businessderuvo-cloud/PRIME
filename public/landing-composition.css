@@ -289,3 +289,6 @@ html[data-theme=light] .hero-photo{opacity:1}
 .hero:hover .portrait-audio-toggle--hero,.hero:focus-within .portrait-audio-toggle--hero,.hero.is-pointer-over-video .portrait-audio-toggle--hero{opacity:.78!important;pointer-events:auto!important}
 @media(max-width:760px){.hero .portrait-audio-toggle--hero{left:16px!important;top:calc(100% - clamp(300px,100vw,520px) - 54px)!important;opacity:.78!important;pointer-events:auto!important}}
 .hero .portrait-audio-toggle--hero{left:var(--hero-audio-left,28%)!important;top:var(--hero-audio-top,62px)!important}
+
+/* Keep every navigation item on one evenly distributed row at tablet widths. */
+@media (min-width:761px) and (max-width:1100px){.site-header nav{display:flex;flex:1 1 100%;flex-wrap:nowrap;justify-content:space-between;align-items:center;gap:clamp(8px,2vw,20px);white-space:nowrap;overflow:visible}.site-header nav a{flex:0 0 auto;font-size:clamp(12px,1.7vw,15px);letter-spacing:0}}

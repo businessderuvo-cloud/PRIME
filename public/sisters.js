@@ -47,8 +47,6 @@ document.querySelector('#sisters-chat-form').addEventListener('submit', event =>
 document.querySelectorAll('[data-question]').forEach(button => button.addEventListener('click', () => { send(button.dataset.question); input.focus(); }));
 const videos = [...document.querySelectorAll('video')];
 videos.forEach(video => video.addEventListener('play', () => videos.filter(other => other !== video).forEach(other => other.pause())));
-function setVideoLanguage(language=document.documentElement.lang){for(const video of videos){const source=video.querySelector('source');if(!source)continue;const italian=source.dataset.italianSrc||source.src;source.dataset.italianSrc=italian;const localized=new URL(italian,location.href);if(language==='en')localized.pathname=localized.pathname.replace(/\.mp4$/,'-en.mp4');source.src=localized.href;video.querySelector('a')?.setAttribute('href',source.src);video.load();}}
-document.addEventListener('prime-language-ready',event=>setVideoLanguage(event.detail.language));
 if(window.primeI18n?.ready)window.primeI18n.ready.then(()=>setVideoLanguage(window.primeI18n.language));
 document.querySelector('a[href="#veronica-chat"]').addEventListener('click', () => { input.focus({ preventScroll: true }); });
 
