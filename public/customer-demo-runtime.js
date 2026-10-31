@@ -26,9 +26,16 @@
         const value=await result.json();if(!result.ok)throw Error(value.error);location.reload();return;
       }
       select.value=me.demo_plan;for(const option of select.options)option.defaultSelected=option.value===me.demo_plan;document.documentElement.dataset.demoPlan=me.demo_plan;
+      const goldTest=me.demo_plan==='secret'&&new URL(location.href).searchParams.get('theme')==='gold-test';
+      if(goldTest)document.documentElement.dataset.demoVariant='gold-test';
+      else delete document.documentElement.dataset.demoVariant;
       if(['secret','elite'].includes(me.demo_plan)){
         const planName=me.demo_plan==='elite'?'Elite Plan':'Secret Plan';
         bar.querySelector('.customer-demo-title strong').textContent=planName+' · Demo';
+        if(goldTest){
+          bar.querySelector('.customer-demo-title strong').textContent='Secret Plan · Gold Test';
+          bar.querySelector('.customer-demo-title').insertAdjacentHTML('beforeend','<div class="customer-demo-variant-controls"><span class="customer-demo-variant-badge">ORO · TEST</span><a class="customer-demo-compare" href="/demo/?plan=secret">Versione attuale ↗</a></div>');
+        }
         const decorate=()=>{const label=document.querySelector('.sidebar-label');if(label&&label.textContent!==planName.toUpperCase())label.textContent=planName.toUpperCase();};
         decorate();const brandingObserver=new MutationObserver(decorate);brandingObserver.observe(document.querySelector('#app'),{subtree:true,childList:true});
       }
