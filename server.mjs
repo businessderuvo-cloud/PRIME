@@ -126,6 +126,8 @@ export function createApp({
       if (paid?.plan === 'standard') return 'base';
       if (paid?.plan === 'pro') return 'full';
       if (['vip','elite'].includes(paid?.plan)) {
+        const verification=db.prepare("SELECT kyb_status FROM agency_billing WHERE tenant_id=?").get(s.tenant_id);
+        if(verification?.kyb_status!=='approved')return 'full';
         const ai = db.prepare("SELECT 1 FROM ai_subscriptions WHERE tenant_id=? AND state='active' AND plan=?").get(s.tenant_id,paid.plan);
         return ai ? paid.plan : 'full';
       }
@@ -137,6 +139,10 @@ export function createApp({
   }
   const db = openDatabase(database),
     attempts = new Map(),
+    adminSessions = new Map(),
+    adminAttempts = new Map(),
+    adminHandoffs = new Map(),
+
     dataDirectory = database && database !== ":memory:"
       ? path.dirname(path.resolve(database))
       : database === ":memory:" ? null : path.join(root,"data"),
@@ -167,9 +173,20 @@ export function createApp({
     if (!token) return null;
     return db
       .prepare(
-        `SELECT s.*,m.role,t.name tenant_name,u.email,u.theme FROM sessions s JOIN memberships m ON m.user_id=s.user_id AND m.tenant_id=s.tenant_id JOIN tenants t ON t.id=s.tenant_id JOIN users u ON u.id=s.user_id WHERE token=? AND expires>?`,
+        `SELECT s.*,m.role,t.name tenant_name,u.email,u.theme FROM sessions s JOIN memberships m ON m.user_id=s.user_id AND m.tenant_id=s.tenant_id JOIN tenants t ON t.id=s.tenant_id JOIN users u ON u.id=s.user_id WHERE token=? AND expires>? AND t.account_status='active'`,
       )
       .get(hash(token), Date.now());
+  }
+  function currentAdmin(req) {
+    const token = /(?:^|;\s*)prime_admin=([a-f0-9]{64})(?:;|$)/.exec(req.headers.cookie || "")?.[1];
+    if (!token) return null;
+    const row = adminSessions.get(hash(token));
+    if (!row || row.expires < Date.now()) { adminSessions.delete(hash(token)); return null; }
+    return row;
+  }
+  function adminAudit(admin, action, tenantId, details = {}) {
+    db.prepare("INSERT INTO admin_audit(admin_email,action,tenant_id,details,created_at) VALUES (?,?,?,?,?)")
+      .run(admin.email, action, tenantId || null, JSON.stringify(details), new Date().toISOString());
   }
   function audit(s, action, id) {
     db.prepare(
@@ -755,6 +772,9 @@ export function createApp({
             )
             .get(user.id)?.tenant_id;
           if (!tenantId) throw new ApiError(403, "Nessuna agenzia associata");
+          const accountStatus=db.prepare("SELECT account_status FROM tenants WHERE id=?").get(tenantId)?.account_status;
+          if(accountStatus==='suspended')throw new ApiError(403,"Account sospeso. Contatta l’assistenza PRIME.");
+          if(accountStatus==='closed')throw new ApiError(403,"Account chiuso. Contatta l’assistenza PRIME.");
         }
         if (user.totp_enabled) {
           const challenge=randomBytes(32).toString("hex");
@@ -821,7 +841,104 @@ export function createApp({
       }
       if(url.pathname==='/backup-companion.mjs'&&method==='GET'){const bytes=readFileSync(path.join(root,'public/backup-companion.mjs'));res.writeHead(200,{'Content-Type':'application/octet-stream','Content-Disposition':'attachment; filename="prime-backup-pc.mjs"'});res.end(bytes);return;}
       if(await backupDevices.publicRoute(req,res,url))return;
+      if(url.pathname==="/admin/access"&&method==="GET"){
+        res.setHeader("Cache-Control","no-store");res.setHeader("Referrer-Policy","no-referrer");
+        const ticket=String(url.searchParams.get("ticket")||""),key=hash(ticket),grant=adminHandoffs.get(key);
+        adminHandoffs.delete(key);
+        if(!grant||grant.expires<Date.now())throw new ApiError(401,"Link di accesso scaduto o già utilizzato. Accedi dalla console.");
+        const token=randomBytes(32).toString("hex"),csrf=randomBytes(32).toString("hex");
+        adminSessions.set(hash(token),{email:grant.email,csrf,expires:Date.now()+3600000});
+        res.setHeader("Set-Cookie",`prime_admin=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=3600${production?"; Secure":""}`);
+        res.writeHead(303,{Location:"/admin"});res.end();return;
+      }
       if (url.pathname.startsWith("/api/")) {
+        if (url.pathname.startsWith("/api/admin/")) {
+          const configuredEmail=String(process.env.PRIME_SUPER_ADMIN_EMAIL||"").trim().toLowerCase();
+          const configuredPassword=String(process.env.PRIME_SUPER_ADMIN_PASSWORD_HASH||"");
+          if(url.pathname==="/api/admin/login"&&method==="POST"){
+            if(!configuredEmail||!configuredPassword||(production&&!process.env.PRIME_SUPER_ADMIN_TOTP_SECRET))throw new ApiError(503,"Console non configurata: imposta email, password hash e TOTP Super Admin nei secrets del server.");
+            const key=`${req.socket.remoteAddress}:super-admin`,now=Date.now(),limit=adminAttempts.get(key);
+            if(!limit||limit.until<now)adminAttempts.set(key,{count:1,until:now+600000});else if(++limit.count>8)throw new ApiError(429,"Troppi tentativi. Riprova tra dieci minuti.");
+            const b=await readBody(req),email=String(b.email||"").trim().toLowerCase();
+            const goodEmail=timingSafeEqual(Buffer.from(createHash("sha256").update(email).digest()),Buffer.from(createHash("sha256").update(configuredEmail).digest()));
+            const goodPassword=await passwordCheck(String(b.password||""),configuredPassword);
+            const goodTotp=!production||verifyTotp(process.env.PRIME_SUPER_ADMIN_TOTP_SECRET,String(b.code||""));
+            if(!goodEmail||!goodPassword||!goodTotp)throw new ApiError(401,"Credenziali admin non valide.");
+            const token=randomBytes(32).toString("hex"),csrf=randomBytes(32).toString("hex"),expires=now+60*60*1000;
+            adminSessions.set(hash(token),{email:configuredEmail,csrf,expires});
+            res.setHeader("Set-Cookie",`prime_admin=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=3600${production?"; Secure":""}`);
+            return json(res,200,{ok:true,email:configuredEmail,csrf,expires});
+          }
+          const admin=currentAdmin(req);
+          if(!admin)throw new ApiError(401,"Accedi alla console amministrativa.");
+          if(mutating&&req.headers["x-csrf-token"]!==admin.csrf)throw new ApiError(403,"Token CSRF non valido.");
+          if(url.pathname==="/api/admin/handoff"&&method==="POST"){
+            const ticket=randomBytes(32).toString("hex"),now=Date.now();
+            for(const [key,value] of adminHandoffs)if(value.expires<=now)adminHandoffs.delete(key);
+            adminHandoffs.set(hash(ticket),{email:admin.email,expires:now+120000});
+            res.setHeader("Cache-Control","no-store");
+            return json(res,200,{url:authOrigin(req)+"/admin/access?ticket="+ticket});
+          }
+          if(url.pathname==="/api/admin/me"&&method==="GET")return json(res,200,{email:admin.email,csrf:admin.csrf});
+          if(url.pathname==="/api/admin/logout"&&method==="POST"){
+            const token=/(?:^|;\s*)prime_admin=([a-f0-9]{64})(?:;|$)/.exec(req.headers.cookie||"")?.[1];if(token)adminSessions.delete(hash(token));
+            res.setHeader("Set-Cookie",`prime_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${production?"; Secure":""}`);return json(res,200,{ok:true});
+          }
+          if(url.pathname==="/api/admin/overview"&&method==="GET"){
+            const agencies=db.prepare(`SELECT t.id tenant_id,t.name,t.account_status,
+              (SELECT email FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=t.id AND m.role='owner' ORDER BY u.email LIMIT 1) owner_email,
+              COALESCE((SELECT kyb_status FROM agency_billing WHERE tenant_id=t.id),'unverified') kyb_status,
+              (SELECT status FROM didit_kyb_sessions WHERE tenant_id=t.id ORDER BY created_at DESC,rowid DESC LIMIT 1) didit_status,
+              ps.plan,ps.cycle,ps.period_end,ps.paid_plan_cents,ps.payment_reference,ps.state subscription_state,
+              (SELECT state FROM cpay_orders WHERE tenant_id=t.id ORDER BY created_at DESC LIMIT 1) latest_payment_state,
+              (SELECT cents FROM cpay_orders WHERE tenant_id=t.id ORDER BY created_at DESC LIMIT 1) latest_payment_cents
+              FROM tenants t LEFT JOIN plan_subscriptions ps ON ps.tenant_id=t.id ORDER BY t.name COLLATE NOCASE`).all();
+            const now=new Date().toISOString();
+            const needsKybReview=x=>x.account_status==='active'&&!['approved','rejected'].includes(x.kyb_status)&&(['vip','elite'].includes(x.plan)||['pending'].includes(x.kyb_status)||['not_started','in_progress','in_review','approved','resubmitted'].includes(x.didit_status));
+            const summary={agencies:agencies.length,active:agencies.filter(x=>x.account_status==='active'&&x.subscription_state==='active'&&x.period_end>now).length,
+              awaitingApproval:agencies.filter(needsKybReview).length,
+              awaitingPayment:agencies.filter(x=>['pending','creating'].includes(x.latest_payment_state)).length,
+              expired:agencies.filter(x=>x.subscription_state==='active'&&x.period_end<=now).length,
+              suspended:agencies.filter(x=>x.account_status==='suspended'||x.subscription_state==='suspended').length};
+            const pending=agencies.filter(needsKybReview);
+            return json(res,200,{summary,agencies,pending,recentAudit:db.prepare('SELECT admin_email,action,tenant_id,details,created_at FROM admin_audit ORDER BY id DESC LIMIT 30').all()});
+          }
+          const actionRoute=/^\/api\/admin\/tenants\/([a-f0-9-]+)\/action$/.exec(url.pathname);
+          if(actionRoute&&method==="POST"){
+            const tenantId=actionRoute[1],tenant=db.prepare('SELECT id,account_status FROM tenants WHERE id=?').get(tenantId);if(!tenant)throw new ApiError(404,"Agenzia non trovata.");
+            const b=await readBody(req),action=String(b.action||""),now=new Date().toISOString();
+            if(action==="approve_vip_elite"){
+              const sub=db.prepare("SELECT plan,state,period_end FROM plan_subscriptions WHERE tenant_id=?").get(tenantId);
+              const diditRequest=db.prepare("SELECT 1 FROM didit_kyb_sessions WHERE tenant_id=? LIMIT 1").get(tenantId);
+              if((sub&&!['vip','elite'].includes(sub.plan))||(!sub&&!diditRequest))throw new ApiError(409,"La verifica può essere approvata per una richiesta KYB registrata o per un account VIP/Elite.");
+              db.prepare("INSERT INTO agency_billing(tenant_id,kyb_status,kyb_reference,approved_at) VALUES (?,'approved','admin-reviewed',?) ON CONFLICT(tenant_id) DO UPDATE SET kyb_status='approved',kyb_reference='admin-reviewed',approved_at=excluded.approved_at").run(tenantId,now);
+              db.prepare("UPDATE tenants SET account_status='active' WHERE id=?").run(tenantId);adminAudit(admin,action,tenantId);return json(res,200,{ok:true});
+            }
+            if(action==="reject_vip_elite"){
+              const sub=db.prepare("SELECT plan FROM plan_subscriptions WHERE tenant_id=?").get(tenantId),diditRequest=db.prepare("SELECT 1 FROM didit_kyb_sessions WHERE tenant_id=? LIMIT 1").get(tenantId);
+              if((sub&&!['vip','elite'].includes(sub.plan))||(!sub&&!diditRequest))throw new ApiError(409,"Questa azione è riservata alle richieste KYB e ai piani VIP/Elite.");
+              db.prepare("INSERT INTO agency_billing(tenant_id,kyb_status,kyb_reference,approved_at) VALUES (?,'rejected','admin-reviewed',NULL) ON CONFLICT(tenant_id) DO UPDATE SET kyb_status='rejected',kyb_reference='admin-reviewed',approved_at=NULL").run(tenantId);adminAudit(admin,action,tenantId);return json(res,200,{ok:true});
+            }
+            if(action==="suspend"||action==="close"){
+              const status=action==='close'?'closed':'suspended';transaction(db,()=>{db.prepare('UPDATE tenants SET account_status=? WHERE id=?').run(status,tenantId);db.prepare('UPDATE plan_subscriptions SET state=? WHERE tenant_id=?').run(action==='close'?'cancelled':'suspended',tenantId);db.prepare('DELETE FROM sessions WHERE tenant_id=?').run(tenantId);db.prepare('DELETE FROM auth_challenges WHERE tenant_id=?').run(tenantId);db.prepare('DELETE FROM auth_tokens WHERE tenant_id=?').run(tenantId);adminAudit(admin,action,tenantId);});return json(res,200,{ok:true,status});
+            }
+            if(action==="reactivate"){
+              if(tenant.account_status==='closed')throw new ApiError(409,"Un account chiuso non può essere riattivato da questa schermata.");
+              db.prepare("UPDATE tenants SET account_status='active' WHERE id=?").run(tenantId);db.prepare("UPDATE plan_subscriptions SET state='active' WHERE tenant_id=? AND period_end>? AND state='suspended'").run(tenantId,now);adminAudit(admin,action,tenantId);return json(res,200,{ok:true});
+            }
+            if(action==="revoke_sessions"){
+              db.prepare('DELETE FROM sessions WHERE tenant_id=?').run(tenantId);db.prepare('DELETE FROM auth_challenges WHERE tenant_id=?').run(tenantId);adminAudit(admin,action,tenantId);return json(res,200,{ok:true});
+            }
+            if(action==="reset_owner_password"){
+              const owner=db.prepare("SELECT u.id,u.email FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=? AND m.role='owner' ORDER BY u.email LIMIT 1").get(tenantId);if(!owner)throw new ApiError(404,"Titolare non trovato.");
+              const resetUrl=await sendAuthLink(req,{userId:owner.id,tenantId,email:owner.email,purpose:"password_reset",subject:"Reimposta la password PRIME",message:"È stata richiesta la reimpostazione della password del tuo account PRIME.",label:"Reimposta password",queryKey:"reset",ttl:30*60*1000});
+              db.prepare('DELETE FROM sessions WHERE tenant_id=?').run(tenantId);adminAudit(admin,action,tenantId,{owner_email:owner.email});return json(res,200,{ok:true,...(resetUrl?{resetUrl}:{})});
+            }
+            throw new ApiError(400,"Azione amministrativa non valida.");
+          }
+          throw new ApiError(404,"Endpoint amministrativo non trovato.");
+        }
+
         const s = currentSession(req);
         if (!s) throw new ApiError(401, "Accedi per continuare");
         if (mutating && req.headers["x-csrf-token"] !== s.csrf)
@@ -1189,6 +1306,14 @@ export function createApp({
       }
       if (method !== "GET") throw new ApiError(405, "Metodo non consentito");
       const files = {
+        "/admin":"admin.html",
+        "/admin/":"admin.html",
+        "/admin.css":"admin.css",
+        "/admin.js":"admin.js",
+        "/cookies.css":"cookies.css",
+        "/cookies.js":"cookies.js",
+        "/cookies":"cookies.html",
+        "/cookies/":"cookies.html",
         "/customer-demo-runtime.js":"customer-demo-runtime.js",
         "/partner-mail.js":"partner-mail.js",
         "/customer-demo-ui.js":"customer-demo-ui.js",
@@ -1385,7 +1510,14 @@ export function createApp({
             ? "text/css"
             : "text/html";
       const rawContent=readFileSync(path.join(root,"public",file));
-      const content=publicLocalizedPages.has(file)?localizePublicPage(rawContent.toString('utf8'),url.searchParams.get('lang')):rawContent;
+      let content=publicLocalizedPages.has(file)?localizePublicPage(rawContent.toString('utf8'),url.searchParams.get('lang')):rawContent;
+      if(mime==="text/html"&&file!=="cookies.html"&&file!=="admin.html"){
+        let html=content.toString("utf8");
+        html=html.replace("</head>",'<link rel="stylesheet" href="/cookies.css?v=20261031-preferences"></head>');
+        html=html.replace("</body>",'<script defer src="/cookies.js?v=20261031-preferences"></script></body>');
+        content=Buffer.from(html);
+      }
+      if(["admin.html","admin.css","admin.js"].includes(file))res.setHeader("Cache-Control","no-store");
       res.writeHead(200, {
         "Content-Type": mime + ([".png", ".webp"].some((extension) => file.endsWith(extension)) ? "" : "; charset=utf-8"),
       });
