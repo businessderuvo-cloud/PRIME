@@ -139,7 +139,11 @@ export function createApp({
   }
   const db = openDatabase(database),
     attempts = new Map(),
-    adminSessions = new Map(),
+    adminSessions = {
+      get(key){return db.prepare("SELECT email,csrf,expires FROM admin_sessions WHERE token_hash=?").get(key);},
+      set(key,value){db.prepare("DELETE FROM admin_sessions WHERE expires<=?").run(Date.now());db.prepare("INSERT OR REPLACE INTO admin_sessions(token_hash,email,csrf,expires) VALUES (?,?,?,?)").run(key,value.email,value.csrf,value.expires);},
+      delete(key){db.prepare("DELETE FROM admin_sessions WHERE token_hash=?").run(key);}
+    },
     adminAttempts = new Map(),
     adminHandoffs = new Map(),
 
@@ -842,14 +846,19 @@ export function createApp({
       if(url.pathname==='/backup-companion.mjs'&&method==='GET'){const bytes=readFileSync(path.join(root,'public/backup-companion.mjs'));res.writeHead(200,{'Content-Type':'application/octet-stream','Content-Disposition':'attachment; filename="prime-backup-pc.mjs"'});res.end(bytes);return;}
       if(await backupDevices.publicRoute(req,res,url))return;
       if(url.pathname==="/admin/access"&&method==="GET"){
-        res.setHeader("Cache-Control","no-store");res.setHeader("Referrer-Policy","no-referrer");
-        const ticket=String(url.searchParams.get("ticket")||""),key=hash(ticket),grant=adminHandoffs.get(key);
+        res.writeHead(200,{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-store","Referrer-Policy":"no-referrer"});
+        res.end(readFileSync(path.join(root,"public/admin-handoff.html")));return;
+      }
+      if(url.pathname==="/api/admin/handoff/redeem"&&method==="POST"){
+        res.setHeader("Cache-Control","no-store");
+        if(currentAdmin(req))return json(res,200,{ok:true});
+        const body=await readBody(req),ticket=String(body.ticket||""),key=hash(ticket),grant=adminHandoffs.get(key);
+        if(!grant||grant.expires<=Date.now())throw new ApiError(401,"Link scaduto o già utilizzato. Accedi dalla console.");
         adminHandoffs.delete(key);
-        if(!grant||grant.expires<Date.now())throw new ApiError(401,"Link di accesso scaduto o già utilizzato. Accedi dalla console.");
         const token=randomBytes(32).toString("hex"),csrf=randomBytes(32).toString("hex");
-        adminSessions.set(hash(token),{email:grant.email,csrf,expires:Date.now()+3600000});
-        res.setHeader("Set-Cookie",`prime_admin=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=3600${production?"; Secure":""}`);
-        res.writeHead(303,{Location:"/admin"});res.end();return;
+        adminSessions.set(hash(token),{email:grant.email,csrf,expires:Date.now()+24*60*60*1000});
+        res.setHeader("Set-Cookie",`prime_admin=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400${production?"; Secure":""}`);
+        return json(res,200,{ok:true});
       }
       if (url.pathname.startsWith("/api/")) {
         if (url.pathname.startsWith("/api/admin/")) {
@@ -864,9 +873,9 @@ export function createApp({
             const goodPassword=await passwordCheck(String(b.password||""),configuredPassword);
             const goodTotp=!production||verifyTotp(process.env.PRIME_SUPER_ADMIN_TOTP_SECRET,String(b.code||""));
             if(!goodEmail||!goodPassword||!goodTotp)throw new ApiError(401,"Credenziali admin non valide.");
-            const token=randomBytes(32).toString("hex"),csrf=randomBytes(32).toString("hex"),expires=now+60*60*1000;
+            const token=randomBytes(32).toString("hex"),csrf=randomBytes(32).toString("hex"),expires=now+24*60*60*1000;
             adminSessions.set(hash(token),{email:configuredEmail,csrf,expires});
-            res.setHeader("Set-Cookie",`prime_admin=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=3600${production?"; Secure":""}`);
+            res.setHeader("Set-Cookie",`prime_admin=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400${production?"; Secure":""}`);
             return json(res,200,{ok:true,email:configuredEmail,csrf,expires});
           }
           const admin=currentAdmin(req);
@@ -875,9 +884,9 @@ export function createApp({
           if(url.pathname==="/api/admin/handoff"&&method==="POST"){
             const ticket=randomBytes(32).toString("hex"),now=Date.now();
             for(const [key,value] of adminHandoffs)if(value.expires<=now)adminHandoffs.delete(key);
-            adminHandoffs.set(hash(ticket),{email:admin.email,expires:now+120000});
+            adminHandoffs.set(hash(ticket),{email:admin.email,expires:now+15*60*1000});
             res.setHeader("Cache-Control","no-store");
-            return json(res,200,{url:authOrigin(req)+"/admin/access?ticket="+ticket});
+            return json(res,200,{url:authOrigin(req)+"/admin/access#ticket="+ticket});
           }
           if(url.pathname==="/api/admin/me"&&method==="GET")return json(res,200,{email:admin.email,csrf:admin.csrf});
           if(url.pathname==="/api/admin/logout"&&method==="POST"){
@@ -1306,6 +1315,7 @@ export function createApp({
       }
       if (method !== "GET") throw new ApiError(405, "Metodo non consentito");
       const files = {
+        "/admin-handoff.js":"admin-handoff.js",
         "/admin":"admin.html",
         "/admin/":"admin.html",
         "/admin.css":"admin.css",
