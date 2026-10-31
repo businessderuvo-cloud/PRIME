@@ -26,9 +26,10 @@
         const value=await result.json();if(!result.ok)throw Error(value.error);location.reload();return;
       }
       select.value=me.demo_plan;for(const option of select.options)option.defaultSelected=option.value===me.demo_plan;document.documentElement.dataset.demoPlan=me.demo_plan;
-      if(me.demo_plan==='secret'){
-        bar.querySelector('.customer-demo-title strong').textContent='Secret Plan · Demo';
-        const decorate=()=>{const label=document.querySelector('.sidebar-label');if(label&&label.textContent!=='SECRET PLAN')label.textContent='SECRET PLAN';};
+      if(['secret','elite'].includes(me.demo_plan)){
+        const planName=me.demo_plan==='elite'?'Elite Plan':'Secret Plan';
+        bar.querySelector('.customer-demo-title strong').textContent=planName+' · Demo';
+        const decorate=()=>{const label=document.querySelector('.sidebar-label');if(label&&label.textContent!==planName.toUpperCase())label.textContent=planName.toUpperCase();};
         decorate();const brandingObserver=new MutationObserver(decorate);brandingObserver.observe(document.querySelector('#app'),{subtree:true,childList:true});
       }
       notice.textContent=['vip','elite','secret'].includes(me.demo_plan)?'Vanessa: solo chat. Chiamate e azioni disattivate.':me.demo_plan==='pro'?'Veronica in chat. Vanessa disponibile da VIP.':'Funzioni Standard attive. Cambia piano per confrontarle.';
