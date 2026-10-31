@@ -25,3 +25,6 @@
 .badge--plan-elite{--badge-bg:#332a16;--badge-text:#efcc85;--badge-line:#846c35}
 .badge--none{--badge-bg:#242424;--badge-text:#bdbdbd;--badge-line:#484848}
 .amount-heading,.amount-cell{text-align:right}.amount-cell{min-width:135px;padding-left:20px;padding-right:20px}.amount{display:block;color:#f4f4f4;font-size:15px;font-weight:750;line-height:1.45;font-variant-numeric:tabular-nums;letter-spacing:.01em;white-space:nowrap}.amount--pending{color:#ffe080}.amount-cell small{margin-top:3px;color:#a4a4a4;font-size:9px}.badge+small{margin-top:4px}
+
+/* Original PRIME wordmark in satin gold; retain the existing console theme. */
+.admin-brand{flex-direction:column;align-items:flex-start;gap:10px;letter-spacing:normal;width:max-content;max-width:100%;padding:4px 2px}.admin-brand .admin-wordmark{display:block;width:174px;max-width:100%;height:auto;overflow:visible}.admin-brand>small{display:block;color:#c7a979;font-size:8px;font-weight:700;letter-spacing:.25em;line-height:1.5;padding-left:1px}.admin-brand:focus-visible{outline:1px solid var(--gold);outline-offset:7px;border-radius:2px}@media(max-width:760px){.admin-brand{flex:0 0 124px;gap:6px}.admin-brand .admin-wordmark{width:124px}.admin-brand>small{font-size:7px;letter-spacing:.2em}}
