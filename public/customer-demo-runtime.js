@@ -20,11 +20,21 @@
     const select=bar.querySelector('select'),notice=bar.querySelector('[role="status"]');
     try{
       const response=await fetch('/api/me');const me=await response.json();if(!response.ok)throw Error(me.error);
+      const requestedPlan=new URL(location.href).searchParams.get('plan');
+      if(Object.hasOwn(names,requestedPlan)&&requestedPlan!==me.demo_plan){
+        const result=await fetch('/api/customer-demo/plan',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':me.csrf},body:JSON.stringify({plan:requestedPlan})});
+        const value=await result.json();if(!result.ok)throw Error(value.error);location.reload();return;
+      }
       select.value=me.demo_plan;for(const option of select.options)option.defaultSelected=option.value===me.demo_plan;document.documentElement.dataset.demoPlan=me.demo_plan;
+      if(me.demo_plan==='secret'){
+        bar.querySelector('.customer-demo-title strong').textContent='Secret Plan · Demo';
+        const decorate=()=>{const label=document.querySelector('.sidebar-label');if(label&&label.textContent!=='SECRET PLAN')label.textContent='SECRET PLAN';};
+        decorate();const brandingObserver=new MutationObserver(decorate);brandingObserver.observe(document.querySelector('#app'),{subtree:true,childList:true});
+      }
       notice.textContent=['vip','elite','secret'].includes(me.demo_plan)?'Vanessa: solo chat. Chiamate e azioni disattivate.':me.demo_plan==='pro'?'Veronica in chat. Vanessa disponibile da VIP.':'Funzioni Standard attive. Cambia piano per confrontarle.';
       select.onchange=async()=>{
         select.disabled=true;notice.textContent='Cambio piano…';
-        try{const result=await fetch('/api/customer-demo/plan',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':me.csrf},body:JSON.stringify({plan:select.value})});const value=await result.json();if(!result.ok)throw Error(value.error);location.reload();}
+        try{const result=await fetch('/api/customer-demo/plan',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':me.csrf},body:JSON.stringify({plan:select.value})});const value=await result.json();if(!result.ok)throw Error(value.error);const next=new URL(location.href);next.searchParams.set('plan',select.value);location.replace(next.href);}
         catch(error){notice.textContent=error.message;select.value=me.demo_plan;select.disabled=false;}
       };
     }catch(error){select.disabled=true;notice.textContent=error.message;}
