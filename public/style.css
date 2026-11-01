@@ -1798,4 +1798,7 @@ select option { background:var(--surface); color:var(--text); }
 @media(pointer:coarse){:root .voice-input-wrap > .voice-input-button{width:40px;height:40px}}
 
 /* VIP uses PRIME's navy surfaces in both demo and private workspaces. */
-:root[data-edition="vip"]:not([data-theme="light"]),:root[data-demo-plan="vip"]:not([data-theme="light"]){--bg:#101b29;--surface:#162536;--surface2:#1d3044;--text:#edf4fc;--muted:#adbed1;--line:#344a61;--accent:#c5d9ee;--accent-text:#102135;--positive:#22c55e}
+:root[data-edition="vip"]:not([data-theme="light"]),:root[data-demo-plan="vip"]:not([data-theme="light"]){--bg:#162536;--surface:#20344a;--surface2:#29435d;--text:#edf4fc;--muted:#b7c8da;--line:#46617d;--accent:#c5d9ee;--accent-text:#102135;--positive:#22c55e}
+
+:root[data-demo-plan="vip"]:not([data-theme="light"]) .customer-demo-bar{background:var(--surface);border-color:var(--line)}
+:root[data-demo-plan="vip"]:not([data-theme="light"]) .customer-demo-bar select{background:var(--surface2);border-color:var(--line);color:var(--text)}
