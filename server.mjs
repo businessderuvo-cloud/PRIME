@@ -1,3 +1,4 @@
+import {createMapLocator,sharedGeocode} from './src/map-geocoding.mjs';
 import {stripePlanCheckout} from './src/stripe-plan-checkout.mjs';
 import {localizePublicPage,publicLocalizedPages} from './src/public-locale.mjs';
 import {customerDemoService,customerDemoApi,customerDemoEdition} from './src/customer-demo.mjs';
@@ -114,6 +115,7 @@ export function createApp({
   authEmailFrom = process.env.PRIME_EMAIL_FROM || "",
   diditOptions,
   publicDemo = null,
+  geocode = sharedGeocode,
 } = {}) {
   if (!['full','base','vip','elite'].includes(edition)) throw new Error('Edizione PRIME non valida');
   if (!Number.isSafeInteger(baseExtraSeats) || baseExtraSeats < 0) throw new Error('Posti aggiuntivi Base non validi');
@@ -157,12 +159,11 @@ export function createApp({
   const handleBilling = billingService({db,json,readBody});
   const stripePlans=stripePlanCheckout({db,json,readBody});
   const handlePlanUpgrade = planUpgradeService({db,json,readBody});
-  const geocodeCache = new Map();
+  const mapLocator = createMapLocator({db,authorize,audit,geocode});
   const didit = diditService({db,json,readBody,audit,fetcher:connectFetch,config:diditOptions || diditConfig({production})});
   const signatures = namirialService({ db, vault: authVault, directory: dataDirectory || path.join(root, "data"), fetcher: connectFetch, json, readBody, audit });
   const contactOut = contactOutService({ db, vault: authVault, fetcher: connectFetch, json, readBody, audit });
-  let lastGeocodeAt = 0;
-  let geocodeQueue = Promise.resolve();
+
   const handleTerritory = territoryApi({
     db,
     uploadsDirectory: path.join(dataDirectory || path.join(root,"data"), "uploads"),
@@ -522,6 +523,15 @@ export function createApp({
       onDeleted?.();
     });
   }
+  function resetPropertyMapPositions(s,where,args,now){
+    for(const property of db.prepare('SELECT * FROM properties WHERE tenant_id=? AND '+where).all(s.tenant_id,...args)){
+      if(property.latitude===null&&property.longitude===null)continue;
+      db.prepare('UPDATE properties SET latitude=NULL,longitude=NULL,version=version+1,updated_by=?,updated_at=? WHERE tenant_id=? AND id=?').run(s.user_id,now,s.tenant_id,property.id);
+      const saved=db.prepare('SELECT * FROM properties WHERE tenant_id=? AND id=?').get(s.tenant_id,property.id);
+      db.prepare('INSERT INTO record_history(tenant_id,entity,record_id,version,snapshot,actor_id,created_at) VALUES (?,?,?,?,?,?,?)').run(s.tenant_id,'properties',property.id,saved.version,JSON.stringify(saved),s.user_id,now);
+      audit(s,'properties.address_position_reset',property.id);
+    }
+  }
   function saveEntity(entity,raw,s,id=null,onSaved){
             const b = previewEntity(entity,raw,s,id);
             const now = new Date().toISOString(),
@@ -543,6 +553,23 @@ export function createApp({
                 db.prepare(
                   `UPDATE ${entity} SET ${fields.map((k) => k + "=?").join(",")},version=version+1,updated_by=?,updated_at=? WHERE tenant_id=? AND id=?`,
                 ).run(...Object.values(b), s.user_id, now, s.tenant_id, id);
+                // An edited address must never retain the coordinates of the old house.
+                if(entity==='buildings'&&(live.title!==b.title||live.street_id!==b.street_id)){
+                  db.prepare('UPDATE buildings SET latitude=NULL,longitude=NULL WHERE tenant_id=? AND id=?').run(s.tenant_id,id);
+                  resetPropertyMapPositions(s,'unit_id IN (SELECT id FROM units WHERE tenant_id=? AND building_id=?)',[s.tenant_id,id],now);
+                }
+                if(entity==='properties'&&live.unit_id!==b.unit_id)
+                  db.prepare('UPDATE properties SET latitude=NULL,longitude=NULL WHERE tenant_id=? AND id=?').run(s.tenant_id,id);
+                if(entity==='units'&&live.building_id!==b.building_id)resetPropertyMapPositions(s,'unit_id=?',[id],now);
+                if(entity==='streets'&&(live.title!==b.title||live.city!==b.city)){
+                  for(const building of db.prepare('SELECT * FROM buildings WHERE tenant_id=? AND street_id=?').all(s.tenant_id,id)){
+                    db.prepare('UPDATE buildings SET latitude=NULL,longitude=NULL,version=version+1,updated_by=?,updated_at=? WHERE tenant_id=? AND id=?').run(s.user_id,now,s.tenant_id,building.id);
+                    const cleared=db.prepare('SELECT * FROM buildings WHERE tenant_id=? AND id=?').get(s.tenant_id,building.id);
+                    db.prepare('INSERT INTO record_history(tenant_id,entity,record_id,version,snapshot,actor_id,created_at) VALUES (?,?,?,?,?,?,?)').run(s.tenant_id,'buildings',building.id,cleared.version,JSON.stringify(cleared),s.user_id,now);
+                    audit(s,'buildings.address_position_reset',building.id);
+                    resetPropertyMapPositions(s,'unit_id IN (SELECT id FROM units WHERE tenant_id=? AND building_id=?)',[s.tenant_id,building.id],now);
+                  }
+                }
               } else {
                 db.prepare(
                   `INSERT INTO ${entity}(id,tenant_id,${fields.join(",")},created_by,updated_by,created_at,updated_at) VALUES (${Array(
@@ -645,7 +672,7 @@ export function createApp({
   const telephony=telephonyService({db,vault:authVault,json,readBody,audit,editionFor:sessionEdition,fetcher:connectFetch,demo:!!publicDemo});
   const elite = eliteService({db,json,readBody,audit,management:assistantManager,rows,authorize,edition:publicDemo?customerDemoEdition(publicDemo.plan):edition,production,fetcher:publicDemo?fetch:connectFetch,directory:dataDirectory,demoChatOnly:publicDemo||false,telephonyCredentials:telephony.credentials});
   const assistant = assistantService({db,fetcher:assistantFetch,apiKey:assistantApiKey,model:assistantModel,readBody,json,audit,management:publicDemo?undefined:assistantManager});
-  const customerDemos=publicDemo?null:customerDemoService({createApp,root,production,json,readBody});
+  const customerDemos=publicDemo?null:customerDemoService({createApp,root,production,json,readBody,geocode});
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, "http://localhost"),
@@ -744,7 +771,7 @@ export function createApp({
             );
           const password = await passwordHash(b.password), uid = randomUUID(), tid = randomUUID();
           transaction(db, () => {
-            db.prepare("INSERT INTO tenants VALUES (?,?)").run(tid, agency);
+            db.prepare("INSERT INTO tenants(id,name) VALUES (?,?)").run(tid, agency);
             db.prepare(
               "INSERT INTO users(id,email,password,email_verified) VALUES (?,?,?,0)",
             ).run(uid, email, password);
@@ -1051,45 +1078,12 @@ export function createApp({
           throw new ApiError(405, "Operazione non consentita");
         }
         if (url.pathname === "/api/map/geocode" && method === "GET") {
-          const query = String(url.searchParams.get("q") || "").trim();
-          if (query.length < 5 || query.length > 240)
-            throw new ApiError(400, "Inserisci un indirizzo completo da cercare");
-          const key = query.toLocaleLowerCase("it");
-          const task = geocodeQueue.then(async () => {
-            const cached = geocodeCache.get(key);
-            if (cached && cached.until > Date.now()) return cached.results;
-            const wait = 1000 - (Date.now() - lastGeocodeAt);
-            if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-            lastGeocodeAt = Date.now();
-            const geocoder = new URL(process.env.PRIME_GEOCODER_URL || "https://nominatim.openstreetmap.org/search");
-            geocoder.searchParams.set("format", "jsonv2");
-            geocoder.searchParams.set("addressdetails", "1");
-            geocoder.searchParams.set("limit", "5");
-            geocoder.searchParams.set("countrycodes", "it");
-            geocoder.searchParams.set("q", query);
-            let response;
-            try {
-              response = await fetch(geocoder, {
-                headers: {
-                  "User-Agent": "PRIME Real Estate CRM/1.0 (+https://github.com/businessderuvo-cloud/PRIME)",
-                  "Accept-Language": "it",
-                },
-                signal: AbortSignal.timeout(8000),
-              });
-            } catch {
-              throw new ApiError(502, "Ricerca indirizzo temporaneamente non disponibile");
-            }
-            if (!response.ok) throw new ApiError(502, "Servizio mappa non disponibile. Riprova tra poco.");
-            const results = (await response.json()).map((item) => ({
-              latitude: Number(item.lat), longitude: Number(item.lon), label: String(item.display_name || "").slice(0, 300),
-            })).filter((item) => Number.isFinite(item.latitude) && Number.isFinite(item.longitude));
-            if (geocodeCache.size > 500) geocodeCache.clear();
-            geocodeCache.set(key, { results, until: Date.now() + 86400000 });
-            return results;
-          });
-          geocodeQueue = task.catch(() => []);
-          const results = await task;
-          return json(res, 200, results);
+          return json(res,200,await geocode(String(url.searchParams.get('q')||'').trim()));
+        }
+        if (url.pathname === "/api/map/autolocate" && method === "POST") {
+          const body=await readBody(req);
+          if(typeof body.building_id!=='string'||body.building_id.length>100)throw new ApiError(400,'Civico non valido');
+          return json(res,200,await mapLocator.locate(s,body.building_id));
         }
         if (url.pathname === "/api/map/zones" && method === "GET")
           return json(
@@ -1303,7 +1297,10 @@ export function createApp({
                 409,
                 "Il record è stato aggiornato da un altro utente. Riaprilo prima di salvare.",
               );
-            return json(res,id?200:201,saveEntity(entity,raw,s,id));
+            let saved=saveEntity(entity,raw,s,id),location=null;
+            try{location=await mapLocator.afterSave(s,entity,saved);}catch{location={status:'unavailable'};}
+            if(entity==='buildings'&&location?.building)saved=location.building;
+            return json(res,id?200:201,{...saved,...(location?{map_location:location.status}:{})});
           }
           if (method === "DELETE" && id && !history) {
             const body = await readBody(req);
@@ -1412,6 +1409,7 @@ export function createApp({
         "/backup-settings.js": "backup-settings.js",
         "/assistant-management.js": "assistant-management.js",
         "/map.js": "map.js",
+        "/map-locations.js": "map-locations.js",
         "/mail.js": "mail.js",
         "/connect.js": "connect.js",
         "/stripe-agency.js": "stripe-agency.js",

@@ -38,11 +38,7 @@ export async function customerDemoApi({req,res,url,s,db,config,json,readBody}){
     db.prepare("INSERT INTO memberships VALUES (?,?,'agent')").run(id,s.tenant_id);
     json(res,201,{id,email,role:'agent',invitation_pending:false,demo:true});return true;
   }
-  if(p==='/api/map/geocode'&&m==='GET'){
-    const q=(url.searchParams.get('q')||'').toLowerCase();
-    const rows=db.prepare('SELECT title,city FROM streets WHERE tenant_id=?').all(s.tenant_id);
-    json(res,200,rows.filter(r=>(r.title+' '+r.city).toLowerCase().includes(q)||q.includes(r.city.toLowerCase())).map((r,i)=>({latitude:45.4642+i*.003,longitude:9.19+i*.003,label:r.title+', '+r.city+' · indirizzo demo'})));return true;
-  }
+  // Map searches use the shared real-address geocoder; fictional coordinates are never invented.
   // The planner can read a free/busy calendar without linking a real account.
   if(['/api/connect/busy','/api/connect/mail-notifications'].includes(p)&&m==='GET'){json(res,200,[]);return true;}
   if(/^\/api\/(?:connect|portals|signatures|contactout)(?:\/|$)/.test(p)&&m!=='GET'&&!/^\/api\/connect\/telephony\/(?:zadarma|cloudtalk)$/.test(p))deny();
@@ -52,7 +48,7 @@ export async function customerDemoApi({req,res,url,s,db,config,json,readBody}){
 
 export function seedDemoWorkspace(app,config,{email='visitatore@example.invalid',colleagueEmail='agente.demo@example.invalid',name='Agenzia Aurora · Demo clienti'}={}){
   const {db}=app,uid=randomUUID(),tid=randomUUID(),token=randomBytes(32).toString('hex'),csrf=randomBytes(32).toString('hex');
-  db.prepare('INSERT INTO tenants VALUES (?,?)').run(tid,name);
+  db.prepare('INSERT INTO tenants(id,name) VALUES (?,?)').run(tid,name);
   db.prepare('INSERT INTO users(id,email,password,email_verified,theme) VALUES (?,?,?,1,?)').run(uid,email,'customer-demo-no-login','dark');
   db.prepare("INSERT INTO memberships VALUES (?,?,'owner')").run(uid,tid);
   db.prepare('INSERT INTO sessions(token,user_id,tenant_id,expires,csrf) VALUES (?,?,?,?,?)').run(hash(token),uid,tid,Date.now()+2*3600000,csrf);
@@ -92,7 +88,7 @@ export function seedDemoWorkspace(app,config,{email='visitatore@example.invalid'
   config.session=s;return {token,csrf};
 }
 
-export function customerDemoService({createApp,root,production,json,readBody,capacity=16,ttl=30*60000}){
+export function customerDemoService({createApp,root,production,json,readBody,geocode,capacity=16,ttl=30*60000}){
   const sessions=new Map();
   function dispose(entry){entry.app.server.emit('close');entry.app.db.close();rmSync(entry.directory,{recursive:true,force:true});}
   function expire(){for(const [key,e] of sessions)if(Date.now()-e.used>ttl&&!e.active){sessions.delete(key);dispose(e);}}
@@ -103,7 +99,7 @@ export function customerDemoService({createApp,root,production,json,readBody,cap
     let app;
     try{
       const offline=async()=>{throw new ApiError(403,'Collegamenti esterni non disponibili nella demo clienti.');};
-      app=createApp({database:path.join(directory,'demo.sqlite'),production,demo:true,edition:'full',publicDemo:config,connectInterval:0,connectFetch:offline,assistantFetch:offline,assistantApiKey:'',authEmailApiKey:'',authEmailFetch:offline,authEmailFrom:''});
+      app=createApp({database:path.join(directory,'demo.sqlite'),production,demo:true,edition:'full',publicDemo:config,geocode,connectInterval:0,connectFetch:offline,assistantFetch:offline,assistantApiKey:'',authEmailApiKey:'',authEmailFetch:offline,authEmailFrom:''});
       const auth=seedDemoWorkspace(app,config),entry={app,config,directory,...auth,used:Date.now(),active:0,requests:0,window:Date.now(),uploaded:0};
       sessions.set(hash(id),entry);return {id,entry};
     }catch(e){if(app){app.server.emit('close');app.db.close();}rmSync(directory,{recursive:true,force:true});throw e;}

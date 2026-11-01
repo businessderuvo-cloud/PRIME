@@ -10,7 +10,7 @@ import { renderPortals } from "./portals.js";
 import { mountContactOutEnrichment } from "./contactout.js";
 import { assistantResultMarkup, openAssistantRecordManager } from "./assistant-management.js";
 import { renderMail } from "./mail.js?v=20261029-no-proton";
-import { renderMap } from "./map.js";
+import { renderMap } from "./map.js?v=20261101-auto-houses";
 import { mountRepeatableRecaps } from "./repeatable-recaps.js";
 import { schema, roleLabels } from "./schema.js";
 import { renderPlanner } from "./planner-view.js";
@@ -1488,7 +1488,7 @@ async function openEditor(entity, record = null, prefill = {}) {
         focusTerritoryRow(entity, saved);
       dialog.close();
       await renderPage();
-      toast(entity === "appointments" && data.status === "effettuato" && ["1ª visita immobile", "2ª visita immobile"].includes(data.appointment_type) ? "Visita registrata. Completa il feedback nella sezione Feedback visite." : "Salvataggio completato.");
+      toast(saved.map_location && !['located','existing'].includes(saved.map_location) ? "Scheda salvata. Indirizzo da verificare sulla mappa." : saved.map_location === 'located' ? "Scheda salvata e casa localizzata sulla mappa." : entity === "appointments" && data.status === "effettuato" && ["1ª visita immobile", "2ª visita immobile"].includes(data.appointment_type) ? "Visita registrata. Completa il feedback nella sezione Feedback visite." : "Salvataggio completato.");
     } catch (ex) {
       showError(ex.message);
       button.disabled = false;

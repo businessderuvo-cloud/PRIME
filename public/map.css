@@ -10,3 +10,22 @@
 .map-zone-row .map-zone-swatch{width:20px;height:20px;flex:0 0 20px}.map-zone-row>span{flex:1;min-width:0}.map-stage .map-zone-label{max-width:220px;white-space:normal;text-align:center;font-size:11px;font-weight:600;padding:5px 8px;background:#fffffff0;color:#202323;border-radius:5px;box-shadow:0 1px 6px #0003;pointer-events:none}
 .agents-layout{display:grid;grid-template-columns:minmax(260px,380px) minmax(0,1fr);gap:20px;margin-top:24px}.agent-create-panel,.agent-list-panel{padding:24px}.agent-create-panel{display:grid;align-content:start;gap:14px}.agents-layout label:not(.checkbox-label){display:grid;gap:8px;font-size:13px;color:var(--muted)}.agents-layout input:not([type=checkbox]){width:100%;min-width:0}.agent-list-panel>label{margin:20px 0}.agent-account-row{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line)}.agent-account-row strong{font-size:13px;overflow-wrap:anywhere}.map-zone-assignment{width:100%;min-width:0;font-size:11px;margin-top:6px}@media(max-width:800px){.agents-layout{grid-template-columns:1fr}.agent-create-panel,.agent-list-panel{padding:18px}}
 .map-zones button[hidden]{display:none!important}
+
+/* Each house keeps its commercial status colour in every workspace theme. */
+.prime-map-marker,.map-result-pin{transform:none;border-radius:9px;background:#64748b;color:#fff}
+.prime-map-marker svg,.map-result-pin svg{display:block;width:21px;height:21px;transform:none;fill:none}
+.map-stage .prime-map-marker.in-vendita,.map-layout .map-result-pin.in-vendita{background:#c43647}
+.map-stage .prime-map-marker.in-affitto,.map-layout .map-result-pin.in-affitto{background:#2563d9}
+.map-stage .prime-map-marker.in-trattativa,.map-layout .map-result-pin.in-trattativa{background:#aa640d}
+.map-stage .prime-map-marker.opportunità,.map-layout .map-result-pin.opportunità{background:#8952c3}
+.map-stage .prime-map-marker.altra-agenzia,.map-layout .map-result-pin.altra-agenzia{background:#c85a1c}
+.map-stage .prime-map-marker.acquisito,.map-layout .map-result-pin.acquisito{background:#188573}
+.map-stage .prime-map-marker.preparazione,.map-layout .map-result-pin.preparazione{background:#52638f}
+.map-stage .prime-map-marker.venduto,.map-layout .map-result-pin.venduto{background:#238143}
+.map-stage .prime-map-marker.locato,.map-layout .map-result-pin.locato{background:#0e7891}
+.map-stage .prime-map-marker.censito,.map-layout .map-result-pin.censito{background:#64748b}
+.map-legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.map-legend>span{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--text)}
+.map-legend .map-result-pin{width:22px;height:22px;flex:0 0 22px;border-radius:6px}
+.map-legend .map-result-pin svg{width:16px;height:16px}
+#map-auto-status:empty{display:none}
