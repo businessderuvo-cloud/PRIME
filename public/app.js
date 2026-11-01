@@ -452,7 +452,7 @@ function previewStandardTheme() {
 function workspaceThemePlan(){return state.me.theme_plan||state.me.demo_plan||({base:'standard',full:'pro'}[state.me.edition]||state.me.edition);}
 function workspaceThemeOptions(){
   const ranks=['standard','pro','vip','elite','secret'],rank=ranks.indexOf(workspaceThemePlan());
-  return [['light','Bianco','Tema chiaro'],['pro','Pro','Tema Pro originale'],['vip','Blu VIP','Blu PRIME'],['elite','Elite','Nero e argento'],['secret','Secret','Nero e oro']].filter(([key])=>key==='light'||ranks.indexOf(key)<=rank);
+  return [['light','Bianco','Tema chiaro'],['pro','Pro','Grigio medio'],['vip','Blu VIP','Blu PRIME'],['elite','Elite','Nero e argento'],['secret','Secret','Nero e oro']].filter(([key])=>key==='light'||ranks.indexOf(key)<=rank);
 }
 function workspaceDarkTheme(){return workspaceThemeOptions().some(([key])=>key===state.me.theme_variant)?state.me.theme_variant:workspaceThemePlan();}
 async function showWorkspaceThemePicker(){
