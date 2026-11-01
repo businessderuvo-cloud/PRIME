@@ -449,6 +449,24 @@ function previewStandardTheme() {
     if (state.me?.edition === 'base') toast('Solo per piani Pro');
   }, 3000);
 }
+async function showVipThemePicker(){
+  const selected=state.me.theme==='light'?'light':state.me.theme_variant==='pro'?'pro':'vip';
+  const dialog=document.createElement('dialog');dialog.className='workspace-theme-dialog';
+  dialog.setAttribute('aria-labelledby','workspace-theme-title');
+  const options=[['vip','Blu VIP','Blu PRIME'],['light','Bianco','Tema chiaro'],['pro','Pro','Grigio scuro del piano Pro']];
+  dialog.innerHTML='<h2 id="workspace-theme-title">Scegli il tema</h2><p>Personalizza il tuo piano VIP.</p><div class="workspace-theme-options">'+options.map(([key,title,description])=>'<button type="button" data-workspace-theme="'+key+'" aria-pressed="'+(selected===key)+'"><span class="workspace-theme-swatch workspace-theme-swatch--'+key+'" aria-hidden="true"></span><span><strong>'+title+'</strong><small>'+description+'</small></span></button>').join('')+'</div><p class="error" role="alert" hidden></p><form method="dialog"><button class="secondary">Chiudi</button></form>';
+  dialog.addEventListener('close',()=>dialog.remove(),{once:true});document.body.append(dialog);
+  dialog.querySelectorAll('[data-workspace-theme]').forEach(button=>button.onclick=async()=>{
+    const choice=button.dataset.workspaceTheme;if(choice===selected){dialog.close();return;}
+    const error=dialog.querySelector('.error');error.hidden=true;
+    dialog.querySelectorAll('button').forEach(control=>control.disabled=true);
+    try{
+      const value=await api('/api/preferences',{method:'PATCH',body:JSON.stringify({theme:choice==='light'?'light':'dark',theme_variant:choice==='pro'?'pro':choice==='vip'?'vip':''})});
+      state.me.theme=value.theme;state.me.theme_variant=value.theme_variant;dialog.close();shell();await renderPage();
+    }catch(e){error.textContent=e.message;error.hidden=false;dialog.querySelectorAll('button').forEach(control=>control.disabled=false);}
+  });
+  dialog.showModal();dialog.querySelector('[aria-pressed="true"]').focus();
+}
 function shell() {
   const isBase = state.me.edition === 'base';
   syncStandardTheme();
@@ -459,6 +477,7 @@ function shell() {
   stopWpsClock?.();
   document.documentElement.dataset.theme = state.me.theme;
   document.documentElement.dataset.edition = state.me.demo_plan || state.me.edition;
+  document.documentElement.dataset.themeVariant = state.me.edition==='vip'?(state.me.theme_variant||'vip'):'';
   app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => k === "section" ? `<p class="nav-section-label">${label}</p>` : `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><div class="avatar">${esc(state.me.tenant.slice(0, 2).toUpperCase())}</div><div><strong>${esc(state.me.tenant)}</strong><small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off"><span class="key-hint">/</span><div id="global-results" class="search-results" hidden></div></div><button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button><span class="workspace-badge">ANTEPRIMA DI SVILUPPO</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><a href="mailto:phoenix@primegestionale.it">Assistenza: phoenix@primegestionale.it</a><a href="/privacy">Privacy</a><span>Versione 0.4 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
   syncStandardTheme();
   if (state.me.edition === 'elite') {
@@ -503,7 +522,9 @@ function shell() {
       String(!document.body.classList.contains("nav-collapsed")),
     );
   };
+  if(state.me.edition==='vip')document.querySelector('#theme').setAttribute('aria-label','Scegli tema: Blu VIP, Bianco o Pro');
   document.querySelector("#theme").onclick = async () => {
+    if(state.me.edition==='vip'){await showVipThemePicker();return;}
     if (state.me.edition === 'base') { previewStandardTheme(); return; }
     try {
       const value = await api("/api/preferences", {

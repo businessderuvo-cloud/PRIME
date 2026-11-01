@@ -1798,7 +1798,18 @@ select option { background:var(--surface); color:var(--text); }
 @media(pointer:coarse){:root .voice-input-wrap > .voice-input-button{width:40px;height:40px}}
 
 /* VIP uses PRIME's navy surfaces in both demo and private workspaces. */
-:root[data-edition="vip"]:not([data-theme="light"]),:root[data-demo-plan="vip"]:not([data-theme="light"]){--bg:#162536;--surface:#20344a;--surface2:#29435d;--text:#edf4fc;--muted:#b7c8da;--line:#46617d;--accent:#c5d9ee;--accent-text:#102135;--positive:#22c55e}
+:root[data-edition="vip"]:not([data-theme="light"]):not([data-theme-variant="pro"]),:root[data-demo-plan="vip"]:not([data-theme="light"]):not([data-theme-variant="pro"]){--bg:#162536;--surface:#20344a;--surface2:#29435d;--text:#edf4fc;--muted:#b7c8da;--line:#46617d;--accent:#c5d9ee;--accent-text:#102135;--positive:#22c55e}
 
-:root[data-demo-plan="vip"]:not([data-theme="light"]) .customer-demo-bar{background:var(--surface);border-color:var(--line)}
-:root[data-demo-plan="vip"]:not([data-theme="light"]) .customer-demo-bar select{background:var(--surface2);border-color:var(--line);color:var(--text)}
+:root[data-demo-plan="vip"]:not([data-theme="light"]):not([data-theme-variant="pro"]) .customer-demo-bar{background:var(--surface);border-color:var(--line)}
+:root[data-demo-plan="vip"]:not([data-theme="light"]):not([data-theme-variant="pro"]) .customer-demo-bar select{background:var(--surface2);border-color:var(--line);color:var(--text)}
+
+.workspace-theme-dialog{width:min(480px,calc(100% - 32px));max-height:90dvh;overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:28px}
+.workspace-theme-dialog::backdrop{background:#0009}
+.workspace-theme-dialog>p{color:var(--muted)}
+.workspace-theme-options{display:grid;gap:12px;margin:24px 0}
+.workspace-theme-options button{display:flex;align-items:center;gap:16px;text-align:left;border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--bg);color:var(--text)}
+.workspace-theme-options button[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.workspace-theme-options button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.workspace-theme-options strong,.workspace-theme-options small{display:block}.workspace-theme-options small{margin-top:4px;color:var(--muted)}
+.workspace-theme-swatch{width:56px;height:40px;flex:0 0 56px;border:1px solid #8295a8;border-radius:8px;box-shadow:inset 12px 0 0 #ffffff12}
+.workspace-theme-swatch--vip{background:#162536}.workspace-theme-swatch--light{background:#f6f6f3}.workspace-theme-swatch--pro{background:#171819}

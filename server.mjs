@@ -178,7 +178,7 @@ export function createApp({
     if (!token) return null;
     return db
       .prepare(
-        `SELECT s.*,m.role,t.name tenant_name,u.email,u.theme FROM sessions s JOIN memberships m ON m.user_id=s.user_id AND m.tenant_id=s.tenant_id JOIN tenants t ON t.id=s.tenant_id JOIN users u ON u.id=s.user_id WHERE token=? AND expires>? AND t.account_status='active'`,
+        `SELECT s.*,m.role,t.name tenant_name,u.email,u.theme,u.theme_variant FROM sessions s JOIN memberships m ON m.user_id=s.user_id AND m.tenant_id=s.tenant_id JOIN tenants t ON t.id=s.tenant_id JOIN users u ON u.id=s.user_id WHERE token=? AND expires>? AND t.account_status='active'`,
       )
       .get(hash(token), Date.now());
   }
@@ -999,6 +999,7 @@ export function createApp({
             tenant_id: s.tenant_id,
             role: s.role,
             theme: s.theme,
+            theme_variant: s.theme_variant,
             csrf: s.csrf,
             edition: accountEdition,
             stripe_enabled: stripeAgencyAllowed(db,s,accountEdition),
@@ -1048,11 +1049,10 @@ export function createApp({
           const b = await readBody(req);
           if (!["dark", "light"].includes(b.theme))
             throw new ApiError(400, "Tema non valido");
-          db.prepare("UPDATE users SET theme=? WHERE id=?").run(
-            b.theme,
-            s.user_id,
-          );
-          return json(res, 200, { theme: b.theme });
+          const variant=accountEdition==='vip'&&b.theme==='dark'?(b.theme_variant||'vip'):'';
+          if(!['','vip','pro'].includes(variant)||(accountEdition!=='vip'&&b.theme_variant))throw new ApiError(400,'Variante del tema non disponibile');
+          db.prepare('UPDATE users SET theme=?,theme_variant=? WHERE id=?').run(b.theme,variant,s.user_id);
+          return json(res,200,{theme:b.theme,theme_variant:variant});
         }
         authorize(s);
         if (url.pathname === "/api/agents") {
