@@ -80,3 +80,8 @@ html[data-theme=light] .hero h1 span,html[data-theme=light] .features h2 span,ht
 @media(max-width:560px){.klarna-plan{flex-direction:column;gap:2px;min-height:48px;text-align:center}.klarna-plan img{width:50px}.klarna-plan span{max-width:130px;font-size:8px}}
 
 .usage-field{display:grid;gap:8px;margin-top:18px;font-size:13px}.usage-field input{width:100%;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--text)}.estimate dl dt{min-width:0;overflow-wrap:anywhere}.estimate dl dd{white-space:nowrap}
+
+/* Public home: restore the blue palette without changing workspace plan themes. */
+:root.home-blue:not([data-theme=light]){--bg:#101b29;--panel:#162536;--text:#f0f4fa;--muted:#acbbcd;--line:#354d67;--soft:#1c3045;--accent:#c5d9ee;--button:#dceafa;--button-text:#102135}
+.home-blue:not([data-theme=light]) .lead{color:#c7d4e4}
+.home-blue:not([data-theme=light]) .hero-photo{background-color:transparent}

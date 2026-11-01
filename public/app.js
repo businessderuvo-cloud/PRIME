@@ -83,6 +83,7 @@ const icons = {
   plus: "M12 5v14M5 12h14",
   arrow: "M5 12h14m-5-5 5 5-5 5",
   menu: "M4 6h16M4 12h16M4 18h16",
+  moon: "M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z",
   sun: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1",
 };
 const icon = (name) =>
@@ -418,8 +419,39 @@ const globalNavigation = [
   ["upgrade", "Piano e upgrade"],
   ["security", "Sicurezza account"],
 ];
+// Standard includes the white theme; the alternative is a timed, unsaved preview.
+let standardThemePreviewUntil = 0;
+let standardThemePreviewTimer;
+function syncStandardTheme() {
+  if (state.me?.edition !== 'base') return;
+  const preview = Date.now() < standardThemePreviewUntil;
+  state.me.theme = preview ? 'dark' : 'light';
+  document.documentElement.dataset.theme = state.me.theme;
+  const toggle = document.querySelector('#theme');
+  if (toggle) {
+    toggle.innerHTML = icon(preview ? 'sun' : 'moon');
+    toggle.setAttribute('aria-label', preview ? 'Anteprima tema scuro · ritorno automatico al bianco' : 'Tema bianco · anteprima tema scuro per 3 secondi');
+    toggle.setAttribute('title', 'Tema scuro solo per piani Pro · anteprima di 3 secondi');
+    toggle.setAttribute('aria-pressed', String(preview));
+  }
+  const brandImage = document.querySelector('.sidebar .brand-image');
+  if (brandImage) brandImage.src = '/assets/logo-' + state.me.theme + '.png';
+}
+function previewStandardTheme() {
+  // A second click cannot extend or permanently enable the alternative theme.
+  if (Date.now() < standardThemePreviewUntil) return;
+  clearTimeout(standardThemePreviewTimer);
+  standardThemePreviewUntil = Date.now() + 3000;
+  syncStandardTheme();
+  standardThemePreviewTimer = setTimeout(() => {
+    standardThemePreviewUntil = 0;
+    syncStandardTheme();
+    if (state.me?.edition === 'base') toast('Solo per piani Pro');
+  }, 3000);
+}
 function shell() {
   const isBase = state.me.edition === 'base';
+  syncStandardTheme();
   const hasStripe = state.me.stripe_enabled===true || (state.me.stripe_enabled===undefined && state.me.edition==='elite');
   if (!hasStripe && state.page === 'stripe') state.page = 'dashboard';
   if (isBase && baseExcludedPages.includes(state.page)) state.page = 'dashboard';
@@ -427,6 +459,7 @@ function shell() {
   stopWpsClock?.();
   document.documentElement.dataset.theme = state.me.theme;
   app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => k === "section" ? `<p class="nav-section-label">${label}</p>` : `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><div class="avatar">${esc(state.me.tenant.slice(0, 2).toUpperCase())}</div><div><strong>${esc(state.me.tenant)}</strong><small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off"><span class="key-hint">/</span><div id="global-results" class="search-results" hidden></div></div><button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button><span class="workspace-badge">ANTEPRIMA DI SVILUPPO</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><a href="mailto:phoenix@primegestionale.it">Assistenza: phoenix@primegestionale.it</a><a href="/privacy">Privacy</a><span>Versione 0.4 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
+  syncStandardTheme();
   if (state.me.edition === 'elite') {
     document.querySelector('.sidebar nav').insertAdjacentHTML('beforeend', '<a class="nav-item remote-support-nav" href="https://www.teamviewer.com/it/download/portal/" target="_blank" rel="noopener noreferrer">'+icon('support')+'<span>Assistenza remota</span></a>');
   }
@@ -470,6 +503,7 @@ function shell() {
     );
   };
   document.querySelector("#theme").onclick = async () => {
+    if (state.me.edition === 'base') { previewStandardTheme(); return; }
     try {
       const value = await api("/api/preferences", {
         method: "PATCH",
@@ -1543,6 +1577,7 @@ document.addEventListener("keydown", (e) => {
 async function boot() {
   try {
     state.me = await api("/api/me");
+    syncStandardTheme();
     await initializeAppLanguage(state.me);
     state.clockOffset = (state.me.server_now || Date.now()) - Date.now();
     document.documentElement.dataset.theme = state.me.theme;
