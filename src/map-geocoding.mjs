@@ -8,7 +8,11 @@ export function exactAddressCandidate(results,{street,number,city}){
   return normalized(a.house_number)===normalized(number)&&roadName(a.road||a.pedestrian||a.residential)===roadName(street)&&cities.some(value=>normalized(value)===normalized(city));
  });
  const unique=[...new Map(exact.map(p=>[p.latitude.toFixed(5)+','+p.longitude.toFixed(5),p])).values()];
- return unique.length===1?unique[0]:null;
+ if(!unique.length)return null;
+ // OSM can return an entrance and the building centre for the very same civic address.
+ // Accept nearby duplicates, while keeping genuinely separate places ambiguous.
+ const first=unique[0],metres=point=>Math.hypot((point.latitude-first.latitude)*111320,(point.longitude-first.longitude)*111320*Math.cos(first.latitude*Math.PI/180));
+ return unique.every(point=>metres(point)<=50)?first:null;
 }
 
 // Shared by real workspaces and isolated demos: one application-wide queue/cache.

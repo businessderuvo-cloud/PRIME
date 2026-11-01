@@ -13,6 +13,7 @@ test('automatic matching requires street, city and exact civic number, and rejec
  assert.equal(exactAddressCandidate([candidate('12')],address),null);
  assert.equal(exactAddressCandidate([{...candidate('12/A'),address:{...candidate('12/A').address,city:'Roma'}}],address),null);
  assert.equal(exactAddressCandidate([candidate('12/A'),candidate('12/A',44.1)],address),null);
+ assert.equal(exactAddressCandidate([candidate('12/A'),{...candidate('12/A',45.4601),longitude:9.1901}],address)?.latitude,45.46,'Entrance and building centre for the same civic number are one match');
  assert.equal(exactAddressCandidate([{...candidate('12/A'),address:{road:'Via Roma',city:'Milano'}}],address),null);
 });
 test('geocoder serializes concurrent requests, caches results and resumes after a provider failure',async()=>{
