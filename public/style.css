@@ -1812,10 +1812,23 @@ select option { background:var(--surface); color:var(--text); }
 .workspace-theme-options button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .workspace-theme-options strong,.workspace-theme-options small{display:block}.workspace-theme-options small{margin-top:4px;color:var(--muted)}
 .workspace-theme-swatch{width:56px;height:40px;flex:0 0 56px;border:1px solid #8295a8;border-radius:8px;box-shadow:inset 12px 0 0 #ffffff12}
-.workspace-theme-swatch--vip{background:#162536}.workspace-theme-swatch--light{background:#f6f6f3}.workspace-theme-swatch--pro{background:linear-gradient(90deg,#2e3339 30%,#3c434b 30% 75%,#4a535d 75%)}
+.workspace-theme-swatch--vip{background:#162536}.workspace-theme-swatch--light{background:#f6f6f3}.workspace-theme-swatch--pro{background:#171819}
 
 /* A higher plan can use its own palette or any lower plan palette. */
-:root[data-theme-variant="pro"]:not([data-theme="light"]){--bg:#2e3339;--surface:#3c434b;--surface2:#4a535d;--text:#f4f6f8;--muted:#c4cdd5;--line:#64717e;--accent:#e0e7ed;--accent-text:#232a31;--positive:#22c55e;--shadow:0 24px 70px #0004}
+:root[data-theme-variant="pro"]:not([data-theme="light"]){
+  font-family: Inter, Manrope, "Segoe UI", sans-serif;
+  color-scheme: dark;
+  --bg: #101112;
+  --surface: #171819;
+  --surface2: #1e2021;
+  --text: #f1f1ee;
+  --muted: #a3a5a5;
+  --line: #303233;
+  --accent: #e2e2dc;
+  --accent-text: #131414;
+  --shadow: 0 24px 90px #0006;
+  --positive: #b1c7b7;
+}
 :root[data-theme-variant="elite"]:not([data-theme="light"]){--bg:#050505;--surface:#0a0a0a;--surface2:#141414;--text:#f0f0f0;--muted:#aaa;--line:#292929;--accent:#c7cbd1;--accent-text:#181818}
 :root[data-theme-variant="secret"]:not([data-theme="light"]){--bg:#080808;--surface:#11110f;--surface2:#1d1912;--text:#f1eadf;--muted:#b9ac97;--line:#3b3428;--accent:#c7a979;--accent-text:#11110f}
 .workspace-theme-swatch--elite{background:linear-gradient(90deg,#050505 75%,#c7cbd1 75%)}.workspace-theme-swatch--secret{background:linear-gradient(90deg,#080808 75%,#c7a979 75%)}
