@@ -1798,7 +1798,7 @@ select option { background:var(--surface); color:var(--text); }
 @media(pointer:coarse){:root .voice-input-wrap > .voice-input-button{width:40px;height:40px}}
 
 /* VIP uses PRIME's navy surfaces in both demo and private workspaces. */
-:root[data-theme-variant="vip"]:not([data-theme="light"]){--bg:#162536;--surface:#20344a;--surface2:#29435d;--text:#edf4fc;--muted:#b7c8da;--line:#46617d;--accent:#c5d9ee;--accent-text:#102135;--positive:#22c55e}
+:root[data-theme-variant="vip"]:not([data-theme="light"]){--bg:#080b0d;--surface:#0d1114;--surface2:#12181d;--text:#f0f2f4;--muted:#a6afb9;--line:#293139;--accent:#c5d3df;--accent-text:#101419;--positive:#22c55e}
 
 :root[data-demo-plan="vip"]:not([data-theme="light"]):not([data-theme-variant="pro"]) .customer-demo-bar{background:var(--surface);border-color:var(--line)}
 :root[data-demo-plan="vip"]:not([data-theme="light"]):not([data-theme-variant="pro"]) .customer-demo-bar select{background:var(--surface2);border-color:var(--line);color:var(--text)}
@@ -1812,7 +1812,7 @@ select option { background:var(--surface); color:var(--text); }
 .workspace-theme-options button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .workspace-theme-options strong,.workspace-theme-options small{display:block}.workspace-theme-options small{margin-top:4px;color:var(--muted)}
 .workspace-theme-swatch{width:56px;height:40px;flex:0 0 56px;border:1px solid #8295a8;border-radius:8px;box-shadow:inset 12px 0 0 #ffffff12}
-.workspace-theme-swatch--vip{background:#162536}.workspace-theme-swatch--light{background:#f6f6f3}.workspace-theme-swatch--pro{background:linear-gradient(90deg,#505050 30%,#606060 30% 75%,#707070 75%)}
+.workspace-theme-swatch--vip{background:#080b0d}.workspace-theme-swatch--light{background:#f6f6f3}.workspace-theme-swatch--pro{background:linear-gradient(90deg,#505050 30%,#606060 30% 75%,#707070 75%)}
 
 /* A higher plan can use its own palette or any lower plan palette. */
 :root[data-theme-variant="pro"]:not([data-theme="light"]){font-family:Inter,Manrope,"Segoe UI",sans-serif;color-scheme:dark;--bg:#505050;--surface:#606060;--surface2:#707070;--text:#f5f5f5;--muted:#e0e0e0;--line:#888888;--accent:#f1f1ee;--accent-text:#202020;--shadow:0 24px 70px #0004;--positive:#b1c7b7}
