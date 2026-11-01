@@ -115,7 +115,7 @@ export function customerDemoService({createApp,root,production,json,readBody,geo
       entry.used=Date.now();
       res.setHeader('Permissions-Policy','microphone=(self), camera=(), display-capture=()');
       res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: https://tile.openstreetmap.org; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
-      const html=readFileSync(path.join(root,'public/index.html'),'utf8').replace('<title>PRIME · Real estate workspace</title>','<title>Demo clienti · PRIME</title>').replace('</head>','<link rel="stylesheet" href="/customer-demo.css"><script src="/customer-demo-runtime.js"></script></head>');
+      const html=readFileSync(path.join(root,'public/index.html'),'utf8').replace('<title>PRIME · Real estate workspace</title>','<title>Demo clienti · PRIME</title>').replace('</head>','<link rel="stylesheet" href="/customer-demo.css?v=20261101-selected-theme"><script src="/customer-demo-runtime.js"></script></head>');
       res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});res.end(html);return true;
     }
     if(!url.pathname.startsWith('/demo/api/'))throw new ApiError(404,'Pagina demo non trovata.');
