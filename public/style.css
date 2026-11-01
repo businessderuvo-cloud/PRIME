@@ -1798,7 +1798,7 @@ select option { background:var(--surface); color:var(--text); }
 @media(pointer:coarse){:root .voice-input-wrap > .voice-input-button{width:40px;height:40px}}
 
 /* VIP uses PRIME's navy surfaces in both demo and private workspaces. */
-:root[data-edition="vip"]:not([data-theme="light"]):not([data-theme-variant="pro"]),:root[data-demo-plan="vip"]:not([data-theme="light"]):not([data-theme-variant="pro"]){--bg:#162536;--surface:#20344a;--surface2:#29435d;--text:#edf4fc;--muted:#b7c8da;--line:#46617d;--accent:#c5d9ee;--accent-text:#102135;--positive:#22c55e}
+:root[data-theme-variant="vip"]:not([data-theme="light"]){--bg:#162536;--surface:#20344a;--surface2:#29435d;--text:#edf4fc;--muted:#b7c8da;--line:#46617d;--accent:#c5d9ee;--accent-text:#102135;--positive:#22c55e}
 
 :root[data-demo-plan="vip"]:not([data-theme="light"]):not([data-theme-variant="pro"]) .customer-demo-bar{background:var(--surface);border-color:var(--line)}
 :root[data-demo-plan="vip"]:not([data-theme="light"]):not([data-theme-variant="pro"]) .customer-demo-bar select{background:var(--surface2);border-color:var(--line);color:var(--text)}
@@ -1813,3 +1813,16 @@ select option { background:var(--surface); color:var(--text); }
 .workspace-theme-options strong,.workspace-theme-options small{display:block}.workspace-theme-options small{margin-top:4px;color:var(--muted)}
 .workspace-theme-swatch{width:56px;height:40px;flex:0 0 56px;border:1px solid #8295a8;border-radius:8px;box-shadow:inset 12px 0 0 #ffffff12}
 .workspace-theme-swatch--vip{background:#162536}.workspace-theme-swatch--light{background:#f6f6f3}.workspace-theme-swatch--pro{background:#171819}
+
+/* A higher plan can use its own palette or any lower plan palette. */
+:root[data-theme-variant="pro"]:not([data-theme="light"]){--bg:#101112;--surface:#171819;--surface2:#1e2021;--text:#f1f1ee;--muted:#a3a5a5;--line:#303233;--accent:#e2e2dc;--accent-text:#131414}
+:root[data-theme-variant="elite"]:not([data-theme="light"]){--bg:#050505;--surface:#0a0a0a;--surface2:#141414;--text:#f0f0f0;--muted:#aaa;--line:#292929;--accent:#c7cbd1;--accent-text:#181818}
+:root[data-theme-variant="secret"]:not([data-theme="light"]){--bg:#080808;--surface:#11110f;--surface2:#1d1912;--text:#f1eadf;--muted:#b9ac97;--line:#3b3428;--accent:#c7a979;--accent-text:#11110f}
+.workspace-theme-swatch--elite{background:linear-gradient(90deg,#050505 75%,#c7cbd1 75%)}.workspace-theme-swatch--secret{background:linear-gradient(90deg,#080808 75%,#c7a979 75%)}
+:root[data-theme-variant]{--workspace-bg:var(--bg);--workspace-surface:var(--surface);--workspace-surface2:var(--surface2);--workspace-text:var(--text);--workspace-muted:var(--muted);--workspace-line:var(--line);--workspace-accent:var(--accent);--workspace-accent-text:var(--accent-text)}
+:root[data-theme-variant] .customer-demo-bar{background:var(--surface);color:var(--text);border-color:var(--line)}
+:root[data-theme-variant] .customer-demo-bar a{color:var(--text)}
+:root[data-theme-variant] .customer-demo-title span,:root[data-theme-variant] .customer-demo-bar p{color:var(--muted)}
+:root[data-theme-variant] .customer-demo-bar select{background:var(--surface2);color:var(--text);border-color:var(--line)}
+:root[data-theme-variant] .wallester-dashboard[data-wallester-plan],:root[data-theme-variant] .stripe-workspace[data-stripe-plan]{--bg:var(--workspace-bg);--surface:var(--workspace-surface);--surface2:var(--workspace-surface2);--text:var(--workspace-text);--muted:var(--workspace-muted);--line:var(--workspace-line);--accent:var(--workspace-accent);--accent-text:var(--workspace-accent-text);--wallester-panel-bg:var(--workspace-surface);--wallester-card-bg:var(--workspace-surface);--wallester-card-border:var(--workspace-line);--wallester-number:var(--workspace-text);--stripe-tile-bg:var(--workspace-surface);--stripe-tile-border:var(--workspace-line);--stripe-icon-bg:var(--workspace-surface2);--stripe-icon-border:var(--workspace-line);color-scheme:dark}
+:root[data-theme="light"] .wallester-dashboard[data-wallester-plan],:root[data-theme="light"] .stripe-workspace[data-stripe-plan]{color-scheme:light}

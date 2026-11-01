@@ -178,7 +178,7 @@ export function createApp({
     if (!token) return null;
     return db
       .prepare(
-        `SELECT s.*,m.role,t.name tenant_name,u.email,u.theme,u.theme_variant FROM sessions s JOIN memberships m ON m.user_id=s.user_id AND m.tenant_id=s.tenant_id JOIN tenants t ON t.id=s.tenant_id JOIN users u ON u.id=s.user_id WHERE token=? AND expires>? AND t.account_status='active'`,
+        `SELECT s.*,m.role,t.name tenant_name,u.email,u.theme,COALESCE(NULLIF(u.workspace_palette,''),u.theme_variant) theme_variant FROM sessions s JOIN memberships m ON m.user_id=s.user_id AND m.tenant_id=s.tenant_id JOIN tenants t ON t.id=s.tenant_id JOIN users u ON u.id=s.user_id WHERE token=? AND expires>? AND t.account_status='active'`,
       )
       .get(hash(token), Date.now());
   }
@@ -984,6 +984,8 @@ export function createApp({
           );
         if(publicDemo&&await customerDemoApi({req,res,url,s,db,config:publicDemo,json,readBody}))return;
         const accountEdition=sessionEdition(s);
+        const paidThemePlan=production&&!publicDemo?db.prepare("SELECT plan FROM plan_subscriptions WHERE tenant_id=? AND state='active' AND period_end>? ORDER BY revision DESC LIMIT 1").get(s.tenant_id,new Date().toISOString())?.plan:null;
+        const accountThemePlan=publicDemo?.plan||paidThemePlan||(edition==='secret'?'secret':({base:'standard',full:'pro'}[accountEdition]||accountEdition));
         if(accountEdition==='base' && !baseApiAllowed(url.pathname)) throw new ApiError(403,'Questa funzione è inclusa da PRIME Pro in su.');
         if(await backupDevices.route(req,res,url,s))return;
         if(await didit.route(req,res,url,s))return;
@@ -999,7 +1001,8 @@ export function createApp({
             tenant_id: s.tenant_id,
             role: s.role,
             theme: s.theme,
-            theme_variant: s.theme_variant,
+            theme_variant: ['pro','vip','elite','secret'].slice(0,Math.max(0,['standard','pro','vip','elite','secret'].indexOf(accountThemePlan))).includes(s.theme_variant)?s.theme_variant:'',
+            theme_plan: accountThemePlan,
             csrf: s.csrf,
             edition: accountEdition,
             stripe_enabled: stripeAgencyAllowed(db,s,accountEdition),
@@ -1049,9 +1052,12 @@ export function createApp({
           const b = await readBody(req);
           if (!["dark", "light"].includes(b.theme))
             throw new ApiError(400, "Tema non valido");
-          const variant=accountEdition==='vip'&&b.theme==='dark'?(b.theme_variant||'vip'):'';
-          if(!['','vip','pro'].includes(variant)||(accountEdition!=='vip'&&b.theme_variant))throw new ApiError(400,'Variante del tema non disponibile');
-          db.prepare('UPDATE users SET theme=?,theme_variant=? WHERE id=?').run(b.theme,variant,s.user_id);
+          const ranks=['standard','pro','vip','elite','secret'],rank=ranks.indexOf(accountThemePlan);
+          const allowed=rank>=2?ranks.slice(1,rank+1):[];
+          if(b.theme_variant&&!allowed.includes(b.theme_variant))throw new ApiError(400,'Questo tema non è incluso nel tuo piano');
+          const variant=b.theme==='dark'&&rank>=2?(b.theme_variant||accountThemePlan):'';
+          const legacy=['pro','vip'].includes(variant)?variant:'';
+          db.prepare('UPDATE users SET theme=?,theme_variant=?,workspace_palette=? WHERE id=?').run(b.theme,legacy,variant,s.user_id);
           return json(res,200,{theme:b.theme,theme_variant:variant});
         }
         authorize(s);
