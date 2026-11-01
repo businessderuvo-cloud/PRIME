@@ -1,5 +1,5 @@
-import { renderPartnerMail } from './partner-mail.js?v=20261029-no-proton';
-import { renderZohoPec } from './zoho-pec.js?v=20261029-mail-controls';
+import { renderPartnerMail } from './partner-mail.js?v=20261101-transparent-logos';
+import { renderZohoPec } from './zoho-pec.js?v=20261101-transparent-logos';
 const providers = { gmail: 'Gmail', outlook: 'Outlook' };
 const brandIcons = { gmail: 'gmail', outlook: 'outlook' };
 const brandIcon = provider => `<span class="integration-brand-icon" aria-hidden="true"><img src="/brands/providers/${brandIcons[provider]}.svg" alt="" width="28" height="28"></span>`;

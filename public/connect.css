@@ -48,3 +48,11 @@
 .mail-account-switch{display:inline-flex;width:max-content;max-width:100%;vertical-align:top}
 
 .mail-provider-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:10px 0 8px}.mail-provider-controls .mail-account-switch{display:inline-flex;flex:0 0 auto;width:auto;margin:0}.mail-provider-controls .pill{flex:0 0 auto}
+
+/* Email marks retain their own colors without a white tile. */
+.mail-provider-title .integration-brand-icon,.mail-request-brand .integration-brand-icon,.zoho-pec-heading .integration-brand-icon{background:transparent!important;border:0;box-shadow:none;padding:0!important}
+.mail-provider-title{flex-wrap:wrap}
+.partner-mail-card .partner-zoho-logo,.zoho-pec-heading .partner-zoho-logo{width:112px!important;flex:0 0 112px!important;height:49px!important;background:transparent!important}
+.partner-zoho-logo img{width:112px!important;height:49px!important}
+.partner-mail-card .partner-infomaniak-logo{width:112px;flex:0 0 112px;height:38px}
+.partner-infomaniak-logo img{width:112px!important;height:auto!important;max-height:32px}

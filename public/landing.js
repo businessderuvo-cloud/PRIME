@@ -114,8 +114,8 @@ function drawEstimate(){
 $('#usage-form').addEventListener('input',drawEstimate);
 $('#ai-minus').onclick=()=>{$('#ai-agents').stepDown();drawEstimate();};$('#ai-plus').onclick=()=>{$('#ai-agents').stepUp();drawEstimate();};$('#usage-form').onsubmit=e=>e.preventDefault();drawEstimate();
 fetch('/api/public/pricing').then(r=>{if(!r.ok)throw Error('Tariffe non disponibili');return r.json();}).then(data=>{if(usageKeys.every(key=>Number.isFinite(data.overage?.[key])&&data.overage[key]>=0)){rates=data.overage;drawEstimate();}}).catch(()=>{});
-function setTheme(theme){document.documentElement.dataset.theme=theme;$('#theme').innerHTML=icon(theme==='light'?'moon':'sun');$('#theme').setAttribute('aria-label',`Attiva tema ${theme==='light'?'scuro':'chiaro'}`);try{localStorage.setItem('prime-landing-theme',theme);}catch{}}
-let savedTheme='dark';try{savedTheme=localStorage.getItem('prime-landing-theme')||'dark';}catch{}setTheme(savedTheme==='light'?'light':'dark');$('#theme').onclick=()=>setTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
+function setTheme(theme){document.documentElement.dataset.theme=theme;document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme==='light'?'#f5f5f5':'#080b0d');$('#theme').innerHTML=icon(theme==='light'?'moon':'sun');$('#theme').setAttribute('aria-label',`Attiva tema ${theme==='light'?'scuro':'chiaro'}`);try{localStorage.setItem('prime-landing-theme',theme);}catch{}}
+let savedTheme=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';try{savedTheme=localStorage.getItem('prime-landing-theme')||savedTheme;}catch{}setTheme(savedTheme==='light'?'light':'dark');$('#theme').onclick=()=>setTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
 const dialog=$('#account-dialog');$('#close-dialog').onclick=()=>dialog.close();
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let me=null;

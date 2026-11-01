@@ -1521,7 +1521,7 @@ export function createApp({
       let content=publicLocalizedPages.has(file)?localizePublicPage(rawContent.toString('utf8'),url.searchParams.get('lang')):rawContent;
       if(mime==="text/html"&&file!=="cookies.html"&&file!=="admin.html"){
         let html=content.toString("utf8");
-        html=html.replace("</head>",'<link rel="stylesheet" href="/cookies.css?v=20261031-preferences"></head>');
+        html=html.replace("</head>",'<link rel="stylesheet" href="/cookies.css?v=20261101-theme-banner"></head>');
         html=html.replace("</body>",'<script defer src="/cookies.js?v=20261031-preferences"></script></body>');
         content=Buffer.from(html);
       }

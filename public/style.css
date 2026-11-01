@@ -1796,3 +1796,6 @@ select option { background:var(--surface); color:var(--text); }
 :root .voice-input-wrap > .voice-input-button:focus-visible{outline:2px solid var(--muted);outline-offset:2px}
 :root .voice-input-wrap > .voice-input-button.listening{color:#f3a5ad;background:color-mix(in srgb,#aa3945 18%,var(--surface));border-color:color-mix(in srgb,#aa3945 65%,var(--line));animation:none;box-shadow:none}
 @media(pointer:coarse){:root .voice-input-wrap > .voice-input-button{width:40px;height:40px}}
+
+/* VIP uses PRIME's navy surfaces in both demo and private workspaces. */
+:root[data-edition="vip"]:not([data-theme="light"]),:root[data-demo-plan="vip"]:not([data-theme="light"]){--bg:#101b29;--surface:#162536;--surface2:#1d3044;--text:#edf4fc;--muted:#adbed1;--line:#344a61;--accent:#c5d9ee;--accent-text:#102135;--positive:#22c55e}

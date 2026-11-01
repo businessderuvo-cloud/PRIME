@@ -17,10 +17,9 @@ export function renderPartnerMail(main,{data,api,refresh}){
     const card=document.createElement('section');
     card.className='panel mail-provider partner-mail-card';
     card.dataset.partner=provider.id;
-    const logoClass=provider.id==='zoho'?' partner-zoho-logo':'';
+    const logoClass=provider.id==='zoho'?' partner-zoho-logo':provider.id==='infomaniak'?' partner-infomaniak-logo':'';
     const logoSize=provider.id==='zoho'?112:28;
-    const genericMailIcon='<span class="integration-brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
-    const logo=['infomaniak','zoho'].includes(provider.id)?genericMailIcon:`<span class="integration-brand-icon${logoClass}"><img src="${provider.logo}" alt="Logo ${provider.name}" width="${logoSize}" height="${logoSize}"></span>`;
+    const logo=`<span class="integration-brand-icon${logoClass}"><img src="${provider.logo}" alt="Logo ${provider.name}" width="${logoSize}" height="${logoSize}"></span>`;
     const switchMarkup=`<div class="partner-switch" role="group" aria-label="Tipo di casella per ${provider.name}"><button type="button" data-mode="personal" class="${type==='personal'?'active':''}" aria-pressed="${type==='personal'}">Personale</button><button type="button" data-mode="pec" class="${type==='pec'?'active':''}" aria-pressed="${type==='pec'}">PEC</button></div><p class="small-note" data-description>${type==='pec'?'In PRIME questa casella è classificata come PEC.':'In PRIME questa casella è classificata come email personale.'}</p>`;
     let accountMarkup;
     if(account){

@@ -9,7 +9,7 @@ import { renderStripeAgency } from './stripe-agency.js?v=20261030-stripe-chart-c
 import { renderPortals } from "./portals.js";
 import { mountContactOutEnrichment } from "./contactout.js";
 import { assistantResultMarkup, openAssistantRecordManager } from "./assistant-management.js";
-import { renderMail } from "./mail.js?v=20261029-no-proton";
+import { renderMail } from "./mail.js?v=20261101-transparent-logos";
 import { renderMap } from "./map.js?v=20261101-auto-houses";
 import { mountRepeatableRecaps } from "./repeatable-recaps.js";
 import { schema, roleLabels } from "./schema.js";
@@ -458,6 +458,7 @@ function shell() {
   const navigation = globalNavigation.filter(([page,label]) => (state.me.role === 'owner' || !['agents','upgrade'].includes(page)) && (page !== 'stripe' || hasStripe) && (!isBase || (!baseExcludedPages.includes(page) && label !== 'CONNESSIONI')));
   stopWpsClock?.();
   document.documentElement.dataset.theme = state.me.theme;
+  document.documentElement.dataset.edition = state.me.demo_plan || state.me.edition;
   app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => k === "section" ? `<p class="nav-section-label">${label}</p>` : `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><div class="avatar">${esc(state.me.tenant.slice(0, 2).toUpperCase())}</div><div><strong>${esc(state.me.tenant)}</strong><small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off"><span class="key-hint">/</span><div id="global-results" class="search-results" hidden></div></div><button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button><span class="workspace-badge">ANTEPRIMA DI SVILUPPO</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><a href="mailto:phoenix@primegestionale.it">Assistenza: phoenix@primegestionale.it</a><a href="/privacy">Privacy</a><span>Versione 0.4 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
   syncStandardTheme();
   if (state.me.edition === 'elite') {
