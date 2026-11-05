@@ -31,3 +31,4 @@ html[data-theme=light] .prime-center{filter:invert(1) drop-shadow(0 0 22px #1520
 
 .orbit-node.is-front{z-index:1000!important;--scale:1.2!important;--opacity:1!important;--z:72px!important;filter:drop-shadow(0 0 16px #ffffff55);transition:filter .12s ease}
 @media(max-width:700px){.orbit-node.is-front{--scale:1.14!important;--z:48px!important}}
+.public-footer .footer-identity:after{content:'© 2026 Phoenix Code · PRIME';display:block;margin-top:7px;font-size:10px;color:var(--muted)}

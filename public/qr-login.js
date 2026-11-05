@@ -1,0 +1,29 @@
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+export async function renderQrLogin({container,api,esc,onComplete,onCancel,factorVerification}){
+ let alive=true;const modal=document.createElement('dialog');modal.className='prime-qr-dialog';modal.innerHTML='<h2>Accedi con PRIME Authenticator</h2><p>Apri l’app abbinata, sbloccala e scansiona questo QR. Confronta il numero e approva.</p><div class="qr-picture"></div><p class="qr-match"></p><p class="qr-status" role="status">Preparo il QR…</p><button class="secondary" type="button">Annulla</button>';container.append(modal);modal.showModal();
+ const close=()=>{alive=false;modal.close();modal.remove();onCancel?.();};modal.querySelector('button').onclick=close;modal.addEventListener('cancel',e=>{e.preventDefault();close();});
+ try{
+  const start=await api('/api/auth/qr/start',{method:'POST',body:'{}'});if(!alive)return;
+  modal.querySelector('.qr-picture').innerHTML=start.svg;modal.querySelector('.qr-picture').querySelector('svg').setAttribute('aria-label','QR per accedere con PRIME Authenticator');modal.querySelector('.qr-match').textContent='Numero di conferma: '+start.match_code;modal.querySelector('.qr-status').textContent='In attesa della tua approvazione nell’app. Il QR scade tra 3 minuti.';
+  while(alive&&modal.isConnected&&Date.now()<start.expires_at){await pause(2000);if(!alive||!modal.isConnected)return;const r=await api('/api/auth/qr/poll',{method:'POST',body:JSON.stringify({id:start.id,poll_token:start.poll_token})});if(!alive)return;if(r.pending)continue;alive=false;if(r.requires_two_factor){modal.innerHTML='<div class="qr-extra-factor"></div>';factorVerification({container:modal.querySelector('.qr-extra-factor'),api,esc,result:r,onComplete:async result=>{modal.close();modal.remove();await onComplete(result);}});}else{modal.close();modal.remove();await onComplete(r);}return;}
+  if(alive)modal.querySelector('.qr-status').textContent='QR scaduto. Chiudi e premi di nuovo Accedi con QR.';
+ }catch(error){if(alive&&modal.isConnected)modal.querySelector('.qr-status').textContent=error.message;}
+}
+export async function renderQrDevices({main,api,esc,refresh,factorVerification}){
+ const section=document.createElement('section');section.className='panel';main.append(section);
+ const data=await api('/api/account/security/devices');
+ section.innerHTML='<h2>Accesso con QR · PRIME Authenticator</h2><p>Abbina l’app su Android, iPhone o un altro browser. Potrà autorizzare accessi senza password dopo lo sblocco del suo archivio. Se hai scelto tutti i metodi 2FA, PRIME li richiederà anche dopo l’approvazione.</p><p><a href="/authenticator/" target="_blank" rel="noopener">Installa o apri PRIME Authenticator ↗</a></p><p>Per modificare i dispositivi, inserisci la password attuale nel campo in alto.</p><button id="qr-pair-start" class="primary">Abbina un dispositivo con QR</button><div class="qr-verify"></div><div class="qr-pairing"></div><p class="qr-device-status" role="status"></p><h3>Dispositivi autorizzati</h3>'+(data.devices.length?data.devices.map(d=>'<article class="qr-device"><strong>'+esc(d.label)+'</strong><p>Impronta: '+esc(d.fingerprint)+'</p><p>'+(d.last_used_at?'Ultimo accesso: '+esc(new Date(d.last_used_at).toLocaleString('it-IT')):'Ancora nessun accesso con QR')+'</p><button class="secondary" data-revoke-qr="'+esc(d.id)+'">Revoca dispositivo</button></article>').join(''):'<p>Nessun dispositivo abbinato.</p>');
+ const status=section.querySelector('.qr-device-status'),password=()=>main.querySelector('#security-password').value;
+ async function authorize(next){
+  try{const p=password();if(!p)throw Error('Inserisci prima la password attuale nel campo in alto.');const r=await api('/api/account/security/challenge',{method:'POST',body:JSON.stringify({password:p})});if(r.requires_two_factor)factorVerification({container:section.querySelector('.qr-verify'),api,esc,result:r,onComplete:async v=>{section.querySelector('.qr-verify').replaceChildren();try{await next({password:p,grant:v.grant});}catch(e){status.textContent=e.message;}}});else await next({password:p});}catch(e){status.textContent=e.message;}
+ }
+ section.querySelector('#qr-pair-start').onclick=()=>authorize(async credentials=>{
+  const r=await api('/api/account/security/devices/pair',{method:'POST',body:JSON.stringify(credentials)}),box=section.querySelector('.qr-pairing');box.innerHTML='<h3>Scansiona dall’app Authenticator</h3><div class="qr-picture">'+r.svg+'</div><p class="qr-pair-state" role="status">Apri Aggiungi / scansiona QR nell’app e scansiona questo QR. Poi confronta l’impronta su entrambi i dispositivi.</p>';
+  while(box.isConnected&&Date.now()<r.expires_at){await pause(2000);if(!box.isConnected)return;const p=await api('/api/account/security/devices/pair/status?id='+encodeURIComponent(r.id));if(p.status==='waiting'){
+    box.querySelector('.qr-pair-state').textContent='Dispositivo: '+p.label+' · Impronta: '+p.fingerprint+'. Conferma solo se è uguale a quella mostrata dall’app.';
+    const confirm=document.createElement('button');confirm.className='primary';confirm.textContent='Conferma dispositivo';box.append(confirm);confirm.onclick=async()=>{confirm.disabled=true;try{await api('/api/account/security/devices/pair/confirm',{method:'POST',body:JSON.stringify({...credentials,id:r.id,fingerprint:p.fingerprint})});box.querySelector('.qr-pair-state').textContent='Dispositivo confermato. Puoi usare Accedi con QR nella schermata di accesso.';confirm.remove();}catch(e){status.textContent=e.message;confirm.disabled=false;}};return;
+   }}
+  if(box.isConnected)box.querySelector('.qr-pair-state').textContent='Abbinamento scaduto. Avviane uno nuovo.';
+ });
+ section.querySelectorAll('[data-revoke-qr]').forEach(button=>button.onclick=()=>authorize(async credentials=>{await api('/api/account/security/devices/revoke',{method:'POST',body:JSON.stringify({...credentials,device_id:button.dataset.revokeQr})});await refresh();}));
+}

@@ -1,11 +1,10 @@
 const partners=[
   {id:'infomaniak',name:'Infomaniak',key:'infomaniak',logo:'/brands/providers/infomaniak-wordmark.svg',site:'https://www.infomaniak.com/it/ksuite',defaultType:'personal'},
-  {id:'zoho',name:'Zoho Mail',key:'zohoMail',logo:'/assets/zoho-mail-logo.svg',site:'https://www.zoho.com/mail/',defaultType:'personal'},
   {id:'infocert',name:'InfoCert PEC',key:'infoCertPec',logo:'/brands/providers/legalmail.svg',site:'https://www.infocert.it/prodotti/legalmail-pec',defaultType:'pec'},
 ];
 export const partnerUrls=Object.freeze({infomaniak:'https://www.infomaniak.com/goto/it/hosting.mail?utm_term=6ae2e98984b6c',zohoMail:'',infoCertPec:''});
 
-export function renderPartnerMail(main,{data,api,refresh}){
+export function renderPartnerMail(main,{data,api,customerDemo=false,refresh}){
   const grid=main.querySelector('.mail-provider-grid');
   if(!grid)return;
   grid.querySelectorAll('[data-partner]').forEach(card=>card.remove());
@@ -20,17 +19,17 @@ export function renderPartnerMail(main,{data,api,refresh}){
     const logoClass=provider.id==='zoho'?' partner-zoho-logo':'';
     const logoSize=provider.id==='zoho'?112:28;
     const genericMailIcon='<span class="integration-brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
-    const logo=['infomaniak','zoho'].includes(provider.id)?genericMailIcon:`<span class="integration-brand-icon${logoClass}"><img src="${provider.logo}" alt="Logo ${provider.name}" width="${logoSize}" height="${logoSize}"></span>`;
+    const logo=provider.id==='infomaniak'?'<span class="integration-brand-icon"><img src="'+provider.logo+'" alt="Logo '+provider.name+'" width="128" height="24"></span>':provider.id==='zoho'?genericMailIcon:'<span class="integration-brand-icon'+logoClass+'"><img src="'+provider.logo+'" alt="Logo '+provider.name+'" width="'+logoSize+'" height="'+logoSize+'"></span>';
     const switchMarkup=`<div class="partner-switch" role="group" aria-label="Tipo di casella per ${provider.name}"><button type="button" data-mode="personal" class="${type==='personal'?'active':''}" aria-pressed="${type==='personal'}">Personale</button><button type="button" data-mode="pec" class="${type==='pec'?'active':''}" aria-pressed="${type==='pec'}">PEC</button></div><p class="small-note" data-description>${type==='pec'?'In PRIME questa casella è classificata come PEC.':'In PRIME questa casella è classificata come email personale.'}</p>`;
     let accountMarkup;
     if(account){
-      accountMarkup=`<span class="pill">${account.status==='error'||account.status==='reauthorize'?'Controllo da verificare':'Account collegato'}</span><p>${escapeHtml(email||account.account_label)}</p><p class="small-note">${account.last_sync_at?'Ultimo controllo: '+escapeHtml(new Date(account.last_sync_at).toLocaleString((document.documentElement.lang==='en'?'en-GB':'it-IT'))):account.last_error?escapeHtml(account.last_error):'In attesa del primo controllo.'}</p><button class="primary" type="button" data-open-form>Aggiorna accesso account</button>${formMarkup(provider,email,type,true)}<div class="partner-actions"><button class="secondary" type="button" data-check="${escapeHtml(account.id)}">Controlla ora</button><button class="text-button" type="button" data-unlink="${escapeHtml(account.id)}">Scollega</button></div>`;
+      accountMarkup=`<span class="pill">${account.status==='error'||account.status==='reauthorize'?'Controllo da verificare':'Account collegato'}</span><p>${escapeHtml(email||account.account_label)}</p><p class="small-note">${account.last_sync_at?'Ultimo controllo: '+escapeHtml(new Date(account.last_sync_at).toLocaleString((document.documentElement.lang==='en'?'en-GB':'it-IT'))):account.last_error?escapeHtml(account.last_error):'In attesa del primo controllo.'}</p><button class="primary" type="button" data-open-form>Aggiorna accesso account</button>${formMarkup(provider,email,type,true,customerDemo)}<div class="partner-actions"><button class="secondary" type="button" data-check="${escapeHtml(account.id)}">Controlla ora</button><button class="text-button" type="button" data-unlink="${escapeHtml(account.id)}">Scollega</button></div>`;
     }else{
-      accountMarkup=`<span class="pill">Da collegare</span><button class="primary" type="button" data-open-form>Collega account ${provider.name}</button>${formMarkup(provider,'',type,false)}`;
+      accountMarkup=`<span class="pill">Da collegare</span><button class="primary" type="button" data-open-form>Collega account ${provider.name}</button>${formMarkup(provider,'',type,false,customerDemo)}`;
     }
     const affiliateUrl=partnerUrls[provider.key];
     const serviceLink=`<a class="text-button partner-service-link" href="${affiliateUrl||provider.site}" target="_blank" rel="noopener noreferrer">${affiliateUrl?'Apri offerta partner ↗':`Visita ${provider.name} ↗`}</a>`;
-    card.innerHTML=`<h2 class="mail-provider-title">${logo}<span>${provider.name}</span></h2>${switchMarkup}${accountMarkup}${serviceLink}`;
+    card.innerHTML='<h2 class="mail-provider-title">'+logo+'<span>'+provider.name+'</span></h2>'+switchMarkup+accountMarkup+serviceLink;
     fragment.append(card);
   }
   grid.append(fragment);
@@ -72,10 +71,17 @@ export function renderPartnerMail(main,{data,api,refresh}){
     });
   });
 }
-function formMarkup(provider,email,type,hidden){
-  return `<form class="partner-imap-form" hidden><input type="hidden" name="mailbox_type" value="${type}"><label>${provider.id==='infocert'?'Email o User ID':'Indirizzo email'}<input name="email" type="${provider.id==='infocert'?'text':'email'}" autocomplete="username" value="${escapeHtml(email)}" maxlength="254" required></label>${provider.id==='zoho'?'<label>Area account<select name="region"><option value="eu">Europa · casella personale</option><option value="eu-org">Europa · account aziendale</option><option value="global">Globale · casella personale</option><option value="global-org">Globale · account aziendale</option></select></label>':''}<label>Password IMAP<input name="password" type="password" autocomplete="current-password" required></label><p class="small-note">Inserisci la password della casella o la password specifica per app richiesta dal provider. Le credenziali vengono conservate cifrate; PRIME legge solo mittente e oggetto.</p><button class="primary" type="submit">${hidden?'Verifica e aggiorna collegamento':'Verifica e collega account'}</button><button class="text-button" type="button" data-cancel>Annulla</button><p class="connect-feedback" role="status"></p></form>`;
-}
-function setMailboxMode(card,type){
+function formMarkup(provider,email,type,hidden,customerDemo=false){
+  const temporary=customerDemo&&provider.id==='infomaniak';
+  const passwordLabel=temporary?'Password dispositivo IMAP':'Password IMAP';
+  const passwordNote=temporary?'Collegamento demo temporaneo: password e collegamento vengono eliminati automaticamente entro 5 minuti. Sono mostrate solo intestazioni email e link.':'Inserisci la password della casella o la password specifica per app richiesta dal provider. Le credenziali vengono conservate cifrate; PRIME legge solo mittente e oggetto.';
+  const passwordAutocomplete=temporary?'new-password':'current-password';
+  const submitLabel=temporary?(hidden?'Ricollega per 5 minuti':'Collega per 5 minuti'):(hidden?'Verifica e aggiorna collegamento':'Verifica e collega account');
+  const emailLabel=provider.id==='infocert'?'Email o User ID':'Indirizzo email';
+  const emailType=provider.id==='infocert'?'text':'email';
+  const region=provider.id==='zoho'?'<label>Area account<select name="region"><option value="eu">Europa · casella personale</option><option value="eu-org">Europa · account aziendale</option><option value="global">Globale · casella personale</option><option value="global-org">Globale · account aziendale</option></select></label>':'';
+  return '<form class="partner-imap-form" hidden><input type="hidden" name="mailbox_type" value="'+type+'"><label>'+emailLabel+'<input name="email" type="'+emailType+'" autocomplete="username" value="'+escapeHtml(email)+'" maxlength="254" required></label>'+region+'<label>'+passwordLabel+'<input name="password" type="password" autocomplete="'+passwordAutocomplete+'" required></label><p class="small-note">'+passwordNote+'</p><button class="primary" type="submit">'+submitLabel+'</button><button class="text-button" type="button" data-cancel>Annulla</button><p class="connect-feedback" role="status"></p></form>';
+}function setMailboxMode(card,type){
   card.querySelectorAll('[data-mode]').forEach(button=>{const active=button.dataset.mode===type;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));});
   card.querySelector('[data-description]').textContent=type==='pec'?'In PRIME questa casella è classificata come PEC.':'In PRIME questa casella è classificata come email personale.';
 }

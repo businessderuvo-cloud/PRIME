@@ -1,3 +1,7 @@
+import { validVanessaNameDay } from './src/vanessa-greetings.mjs';
+import {rewardFulfillment} from './src/reward-fulfillment.mjs';
+import {authenticatorQr} from './src/authenticator-qr.mjs';
+import {multiFactor,authSmsVerify,factorMethods} from './src/multi-factor.mjs';
 import {createMapLocator,sharedGeocode} from './src/map-geocoding.mjs';
 import {stripePlanCheckout} from './src/stripe-plan-checkout.mjs';
 import {localizePublicPage,publicLocalizedPages} from './src/public-locale.mjs';
@@ -19,7 +23,7 @@ import { connectService } from "./src/connect/service.mjs";
 import { telephonyService } from "./src/connect/telephony.mjs";
 import { privateDemoAccess } from "./src/private-demo-access.mjs";
 import { assistantService } from "./src/assistant.mjs";
-import { readFileSync, createReadStream, statSync } from "node:fs";
+import { readFileSync, createReadStream, statSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -41,6 +45,7 @@ import { createTotpSecret, totpUri, verifyTotp } from "./src/totp.mjs";
 import { namirialService } from "./src/namirial.mjs";
 import { contactOutService } from "./src/contactout.mjs";
 import { assistantManagement } from "./src/assistant-management.mjs";
+import { trustpilotMailer } from "./src/trustpilot-mail.mjs";
 const scrypt = promisify(scryptCallback),
   hash = (x) => createHash("sha256").update(x).digest("hex");
 const dummySalt = randomBytes(16).toString("hex");
@@ -110,9 +115,11 @@ export function createApp({
   assistantFetch = fetch,
   assistantApiKey = process.env.PRIME_OPENAI_API_KEY || "",
   assistantModel = process.env.PRIME_AI_MODEL || "gpt-6-astra",
+  authSmsSender,
   authEmailFetch = fetch,
   authEmailApiKey = process.env.PRIME_RESEND_API_KEY || "",
   authEmailFrom = process.env.PRIME_EMAIL_FROM || "",
+  authEmailWebhookUrl = process.env.PRIME_ZAPIER_EMAIL_HOOK_URL || "",
   diditOptions,
   publicDemo = null,
   geocode = sharedGeocode,
@@ -127,9 +134,10 @@ export function createApp({
       const paid = db.prepare("SELECT plan FROM plan_subscriptions WHERE tenant_id=? AND state='active' AND period_end>? ORDER BY revision DESC LIMIT 1").get(s.tenant_id, new Date().toISOString());
       if (paid?.plan === 'standard') return 'base';
       if (paid?.plan === 'pro') return 'full';
+      if (paid?.plan === 'secret') return 'secret';
       if (['vip','elite'].includes(paid?.plan)) {
-        const verification=db.prepare("SELECT kyb_status FROM agency_billing WHERE tenant_id=?").get(s.tenant_id);
-        if(verification?.kyb_status!=='approved')return 'full';
+        const verification = db.prepare("SELECT kyb_status FROM agency_billing WHERE tenant_id=?").get(s.tenant_id);
+        if (verification?.kyb_status !== 'approved') return 'full';
         const ai = db.prepare("SELECT 1 FROM ai_subscriptions WHERE tenant_id=? AND state='active' AND plan=?").get(s.tenant_id,paid.plan);
         return ai ? paid.plan : 'full';
       }
@@ -148,21 +156,21 @@ export function createApp({
     },
     adminAttempts = new Map(),
     adminHandoffs = new Map(),
-
     dataDirectory = database && database !== ":memory:"
       ? path.dirname(path.resolve(database))
       : database === ":memory:" ? null : path.join(root,"data"),
     authVault = createVault({ directory: dataDirectory || undefined }),
-    authMailer = createAuthMailer({ fetcher: authEmailFetch, apiKey: authEmailApiKey, from: authEmailFrom, production });
+    authMailer = createAuthMailer({ fetcher: authEmailFetch, apiKey: authEmailApiKey, from: authEmailFrom, webhookUrl: authEmailWebhookUrl, production });
   const handleDemoCallback = demoCallbackService({db,json,readBody,production});
   const cpay = cpayService({db,json,readBody});
   const handleBilling = billingService({db,json,readBody});
   const stripePlans=stripePlanCheckout({db,json,readBody});
+  const rewards=rewardFulfillment({db});
   const handlePlanUpgrade = planUpgradeService({db,json,readBody});
   const mapLocator = createMapLocator({db,authorize,audit,geocode});
   const didit = diditService({db,json,readBody,audit,fetcher:connectFetch,config:diditOptions || diditConfig({production})});
   const signatures = namirialService({ db, vault: authVault, directory: dataDirectory || path.join(root, "data"), fetcher: connectFetch, json, readBody, audit });
-  const contactOut = contactOutService({ db, vault: authVault, fetcher: connectFetch, json, readBody, audit });
+  const contactOut = contactOutService({ db, vault: authVault, fetcher: publicDemo ? fetch : connectFetch, json, readBody, audit, demo: !!publicDemo, demoPlan: () => publicDemo?.plan });
 
   const handleTerritory = territoryApi({
     db,
@@ -223,7 +231,7 @@ export function createApp({
     const lifetime=privateAccess.lifetime(userId);
     db.prepare("DELETE FROM sessions WHERE expires<?").run(now);
     db.prepare("INSERT INTO sessions(token,user_id,tenant_id,expires,csrf) VALUES (?,?,?,?,?)").run(hash(token),userId,tenantId,now+lifetime*1000,csrf);
-    res.setHeader("Set-Cookie",`prime_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${lifetime}${production ? "; Secure" : ""}`);
+    res.setHeader("Set-Cookie",`prime_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${lifetime}${production ? "; Secure" : ""}`);
   }
   const privateAccess=privateDemoAccess({db,directory:dataDirectory,root,enabled:edition==='elite'&&!publicDemo,json,readBody,createSession});
   function authorize(s, entity, record) {
@@ -665,14 +673,17 @@ export function createApp({
   const importer = importService({db,previewEntity,saveEntity,audit});
   const backupDevices = deviceBackupService({db,database:database||path.join(root,'data/prime.sqlite'),readBody,json,audit,...(publicDemo?{directory:path.join(dataDirectory,'backups')}: {})});
   const backups = backupService({db,database:database||path.join(root,'data/prime.sqlite'),...(publicDemo?{directory:path.join(dataDirectory,'backups'),key:randomBytes(32).toString('base64'),defaultEnabled:false}:{})});
-  const connect = connectService({db,directory:database===':memory:'?null:path.dirname(path.resolve(database||path.join(root,'data/prime.sqlite'))),fetcher:connectFetch,providerApi:connectProviderApi,json,readBody,audit,interval:isBase?0:connectInterval,saveAppointment:(session,record,delta)=>saveEntity('appointments',{data:{...Object.fromEntries(Object.keys(schema.appointments.fields).map(key=>[key,record?.[key]])),...delta},version:record?.version},session,record?.id)});
-  const stripeAgency = stripeAgencyService({db,vault:authVault,json,readBody,audit,editionFor:sessionEdition,demo:!!publicDemo,publicUrl:()=>new URL(process.env.PRIME_PUBLIC_URL||('http://127.0.0.1:'+server.address().port)).origin});
+  const connect = connectService({db,directory:database===':memory:'?null:path.dirname(path.resolve(database||path.join(root,'data/prime.sqlite'))),fetcher:connectFetch,providerApi:connectProviderApi,json,readBody,audit,editionFor:sessionEdition,interval:isBase?0:connectInterval,saveAppointment:(session,record,delta)=>saveEntity('appointments',{data:{...Object.fromEntries(Object.keys(schema.appointments.fields).map(key=>[key,record?.[key]])),...delta},version:record?.version},session,record?.id),demo:!!publicDemo});
+  const trustpilot = trustpilotMailer({db,connect,json,readBody,audit});
+  const stripeAgency = stripeAgencyService({db,vault:authVault,json,readBody,audit,editionFor:sessionEdition,demo:!!publicDemo,publicUrl:()=>new URL((publicDemo&&process.env.PRIME_DEMO_PUBLIC_URL)||process.env.PRIME_PUBLIC_URL||('http://127.0.0.1:'+server.address().port)).origin});
   const portalRoute = portalService({db,readBody,json});
   const assistantManager = assistantManagement({db,readBody,json,audit,previewSave:previewEntity,saveEntity,deleteEntity,authorize,rows});
   const telephony=telephonyService({db,vault:authVault,json,readBody,audit,editionFor:sessionEdition,fetcher:connectFetch,demo:!!publicDemo});
   const elite = eliteService({db,json,readBody,audit,management:assistantManager,rows,authorize,edition:publicDemo?customerDemoEdition(publicDemo.plan):edition,production,fetcher:publicDemo?fetch:connectFetch,directory:dataDirectory,demoChatOnly:publicDemo||false,telephonyCredentials:telephony.credentials});
   const assistant = assistantService({db,fetcher:assistantFetch,apiKey:assistantApiKey,model:assistantModel,readBody,json,audit,management:publicDemo?undefined:assistantManager});
   const customerDemos=publicDemo?null:customerDemoService({createApp,root,production,json,readBody,geocode});
+  const mfa=multiFactor({db,vault:authVault,mailer:authMailer,passwordCheck,json,readBody,createSession,audit,smsSender:authSmsSender||authSmsVerify()});
+  const qrAuth=authenticatorQr({db,json,readBody,createSession,audit,mfa});
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, "http://localhost"),
@@ -683,7 +694,10 @@ export function createApp({
         "Content-Security-Policy",
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       );
-      if(url.pathname==='/checkout'&&url.searchParams.has('test'))res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self'; img-src 'self' data: https://*.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com; connect-src 'self' https://api.stripe.com https://*.stripe.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+      if(url.pathname==='/checkout'&&(url.searchParams.has('test')||url.searchParams.get('live')==='1'||url.searchParams.get('choose')==='live'))res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self'; img-src 'self' data: https://*.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com; connect-src 'self' https://api.stripe.com https://*.stripe.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+      if(url.pathname==='/.well-known/assetlinks.json'&&method==='GET'){res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=3600'});res.end(JSON.stringify([{relation:['delegate_permission/common.handle_all_urls'],target:{namespace:'android_app',package_name:'it.primegestionale.authenticator',sha256_cert_fingerprints:['34:B0:A0:DB:F3:BE:CB:28:16:11:42:4F:F1:CF:F4:81:AD:03:17:3B:93:A6:D6:AE:B5:02:15:66:A5:17:4E:19']}}]));return;}
+      if(url.pathname==='/authenticator'){res.writeHead(308,{Location:'/authenticator/'});res.end();return;}
+      if(url.pathname.startsWith('/authenticator/')){res.setHeader('Permissions-Policy','camera=(self), microphone=()');res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; media-src 'self' blob:; connect-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");}
       if(customerDemos&&await customerDemos.route(req,res,url))return;
       if(await privateAccess.route(req,res,url))return;
       const signedForElite=['/','/app'].includes(url.pathname)&&(()=>{const active=currentSession(req);return !!active&&['vip','elite'].includes(sessionEdition(active));})();
@@ -807,12 +821,7 @@ export function createApp({
           if(accountStatus==='suspended')throw new ApiError(403,"Account sospeso. Contatta l’assistenza PRIME.");
           if(accountStatus==='closed')throw new ApiError(403,"Account chiuso. Contatta l’assistenza PRIME.");
         }
-        if (user.totp_enabled) {
-          const challenge=randomBytes(32).toString("hex");
-          db.prepare("DELETE FROM auth_challenges WHERE expires_at<?").run(now);
-          db.prepare("INSERT INTO auth_challenges(token_hash,user_id,tenant_id,expires_at,created_at) VALUES (?,?,?,?,?)").run(hash(challenge),user.id,tenantId,now+5*60*1000,new Date(now).toISOString());
-          return json(res,200,{ok:true,requires_two_factor:true,challenge});
-        }
+        if(factorMethods(user).length)return json(res,200,{ok:true,...mfa.challenge(user,tenantId)});
         createSession(res,user.id,tenantId,now);
         return json(res, 200, { ok: true });
       }
@@ -850,19 +859,8 @@ export function createApp({
         transaction(db,()=>{db.prepare("UPDATE users SET password=?,email_verified=1 WHERE id=?").run(password,row.user_id);db.prepare("DELETE FROM auth_tokens WHERE token_hash=?").run(row.token_hash);audit({tenant_id:row.tenant_id,user_id:row.user_id},"agent.invite_accepted",row.user_id);});
         return json(res,200,{ok:true,message:"Invito accettato. Ora puoi accedere a PRIME."});
       }
-      if (url.pathname === "/api/auth/2fa/verify" && method === "POST") {
-        const b=await readBody(req),challenge=String(b.challenge||""),row=db.prepare("SELECT * FROM auth_challenges WHERE token_hash=? AND expires_at>? AND attempts<5").get(hash(challenge),Date.now());
-        if(!row)throw new ApiError(401,"Verifica scaduta. Accedi di nuovo.");
-        const user=db.prepare("SELECT totp_secret_cipher FROM users WHERE id=?").get(row.user_id),secret=authVault.open(user.totp_secret_cipher,`auth:totp:${row.user_id}`).secret;
-        if(!verifyTotp(secret,b.code)){
-          db.prepare("UPDATE auth_challenges SET attempts=attempts+1 WHERE token_hash=?").run(hash(challenge));
-          if(row.attempts+1>=5)db.prepare("DELETE FROM auth_challenges WHERE token_hash=?").run(hash(challenge));
-          throw new ApiError(401,"Codice Authenticator non valido.");
-        }
-        db.prepare("DELETE FROM auth_challenges WHERE token_hash=?").run(hash(challenge));
-        createSession(res,row.user_id,row.tenant_id);
-        return json(res,200,{ok:true});
-      }
+      if(await qrAuth.publicRoute(req,res,url))return;
+      if(await mfa.publicRoute(req,res,url))return;
       if(url.pathname==='/backup-pc-windows.cmd'&&method==='GET'){
         const origin=new URL(process.env.PRIME_PUBLIC_URL||('http://127.0.0.1:'+server.address().port)).origin;
         if(!/^https?:\/\/[a-zA-Z0-9.:-]+$/.test(origin))throw new ApiError(503,'Indirizzo pubblico non valido');
@@ -974,7 +972,6 @@ export function createApp({
           }
           throw new ApiError(404,"Endpoint amministrativo non trovato.");
         }
-
         const s = currentSession(req);
         if (!s) throw new ApiError(401, "Accedi per continuare");
         if (mutating && req.headers["x-csrf-token"] !== s.csrf)
@@ -982,6 +979,8 @@ export function createApp({
             403,
             "Sessione di sicurezza non valida: aggiorna la pagina",
           );
+        const demoElitePath=publicDemo&&url.pathname.replace(/^\/demo(?=\/)/,'');
+        if(publicDemo&&demoElitePath?.startsWith('/api/elite/')){if(await elite.route(req,res,new URL(demoElitePath+url.search,url.origin),s))return;}
         if(publicDemo&&await customerDemoApi({req,res,url,s,db,config:publicDemo,json,readBody}))return;
         const accountEdition=sessionEdition(s);
         if(accountEdition==='base' && !baseApiAllowed(url.pathname)) throw new ApiError(403,'Questa funzione è inclusa da PRIME Pro in su.');
@@ -996,23 +995,24 @@ export function createApp({
             id: s.user_id,
             email: s.email,
             tenant: s.tenant_name,
+            hide_search_shortcut: production && !demo && !publicDemo && db.prepare("SELECT kyb_status FROM agency_billing WHERE tenant_id=?").get(s.tenant_id)?.kyb_status === 'approved',
+            name_day: db.prepare("SELECT month_day FROM vanessa_name_days WHERE user_id=?").get(s.user_id)?.month_day || "",
+            profile_photo: db.prepare("SELECT photo FROM user_profiles WHERE user_id=?").get(s.user_id)?.photo || "",
             tenant_id: s.tenant_id,
             role: s.role,
             theme: s.theme,
             csrf: s.csrf,
             edition: accountEdition,
             stripe_enabled: stripeAgencyAllowed(db,s,accountEdition),
-            ...(publicDemo?{customer_demo:true,demo_plan:publicDemo.plan,vanessa_chat_only:true}:{}),
+            ...(publicDemo?{customer_demo:true,demo_plan:publicDemo.plan,theme_variant:publicDemo.theme_variant||'',vanessa_chat_only:true}:{}),
             human_seat_limit: publicDemo&&publicDemo.plan==='pro'?10:accountEdition==='base' ? 2 + baseExtraSeats : null,
             environment: demo ? "demo" : "local",
             server_now: Date.now(),
           });
-        if (url.pathname === "/api/account/security" && method === "GET") {
-          const user = db.prepare("SELECT email_verified,totp_enabled FROM users WHERE id=?").get(s.user_id);
-          return json(res,200,{email_verified:!!user.email_verified,two_factor_enabled:!!user.totp_enabled,email_provider_configured:authMailer.configured});
-        }
+        if(await qrAuth.route(req,res,url,s))return;
+        if(await mfa.route(req,res,url,s))return;
         if (url.pathname === "/api/account/security/totp/setup" && method === "POST") {
-          const b=await readBody(req),user=db.prepare("SELECT email,password FROM users WHERE id=?").get(s.user_id);
+          const b=await readBody(req);await mfa.authorize(s,b);const user=db.prepare("SELECT email,password FROM users WHERE id=?").get(s.user_id);
           if(!await passwordCheck(String(b.password||""),user.password))throw new ApiError(401,"Password non corretta.");
           const secret=createTotpSecret(),cipher=authVault.seal({secret},`auth:totp-pending:${s.user_id}`);
           db.prepare("UPDATE users SET totp_pending_cipher=? WHERE id=?").run(cipher,s.user_id);
@@ -1020,29 +1020,47 @@ export function createApp({
           return json(res,200,{secret,otpauth_url:totpUri(secret,user.email)});
         }
         if (url.pathname === "/api/account/security/totp/enable" && method === "POST") {
-          const b=await readBody(req),row=db.prepare("SELECT totp_pending_cipher FROM users WHERE id=?").get(s.user_id);
+          const b=await readBody(req);await mfa.authorize(s,b);const row=db.prepare("SELECT totp_pending_cipher FROM users WHERE id=?").get(s.user_id);
           if(!row.totp_pending_cipher)throw new ApiError(400,"Avvia prima la configurazione Authenticator.");
           const {secret}=authVault.open(row.totp_pending_cipher,`auth:totp-pending:${s.user_id}`);
           if(!verifyTotp(secret,b.code))throw new ApiError(400,"Codice Authenticator non valido.");
           db.prepare("UPDATE users SET totp_enabled=1,totp_secret_cipher=?,totp_pending_cipher='' WHERE id=?").run(authVault.seal({secret},`auth:totp:${s.user_id}`),s.user_id);
-          audit(s,"auth.totp_enabled",s.user_id);
+          mfa.changed(s,"totp");audit(s,"auth.totp_enabled",s.user_id);
           return json(res,200,{ok:true});
         }
         if (url.pathname === "/api/account/security/totp/disable" && method === "POST") {
-          const b=await readBody(req),user=db.prepare("SELECT password,totp_secret_cipher,totp_enabled FROM users WHERE id=?").get(s.user_id);
+          const b=await readBody(req);await mfa.authorize(s,b);const user=db.prepare("SELECT password,totp_secret_cipher,totp_enabled FROM users WHERE id=?").get(s.user_id);
           if(!await passwordCheck(String(b.password||""),user.password))throw new ApiError(401,"Password non corretta.");
           if(!user.totp_enabled||!verifyTotp(authVault.open(user.totp_secret_cipher,`auth:totp:${s.user_id}`).secret,b.code))throw new ApiError(400,"Codice Authenticator non valido.");
           db.prepare("UPDATE users SET totp_enabled=0,totp_secret_cipher='',totp_pending_cipher='' WHERE id=?").run(s.user_id);
-          audit(s,"auth.totp_disabled",s.user_id);
+          mfa.changed(s,"totp");audit(s,"auth.totp_disabled",s.user_id);
           return json(res,200,{ok:true});
         }
         if (url.pathname === "/api/logout" && method === "POST") {
           db.prepare("DELETE FROM sessions WHERE token=?").run(s.token);
           res.setHeader(
             "Set-Cookie",
-            `prime_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${production ? "; Secure" : ""}`,
+            `prime_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${production ? "; Secure" : ""}`,
           );
           return json(res, 200, { ok: true });
+        }
+        if (edition === "base" && !baseApiAllowed(url.pathname) && url.pathname.startsWith("/api/")) throw new ApiError(403, "Funzione non inclusa nel piano Standard.");
+        if (url.pathname === "/api/preferences/profile" && method === "PATCH") {
+          const b = await readBody(req, 300000);
+          if (!Object.keys(b).length || Object.keys(b).some(key => !['agency_name','photo','name_day'].includes(key))) throw new ApiError(400, "Campi profilo non validi.");
+          if (b.name_day !== undefined && !validVanessaNameDay(b.name_day)) throw new ApiError(400, "Scegli un giorno e un mese validi per l’onomastico.");
+          if (b.agency_name !== undefined && s.role !== 'owner') throw new ApiError(403, "Solo il titolare può modificare il nome dell’agenzia.");
+          const name = typeof b.agency_name === 'string' ? b.agency_name.trim() : '';
+          if (b.agency_name !== undefined && (!name || name.length > 120 || /[\x00-\x1f]/.test(name))) throw new ApiError(400, "Inserisci un nome agenzia da 1 a 120 caratteri.");
+          if (b.photo !== undefined && (typeof b.photo !== 'string' || (b.photo !== '' && (!/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(b.photo) || b.photo.length > 260000 || !Buffer.from(b.photo.split(',')[1], 'base64').subarray(0,3).equals(Buffer.from([255,216,255])))))) throw new ApiError(400, "Foto profilo non valida.");
+          transaction(db, () => {
+            if (b.agency_name !== undefined) db.prepare("UPDATE tenants SET name=? WHERE id=?").run(name, s.tenant_id);
+            if (b.photo !== undefined) db.prepare("INSERT INTO user_profiles(user_id,photo) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET photo=excluded.photo").run(s.user_id, b.photo);
+            if (b.name_day === '') db.prepare("DELETE FROM vanessa_name_days WHERE user_id=?").run(s.user_id);
+            else if (b.name_day !== undefined) db.prepare("INSERT INTO vanessa_name_days(user_id,month_day) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET month_day=excluded.month_day").run(s.user_id, b.name_day);
+          });
+          audit(s, 'profile.updated', s.user_id);
+          return json(res, 200, {ok:true});
         }
         if (url.pathname === "/api/preferences" && method === "PATCH") {
           const b = await readBody(req);
@@ -1159,6 +1177,7 @@ export function createApp({
         }
         if (await telephony.route(req,res,url,s)) return;
         if (await stripeAgency.route(req,res,url,s)) return;
+        if (await trustpilot.route(req,res,url,s)) return;
         if (await connect.route(req,res,url,s)) return;
         if (await signatures.route(req,res,url,s)) return;
         if (await contactOut.route(req,res,url,s)) return;
@@ -1323,6 +1342,12 @@ export function createApp({
         "/cookies/":"cookies.html",
         "/customer-demo-runtime.js":"customer-demo-runtime.js",
         "/partner-mail.js":"partner-mail.js",
+        "/demo-pre5-style.css":"demo-pre5-style.css",
+        "/demo-pre5-connect.css":"demo-pre5-connect.css",
+        "/demo-pre5-connect.js":"demo-pre5-connect.js",
+        "/secret-storage.js":"secret-storage.js",
+        "/mail-demo-pre5min.js":"mail-demo-pre5min.js",
+        "/partner-mail-demo-pre5min.js":"partner-mail-demo-pre5min.js",
         "/customer-demo-ui.js":"customer-demo-ui.js",
         "/elite-view.js":"elite-view.js",
         "/zoho-pec.js":"zoho-pec.js",
@@ -1339,7 +1364,17 @@ export function createApp({
 "/vendor/elevenlabs/audioConcatProcessor.js":"vendor/elevenlabs/audioConcatProcessor.js",
 "/vendor/elevenlabs/libsamplerate.worklet.js":"vendor/elevenlabs/libsamplerate.worklet.js",
 "/vanessa-browser.js":"vanessa-browser.js",
+        "/browser-assistant.js":"browser-assistant.js",
+        "/downloads/vanessa-browser-chromium.zip":"downloads/vanessa-browser-chromium.zip",
+        "/downloads/vanessa-browser-firefox.zip":"downloads/vanessa-browser-firefox.zip",
+        "/downloads/vanessa-browser-edge.zip":"downloads/vanessa-browser-edge.zip",
+        "/downloads/vanessa-browser-edge.crx":"downloads/vanessa-browser-edge.crx",
 "/sorelle-assistenti":"sisters.html",
+"/phoenix":"phoenix.html",
+"/phoenix/":"phoenix.html",
+"/phoenix.css":"phoenix.css",
+"/assets/tempocasa-logo.svg":"assets/tempocasa-logo.svg",
+"/assets/phoenix-portrait.png":"assets/phoenix-portrait.png",
 "/landing.css":"landing.css",
         "/landing-professionista-video.js":"landing-professionista-video.js",
         "/assets/prime-professionista-kling4.mp4":"assets/prime-professionista-kling4.mp4",
@@ -1352,6 +1387,13 @@ export function createApp({
         "/assets/charging-bull-natural-gait.png":"assets/charging-bull-natural-gait.png",
         "/assets/charging-bull-preparation.png":"assets/charging-bull-preparation.png",
         "/partners.css":"partners.css",
+        "/partners-orbit.js":"partners-orbit.js",
+        "/assets/google-workspace-dark.svg":"assets/google-workspace-dark.svg",
+        "/assets/finom-wordmark.png":"assets/finom-wordmark.png",
+        "/assets/finom-wordmark-crop.svg":"assets/finom-wordmark-crop.svg",
+        "/assets/proton-mail-logo.svg":"assets/proton-mail-logo.svg",
+        "/assets/yahoo-mail-dark.svg":"assets/yahoo-mail-dark.svg",
+        "/assets/whuis-dark.png":"assets/whuis-dark.png",
         "/partners-test.css":"partners-test.css",
         "/partners-test.js":"partners-test.js",
         "/assets/contactout-logo.png":"assets/contactout-logo.png",
@@ -1361,6 +1403,12 @@ export function createApp({
 "/assets/cloudtalk-logo.svg":"assets/cloudtalk-logo.svg",
 "/assets/zadarma-logo.svg":"assets/zadarma-logo.svg",
 "/assets/google-workspace-official.svg":"assets/google-workspace-official.svg",
+        "/apps": "apps.html",
+        "/apps/": "apps.html",
+        "/apps.css": "apps.css",
+        "/apps-theme.js": "apps-theme.js",
+        ...Object.fromEntries(["apps-prime-house.png", "prime-house-favicon.png", "apps-authenticator.png", "apps-apple.svg", "apps-qr-apple.svg", "apps-qr-play.svg", "apps-qr-apk.svg"].map(file => ["/assets/" + file, "assets/" + file])),
+        "/downloads/prime-authenticator-android-v1.0.2.apk": "downloads/prime-authenticator-android-v1.0.2.apk",
         "/partners": "partners.html",
         "/partners/": "partners.html",
         "/partners/test": "partners-test.html",
@@ -1369,10 +1417,11 @@ export function createApp({
 "/assets/teamviewer-official.png":"assets/teamviewer-official.png",
 "/landing-composition.css":"landing-composition.css",
 "/landing.js":"landing.js",
-"/i18n.js":"i18n.js","/i18n.css":"i18n.css","/en.json":"en.json","/app-en.json":"app-en.json","/app-locale.js":"app-locale.js","/checkout-test.js":"checkout-test.js",
+"/i18n.js":"i18n.js","/i18n.css":"i18n.css","/en.json":"en.json","/app-en.json":"app-en.json","/app-locale.js":"app-locale.js","/checkout-test.js":"checkout-test.js","/checkout-live-choice.js":"checkout-live-choice.js",
 "/pricing.js":"pricing.js",
 "/sisters.css":"sisters.css",
 "/sisters.js":"sisters.js",
+"/film-controls.js":"film-controls.js",
 "/sisters-chat.js":"sisters-chat.js","/sisters-chat-en.js":"sisters-chat-en.js",
 "/assets/prime-bonus-chrome.png":"assets/prime-bonus-chrome.png",
 "/assets/prime-checkout-logo.svg":"assets/prime-checkout-logo.svg",
@@ -1392,9 +1441,9 @@ export function createApp({
 
 "/assets/manrope-variable.ttf":"assets/manrope-variable.ttf",
         "/": isBase ? "base.html" : "landing.html",
-        "/app": isBase?"base.html":"index.html",
+        "/app": isBase?"app-base-live.html":"app-live.html",
         "/landing": "landing.html",
-        "/checkout":url.searchParams.has("test")?"stripe-checkout.html":"checkout.html",
+        "/checkout":url.searchParams.has("order")&&(url.searchParams.has("test")||url.searchParams.get("live")==="1")?"stripe-checkout.html":"checkout.html",
         "/stripe-checkout.js":"stripe-checkout.js",
         "/stripe-checkout.css":"stripe-checkout.css",
         "/assets/checkout-lake.png":"assets/checkout-lake.png",
@@ -1405,6 +1454,26 @@ export function createApp({
         "/legal.js": "legal.js",
         "/termini": "privacy.html",
         "/app.js": "app.js",
+        "/seasonal-themes.js": "seasonal-themes.js",
+        "/seasonal-effects.js": "seasonal-effects.js",
+        "/seasonal-fireworks.js": "seasonal-fireworks.js",
+        "/seasonal-themes.css": "seasonal-themes.css",
+        "/assets/seasonal-buon-natale.wav": "assets/seasonal-buon-natale.wav",
+        "/assets/seasonal-santa-original.mp3": "assets/seasonal-santa-original.mp3",
+        "/app-live.js": "app-live.js",
+        "/development-status.js": "development-status.js",
+        "/stripe-connect.js": "stripe-connect.js",
+        "/integration-guides.js": "integration-guides.js",
+        "/qr-login.js":"qr-login.js",
+        "/qr-login.css":"qr-login.css",
+        "/security.js": "security.js",
+        "/authenticator/":"authenticator/index.html",
+        ...Object.fromEntries(['index.html','main.js','crypto.js','prime-qr.js','biometric.js','qr-decoder.js','style.css','icon.svg','icon-192.png','icon-512.png','manifest.webmanifest','sw.js'].map(file=>['/authenticator/'+file,'authenticator/'+file])),
+        "/wallester-dashboard.js": "wallester-dashboard.js",
+        "/finance-test-controls.js": "finance-test-controls.js",
+        "/finance-icons.js": "finance-icons.js",
+        "/wallester-operations.js": "wallester-operations.js",
+        "/wallester-cards.js": "wallester-cards.js",
         "/operations.js": "operations.js",
         "/backup-settings.js": "backup-settings.js",
         "/assistant-management.js": "assistant-management.js",
@@ -1412,6 +1481,7 @@ export function createApp({
         "/map-locations.js": "map-locations.js",
         "/mail.js": "mail.js",
         "/connect.js": "connect.js",
+        "/datagma-tools.js": "datagma-tools.js",
         "/stripe-agency.js": "stripe-agency.js",
         "/stripe-chart.js": "stripe-chart.js",
         "/contactout.js": "contactout.js",
@@ -1426,6 +1496,7 @@ export function createApp({
         "/brands/providers/gmail.svg": "brands/providers/gmail.svg",
         "/brands/providers/outlook.svg": "brands/providers/outlook.svg",
         "/brands/providers/datagma.svg": "brands/providers/datagma.svg",
+        "/brands/providers/datagma-official.svg": "brands/providers/datagma-official.svg",
         "/brands/providers/contactout.png": "brands/providers/contactout.png",
         "/brands/providers/telecontact.png": "brands/providers/telecontact.png",
         "/brands/providers/whuis.png": "brands/providers/whuis.png",
@@ -1438,6 +1509,11 @@ export function createApp({
         "/brands/providers/legalmail.svg": "brands/providers/legalmail.svg",
         "/brands/providers/datagma.svg": "brands/providers/datagma.svg",
         "/brands/providers/namirial.svg": "brands/providers/namirial.svg",
+         "/brands/providers/zoom.svg": "brands/providers/zoom.svg",
+         "/brands/providers/microsoftteams.svg": "brands/providers/microsoftteams.svg",
+         "/brands/providers/microsoftonedrive.svg": "brands/providers/microsoftonedrive.svg",
+         "/brands/providers/googledrive.svg": "brands/providers/googledrive.svg",
+         "/brands/providers/dropbox.svg": "brands/providers/dropbox.svg",
         "/assistant-avatar.png": "assistant-avatar.png",
         "/assistant-avatar-v2.png": "assistant-avatar-v2.png",
         "/assistant-avatar-v3.png": "assistant-avatar-v3.png",
@@ -1465,6 +1541,7 @@ export function createApp({
         "/planner-view.js": "planner-view.js",
         "/wps-clock.js": "wps-clock.js",
         "/style.css": "style.css",
+        "/style-live.css": "style-live.css",
         "/planner.css": "planner.css",
         "/territory.js": "territory.js",
         "/territory-floors.js": "territory-floors.js",
@@ -1484,11 +1561,23 @@ export function createApp({
         "/vendor/leaflet/images/marker-icon-2x.png": "vendor/leaflet/images/marker-icon-2x.png",
         "/vendor/leaflet/images/marker-shadow.png": "vendor/leaflet/images/marker-shadow.png",
       };
-      const file = files[url.pathname];
+      let file = files[url.pathname];
+      if (url.pathname === "/app" && !existsSync(path.join(root, "public", file))) {
+        file = isBase ? "base.html" : "index.html";
+      }
+      if(url.pathname==='/checkout-live-choice.css')file='checkout-live-choice.css';
+      if (!file && /^\/brands\/(?:checkout\/(?:methods\/)?)?[a-z0-9_-]+\.(?:svg|png)$/i.test(url.pathname)) {
+        const candidate=url.pathname.slice(1);
+        try { if(statSync(path.join(root,'public',candidate)).isFile())file=candidate; } catch {}
+      }
+      if (!file && /^\/assets\/(?:[a-z0-9_-]+\/)*[a-z0-9_-]+\.(?:svg|png|webp|jpe?g|gif|avif|bmp|ico|ttf|woff2?|txt|webm)$/i.test(url.pathname)) {
+        const candidate = url.pathname.slice(1);
+        try { if (statSync(path.join(root, "public", candidate)).isFile()) file = candidate; } catch {}
+      }
       if (!file) throw new ApiError(404, "Non trovato");
-      if (file.endsWith(".mp4")) {
+      if (/\.(?:mp4|webm)$/.test(file)) {
         const videoPath = path.join(root, "public", file), size = statSync(videoPath).size;
-        const headers = { "Content-Type": "video/mp4", "Accept-Ranges": "bytes" };
+        const headers = { "Content-Type": file.endsWith(".webm") ? "video/webm" : "video/mp4", "Accept-Ranges": "bytes" };
         const range = req.headers.range;
         let start = 0, end = size - 1;
         if (range) {
@@ -1508,10 +1597,12 @@ export function createApp({
         const stream = createReadStream(videoPath, { start, end });
         stream.on("error", () => res.destroy()); res.on("close", () => stream.destroy()); stream.pipe(res); return;
       }
-      const mime = file.endsWith(".ttf") ? "font/ttf" : file.endsWith(".svg") ? "image/svg+xml" : file.endsWith(".webp")
+      const extension = path.extname(file).toLowerCase();
+      const mime = extension === ".mp3" ? "audio/mpeg" : extension === ".wav" ? "audio/wav" : extension === ".webmanifest" ? "application/manifest+json" : extension === ".ttf" ? "font/ttf" : extension === ".woff" ? "font/woff" : extension === ".woff2" ? "font/woff2" : extension === ".svg" ? "image/svg+xml" : extension === ".txt" ? "text/plain" : extension === ".avif" ? "image/avif" : extension === ".bmp" ? "image/bmp" : extension === ".ico" ? "image/x-icon" : extension === ".gif" ? "image/gif" : /\.jpe?g$/i.test(file) ? "image/jpeg" : file.endsWith(".webp")
         ? "image/webp"
         : file.endsWith(".png")
         ? "image/png"
+        : file.endsWith(".apk") ? "application/vnd.android.package-archive" : file.endsWith(".zip") ? "application/zip" : file.endsWith(".crx") ? "application/x-chrome-extension"
         : file.endsWith(".json") ? "application/json" : file.endsWith(".js")
           ? "text/javascript"
           : file.endsWith(".css")
@@ -1519,16 +1610,15 @@ export function createApp({
             : "text/html";
       const rawContent=readFileSync(path.join(root,"public",file));
       let content=publicLocalizedPages.has(file)?localizePublicPage(rawContent.toString('utf8'),url.searchParams.get('lang')):rawContent;
-      if(mime==="text/html"&&file!=="cookies.html"&&file!=="admin.html"){
-        let html=content.toString("utf8");
-        html=html.replace("</head>",'<link rel="stylesheet" href="/cookies.css?v=20261031-preferences"></head>');
-        html=html.replace("</body>",'<script defer src="/cookies.js?v=20261031-preferences"></script></body>');
-        content=Buffer.from(html);
+      if (mime === "text/html" && file !== "cookies.html" && file !== "admin.html" && !file.startsWith("authenticator/")) {
+        let html = content.toString("utf8");
+        html = html.replace("</head>", '<link rel="stylesheet" href="/cookies.css?v=20261031-preferences"></head>');
+        html = html.replace("</body>", '<script defer src="/cookies.js?v=20261031-preferences"></script></body>');
+        content = Buffer.from(html);
       }
-      if(["admin.html","admin.css","admin.js"].includes(file))res.setHeader("Cache-Control","no-store");
-      res.writeHead(200, {
-        "Content-Type": mime + ([".png", ".webp"].some((extension) => file.endsWith(extension)) ? "" : "; charset=utf-8"),
-      });
+      const headers={"Content-Type":mime.startsWith("text/")||mime==="application/json"?mime+"; charset=utf-8":mime};
+      if(file.startsWith("downloads/"))headers["Content-Disposition"]='attachment; filename="'+path.basename(file)+'"';
+      res.writeHead(200,headers);
       res.end(content);
     } catch (e) {
       let status = e.status || 500,
@@ -1555,10 +1645,10 @@ export function createApp({
   server.on("close",elite.close);
   server.on("close",backups.close);
   server.on("close",connect.close);
-  const cpayTimer=publicDemo?null:setInterval(()=>{cpay.poll().catch(()=>{});},30000);cpayTimer?.unref();
+  const cpayTimer=publicDemo?null:setInterval(()=>{cpay.poll().catch(()=>{});rewards.poll().catch(()=>{});trustpilot.poll().catch(()=>{});},30000);cpayTimer?.unref();
   server.on('close',()=>clearInterval(cpayTimer));
   server.on('close',()=>customerDemos?.close());
-  return { server, db, connect, ...(publicDemo?{demoSave:(entity,data,session)=>saveEntity(entity,{data},session)}:{}) };
+  return { server, db, connect, trustpilot, ...(publicDemo?{demoSave:(entity,data,session)=>saveEntity(entity,{data},session)}:{}) };
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { server } = createApp();

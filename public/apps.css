@@ -1,0 +1,108 @@
+.apps-page { --app-accent: #e1c995; --app-green: #99dfb4; }
+.apps-main { padding-block: clamp(2rem, 6vw, 5rem); }
+.apps-intro { max-width: 42rem; margin-bottom: clamp(1.75rem, 4vw, 3.5rem); }
+.apps-intro h1 { font-size: clamp(2.5rem, 7vw, 5.4rem); line-height: 1; margin: .35em 0 .28em; }
+html[data-theme="light"] .apps-intro .apps-title img { filter: brightness(0) opacity(.85); }
+.apps-intro > p:last-child, .app-copy > p:last-child, .store-note p { color: var(--muted); }
+.apps-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(1rem, 3vw, 2rem); align-items: start; }
+.app-card { padding: clamp(1rem, 3vw, 2rem); border-radius: 24px; background: var(--panel); border: 1px solid var(--line); }
+.app-art { display: grid; place-items: center; height: clamp(10rem, 22vw, 14rem); margin-bottom: 1.4rem; background: radial-gradient(ellipse, color-mix(in srgb, var(--app-accent) 10%, transparent), transparent 70%); }
+.authenticator-icon { display: block; width: min(48%, 160px); height: auto; }
+:root[data-theme="light"] .authenticator-icon { filter: brightness(.55); }
+.apps-demo .apps-demo-dot { width: 7px; height: 7px; border-radius: 50%; background: #258849; }
+.apps-page .apps-demo { gap: 7px; }
+@media (max-width: 560px) {
+  .apps-page .site-header { column-gap: 5px; }
+  .apps-page .site-header .header-actions { flex: 1 0 auto; flex-wrap: nowrap; justify-content: flex-end; }
+  .apps-page .site-header .header-actions > .button { flex: 0 0 auto; }
+  .apps-page .site-header .brand { flex: 0 0 auto; width: auto; }
+  .apps-page .site-header .brand img { width: clamp(82px, 24vw, 110px); }
+}
+.prime-house { width: min(80%, 300px); height: auto; }
+.app-status { display: inline-block; padding: .28rem .65rem; border-radius: 999px; color: var(--app-accent); border: 1px solid currentColor; font-size: .78rem; font-weight: 700; }
+.app-status.available { color: var(--app-green); }
+.app-copy h2 { margin: .35rem 0; font-size: clamp(1.45rem, 3vw, 2.2rem); }
+.app-copy > p:last-child { min-height: 3.4em; }
+.store-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+.app-card details { border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+.app-card summary { display: flex; align-items: center; gap: .55rem; padding: .65rem; cursor: pointer; font-weight: 700; list-style: none; min-height: 58px; }
+.app-card summary::-webkit-details-marker { display: none; }
+.app-card summary::after { content: "+"; margin-inline-start: auto; }
+.app-card details[open] summary::after { content: "−"; }
+.app-card summary small { display: block; color: var(--muted); font-size: .75rem; font-weight: 500; }
+.app-card summary svg, .app-card summary img { flex: none; }
+.apple-mark { filter: invert(1); }
+.app-card details a { display: grid; justify-items: center; gap: .5rem; padding: .45rem .6rem .85rem; text-align: center; font-size: .85rem; text-decoration: underline; }
+.qr { display: block; max-width: 100%; height: auto; border-radius: 6px; }
+.apk-option { margin-top: .75rem; }
+.apk-download { margin-top: .75rem; }
+.store-note { display: none; padding: 1.25rem; margin-top: 1.5rem; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
+.store-note:target { display: block; }
+.store-note a { text-decoration: underline; }
+.apps-page nav [aria-current="page"] { color: var(--text); text-decoration: underline; text-underline-offset: .35em; }
+:root[data-theme="light"] {
+  .apps-page { --bg: #f7f8fa; --panel: #fff; --line: #d5dae1; --text: #202732; --muted: #4e5969; --app-accent: #735313; --app-green: #1b6942; color: var(--text); background: var(--bg); }
+}
+:root[data-theme="light"] .prime-house { filter: brightness(.53); }
+:root[data-theme="light"] .apple-mark { filter: none; }
+.apps-page .site-header .brand img { width: clamp(110px, 15vw, 190px); height: auto; }
+#apps-theme[hidden] { display: none; }
+@media (max-width: 700px) { .apps-grid { grid-template-columns: 1fr; } .app-copy > p:last-child { min-height: 0; } }
+@media (max-width: 365px) { .store-options { grid-template-columns: 1fr; } }
+
+.apps-page .site-header > nav { justify-content: center; gap: 4px clamp(14px, 2vw, 28px); }
+.apps-page .site-header > nav a { display: inline-flex; align-items: center; min-height: 44px; font-size: clamp(15px, 1.2vw, 18px); font-weight: 600; }
+@media (max-width: 1050px) {
+  .apps-page .site-header { display: flex; flex-wrap: wrap; height: auto; min-height: 76px; padding-block: 12px; row-gap: 4px; }
+  .apps-page .site-header > nav { display: flex; order: 3; flex: 1 0 100%; flex-wrap: wrap; }
+  .apps-page .site-header .header-actions { margin-left: auto; }
+}
+
+.apps-page .header-actions .language-control > .prime-language-switch { display: inline-flex; }
+
+/* The App page uses the same menu typography and color as the home page. */
+.apps-page .site-header > nav a {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--text);
+  text-shadow: none;
+}
+.apps-page .site-header > nav a:hover,
+.apps-page .site-header > nav a:focus-visible,
+.apps-page .site-header > nav a[aria-current="page"] {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 5px;
+}
+
+/* Keep the App menu identical to the home page reference. */
+.apps-page .site-header > nav {
+  gap: 4px 28px;
+}
+.apps-page .site-header > nav a {
+  font-family: Inter, Arial, sans-serif;
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.2;
+  color: var(--text);
+  text-shadow: none;
+}
+.apps-page .site-header > nav a:hover,
+.apps-page .site-header > nav a:focus-visible,
+.apps-page .site-header > nav a[aria-current="page"] {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 7px;
+  text-decoration-thickness: 1px;
+}
+@media (min-width: 1101px) {
+  .apps-page .site-header > nav a { font-size: clamp(15px, 1.28vw, 22px); }
+}
+@media (max-width: 560px) {
+  .apps-page .site-header > nav { gap: 4px 15px; }
+  .apps-page .site-header > nav a { font-size: 16px; }
+}
+.apps-page .site-footer:after{content:'© 2026 Phoenix Code · PRIME';margin-left:auto;color:var(--muted);font-size:10px}

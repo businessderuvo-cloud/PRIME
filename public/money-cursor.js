@@ -3,7 +3,7 @@
   if (!document.body) return;
 
   const bullArt = '<svg class="wallstreet-bull-photo" viewBox="128 4 1212 896" aria-hidden="true" focusable="false"><image href="/assets/charging-bull-original-silver.png" width="1735" height="906"/></svg><span class="wallstreet-bull-prep" aria-hidden="true"></span>';
-  const nativeCursorArea = target => !!target?.closest?.('[data-native-cursor]');
+  const nativeCursorArea = target => !!target?.closest?.('dialog,[role="dialog"],[aria-modal="true"],[data-native-cursor]');
   let cursor = null;
   let gaitReady = false;
   let prepReady = false;

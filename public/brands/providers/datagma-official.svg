@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" role="img" aria-labelledby="title">
+  <title id="title">Datagma</title>
+  <circle cx="24" cy="24" r="20" fill="#2563eb"/>
+  <path d="M16 12h9.2c6.1 0 10.8 4.8 10.8 12s-4.7 12-10.8 12H16V12Zm8.7 19.2c3.9 0 6.5-2.6 6.5-7.2s-2.6-7.2-6.5-7.2h-3.2v14.4h3.2Z" fill="#fff"/>
+  <text x="54" y="33" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" letter-spacing="-.8" fill="#fff">Datagma</text>
+</svg>

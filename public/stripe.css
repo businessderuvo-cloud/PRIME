@@ -77,6 +77,7 @@
 .stripe-chart-svg circle.stripe-line-point.stripe-income{fill:#27875f!important;stroke:var(--surface2)!important;stroke-width:2.5}
 .stripe-chart-svg circle.stripe-line-point.stripe-pending{fill:#bf792b!important;stroke:var(--surface2)!important;stroke-width:2.5}
 .stripe-chart-svg circle.stripe-line-point.stripe-cost{fill:#b8545b!important;stroke:var(--surface2)!important;stroke-width:2.5}
+.stripe-pie-legend{color:#f2f6fb}.stripe-pie-row>span,.stripe-pie-row>small,.stripe-pie-legend>p{color:#d9e3ee}.stripe-pie-row>strong,.stripe-pie-total>strong{color:#ffffff}.stripe-pie-total>span{color:#d9e3ee}.stripe-pie-row.stripe-summary-income>span{color:#8fe3b2!important}.stripe-pie-row.stripe-summary-pending>span{color:#ffd08a!important}.stripe-pie-row.stripe-summary-cost>span{color:#ff9a9a!important}
 .stripe-chart-legend .income-key,.stripe-chart-summary-item.stripe-summary-income .stripe-chart-summary-label,.stripe-pie-row.stripe-summary-income>span{color:#27875f!important;font-weight:650}
 .stripe-chart-legend .pending-key,.stripe-chart-summary-item.stripe-summary-pending .stripe-chart-summary-label,.stripe-pie-row.stripe-summary-pending>span{color:#bf792b!important;font-weight:650}
 .stripe-chart-legend .cost-key,.stripe-chart-summary-item.stripe-summary-cost .stripe-chart-summary-label,.stripe-pie-row.stripe-summary-cost>span{color:#b8545b!important;font-weight:650}

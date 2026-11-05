@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {startEliteCopilotAudio} from './public/elite-audio.js';
+import {startEliteCopilotAudio,startEliteCopilotText} from './public/elite-audio.js';
 
 test('voice copilot negotiates mu-law input/output, plays audio and clears it on interruption',async()=>{
   const originals=new Map(['window','navigator','AudioContext','WebSocket'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
@@ -23,7 +23,7 @@ test('voice copilot negotiates mu-law input/output, plays audio and clears it on
   }
   try{
     for(const [key,value] of Object.entries({window:{isSecureContext:true},navigator:{mediaDevices:{}},AudioContext:AudioContextMock,WebSocket:SocketMock}))Object.defineProperty(globalThis,key,{value,configurable:true,writable:true});
-    const track={stop(){},addEventListener(){}},video={stop(){videoStopped++;}},stream={getAudioTracks:()=>[track],getVideoTracks:()=>[video],getTracks:()=>[track,video]};
+    const track={stop(){},addEventListener(){}},video={stop(){videoStopped++;},addEventListener(){}},stream={getAudioTracks:()=>[track],getVideoTracks:()=>[video],getTracks:()=>[track,video]};
     const session=await startEliteCopilotAudio({signedUrl:'wss://api.elevenlabs.io/test',tabStream:stream,captureCall:true,playAudio:true});
     assert.equal(session.isActive(),true);assert.equal(videoStopped,0,'shared capture remains alive during the session');
     assert.equal(socket.sent[0].conversation_config_override.conversation.text_only,false);
@@ -35,7 +35,7 @@ test('voice copilot negotiates mu-law input/output, plays audio and clears it on
   }finally{for(const [key,descriptor] of originals){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}}
 });
 
-test('Text copilot streams selected call audio, displays live suggestions, invokes change tools and stays silent',async()=>{
+test('voice copilot with text output streams audio, invokes change tools and stays silent',async()=>{
   const originals=new Map(['window','navigator','AudioContext','WebSocket'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
   let socket,processor,played=0,stopped=0,closed=0;
   const transcripts=[],suggestions=[],tools=[];
@@ -71,6 +71,82 @@ test('Text copilot streams selected call audio, displays live suggestions, invok
     await new Promise(resolve=>setImmediate(resolve));
     assert.deepEqual(transcripts,['Il cliente cerca un bilocale']);assert.deepEqual(suggestions,['Chiedi il budget massimo.']);assert.equal(played,0);assert.equal(tools[0].operation,'propose');
     assert.ok(socket.sent.some(message=>message.type==='client_tool_result'&&!message.is_error&&message.result.includes('pending')));
-    await session.endSession();assert.equal(stopped,2);assert.equal(closed,1);assert.equal(socket.readyState,3);
+    await session.endSession();assert.equal(stopped,1);assert.equal(closed,1);assert.equal(socket.readyState,3);
   }finally{for(const [key,descriptor] of originals){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}}
+});
+
+async function withTextCopilot(run,{startupError}={}){
+  const originals=new Map(['window','AudioContext'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
+  const state={sources:[],messages:[],suggestions:[],transcripts:[],statuses:[],sent:[],contextClosed:0,sessionClosed:0,scribeClosed:0,ended:0};
+  const node=()=>({connect(){},disconnect(){},gain:{value:1}});
+  class Track extends EventTarget{stopped=0;stop(){this.stopped++;}}
+  state.mic=new Track();state.call=new Track();state.video=new Track();
+  state.micStream={getAudioTracks:()=>[state.mic],getTracks:()=>[state.mic]};
+  state.tabStream={getAudioTracks:()=>[state.call],getTracks:()=>[state.call,state.video]};
+  class Context{
+    sampleRate=48000;destination={};
+    async resume(){} async close(){state.contextClosed++;}
+    createGain(){return node();}
+    createMediaStreamSource(stream){state.sources.push(stream);return node();}
+    createScriptProcessor(){state.processor=node();return state.processor;}
+    createBufferSource(){throw Error('Text-only copilot must never reproduce speech');}
+  }
+  const events={SESSION_STARTED:'started',PARTIAL_TRANSCRIPT:'partial',COMMITTED_TRANSCRIPT:'committed',ERROR:'error',CLOSE:'close'};
+  const listeners=new Map();
+  state.scribe={on(event,listener){if(!listeners.has(event))listeners.set(event,[]);listeners.get(event).push(listener);},emit(event,data={}){for(const listener of listeners.get(event)||[])listener(data);},send(data){state.sent.push(data);},close(){state.scribeClosed++;this.emit('close');}};
+  const sdk={
+    Conversation:{async startSession(options){state.options=options;const session={getId:()=>'conv_text_scribe',sendUserMessage:text=>state.messages.push(text),async endSession(){state.sessionClosed++;options.onDisconnect();}};options.onConversationCreated(session);options.onConnect();return session;}},
+    Scribe:{connect(options){state.scribeOptions=options;queueMicrotask(()=>state.scribe.emit(startupError?'error':'started',startupError?{error:startupError}:{}));return state.scribe;}},
+    AudioFormat:{PCM_16000:'pcm_16000'},CommitStrategy:{VAD:'vad'},RealtimeEvents:events
+  };
+  try{
+    Object.defineProperty(globalThis,'window',{value:{isSecureContext:true},configurable:true});
+    Object.defineProperty(globalThis,'AudioContext',{value:Context,configurable:true});
+    state.start=extra=>startEliteCopilotText({api:async path=>{assert.equal(path,'/api/elite/scribe-token');return {token:'single-use'};},loadClient:async()=>sdk,signedUrl:'wss://api.elevenlabs.io/test',micStream:state.micStream,tabStream:state.tabStream,onTranscript:text=>state.transcripts.push(text),onAgentMessage:text=>state.suggestions.push(text),onStatus:text=>state.statuses.push(text),onEnd:()=>state.ended++,...extra});
+    await run(state);
+  }finally{for(const [key,descriptor] of originals){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}}
+}
+
+test('real text copilot mixes selected mic and call, resamples Scribe audio, forwards committed text and releases capture',async()=>{
+  await withTextCopilot(async state=>{
+    const tools=[];
+    const session=await state.start({language:'en',clientTools:{prime_workspace:async p=>{tools.push(p);return 'pending';}}});
+    assert.equal(session.isActive(),true);assert.equal(session.getId(),'conv_text_scribe');
+    assert.equal(state.options.textOnly,true);assert.equal(state.scribeOptions.languageCode,'eng');
+    assert.deepEqual(state.sources,[state.micStream,state.tabStream]);
+    state.processor.onaudioprocess({inputBuffer:{getChannelData:()=>new Float32Array(2048).fill(.1)},outputBuffer:{getChannelData:()=>new Float32Array(2048)}});
+    assert.equal(Buffer.from(state.sent[0].audioBase64,'base64').length,1364,'audio is resampled from actual 48kHz context to 16kHz PCM');
+    state.scribe.emit('partial',{text:'cerca un bilocale'});assert.equal(state.messages.length,0);
+    state.scribe.emit('committed',{text:'Il cliente cerca un bilocale'});
+    assert.deepEqual(state.transcripts,['Il cliente cerca un bilocale']);assert.match(state.messages[0],/Trascrizione live.*Il cliente cerca un bilocale/);
+    state.options.onMessage({source:'ai',message:'Chiedi il budget massimo.'});assert.deepEqual(state.suggestions,['Chiedi il budget massimo.']);
+    assert.equal(await state.options.clientTools.prime_workspace({operation:'propose'}),'pending');assert.deepEqual(tools,[{operation:'propose'}]);
+    await session.endSession();await session.endSession();assert.equal(session.isActive(),false);
+    assert.deepEqual([state.mic.stopped,state.call.stopped,state.video.stopped],[1,1,1]);
+    assert.deepEqual([state.sessionClosed,state.scribeClosed,state.contextClosed,state.ended],[1,1,1,1]);
+    state.scribe.emit('committed',{text:'late segment'});assert.equal(state.messages.length,1);
+  });
+});
+
+test('text copilot releases both captures and closes Vanessa when Scribe startup fails',async()=>{
+  await withTextCopilot(async state=>{
+    await assert.rejects(state.start(),/permission denied/);
+    assert.deepEqual([state.mic.stopped,state.call.stopped,state.video.stopped],[1,1,1]);
+    assert.deepEqual([state.sessionClosed,state.scribeClosed,state.ended],[1,1,1]);
+    assert.equal(state.sources.length,0,'failed transcription never starts audio processing');
+  },{startupError:'permission denied'});
+});
+
+test('text copilot stops capture and allows restart after provider, speech socket or sharing ends',async()=>{
+  for(const cause of ['provider','scribe','sharing'])await withTextCopilot(async state=>{
+    const session=await state.start();
+    if(cause==='provider')state.options.onDisconnect();
+    else if(cause==='scribe')state.scribe.emit('close');
+    else state.video.dispatchEvent(new Event('ended'));
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(session.isActive(),false,cause);
+    assert.deepEqual([state.mic.stopped,state.call.stopped,state.video.stopped],[1,1,1],cause);
+    assert.deepEqual([state.sessionClosed,state.scribeClosed,state.contextClosed,state.ended],[1,1,1,1],cause);
+    assert.match(state.statuses.at(-1),/Riavvia il copilot/);
+  });
 });

@@ -108,21 +108,27 @@ async function snapshot(app,dir,files){
  console.log('Snapshot pronto. Modifica solo i file nella cartella '+path.join(dir,'files'));
 }
 
-async function publish(dir){
+const releaseFeed='public/assets/development-releases.txt';
+
+async function publish(dir,note){
  const manifest=JSON.parse(await fs.readFile(path.join(dir,'snapshot.json'),'utf8'));
  if(manifest.version!==1)throw Error('Formato snapshot non supportato');
  const files=Object.keys(manifest.files).map(safeFile),app=manifest.app;
+ if(files.includes(releaseFeed))throw Error('Il registro delle pubblicazioni è generato automaticamente.');
+ const trackedFiles=app==='prime-gestionale-deruvo'?[...files,releaseFeed]:files;
  const desired=Object.fromEntries(await Promise.all(files.map(async f=>[f,await fs.readFile(path.join(dir,'files',f))])));
  activeLock=await acquireLock(app);
  const record={app,started:new Date().toISOString(),files:files.map(f=>({path:f,sha256:hash(desired[f])}))};
  try{
   for(let attempt=0;attempt<3;attempt++){
-   const live=await readLiveFiles(app,files);
+   const live=await readLiveFiles(app,trackedFiles);
    const build=path.join(dir,'build-'+crypto.randomUUID());await fs.mkdir(build,{recursive:true});
+   let changed=0;
    for(const file of files){
     const base=manifest.files[file]===null?null:Buffer.from(manifest.files[file],'base64');
     const current=live.files[file]===null?null:Buffer.from(live.files[file],'base64');
     const content=await mergeFile(base,desired[file],current,path.join(dir,'conflicts'),file);
+    if(!current||!content.equals(current))changed++;
     const dest=path.join(build,'overlay',file);await fs.mkdir(path.dirname(dest),{recursive:true});await fs.writeFile(dest,content);
    }
    const deps=files.some(f=>['package.json','package-lock.json'].includes(f));
@@ -130,15 +136,24 @@ async function publish(dir){
    const config=path.join(build,'fly.toml');await fs.writeFile(config,`app = "${app}"\n`);
    await run('fly',['config','save','--app',app,'--config',config,'--yes']);
    const label='safe-'+Date.now()+'-'+crypto.randomBytes(3).toString('hex');
+   if(trackedFiles.includes(releaseFeed)){
+    const existing=live.files[releaseFeed];
+    const history=existing===null?[]:JSON.parse(Buffer.from(existing,'base64').toString('utf8'));
+    if(!Array.isArray(history))throw Error('Registro delle pubblicazioni non valido.');
+    const releases=changed?[{version:label,date:new Date().toISOString(),note:note||'Aggiornamento pubblicato su PRIME.'},...history].slice(0,25):history;
+    const dest=path.join(build,'overlay',releaseFeed);
+    await fs.mkdir(path.dirname(dest),{recursive:true});
+    await fs.writeFile(dest,JSON.stringify(releases)+'\n');
+   }
    console.log('Preparo il pacchetto sulla versione live '+live.tag);
    await run('fly',['deploy','--app',app,'--config',config,'--dockerfile',path.join(build,'Dockerfile'),'--build-only','--push','--image-label',label,'--compression','gzip'],{cwd:build,stream:true});
    const beforeDeploy=await liveImage(app);
    if(beforeDeploy.image!==live.image){console.log('Un deploy esterno è terminato durante la preparazione: ricompongo il pacchetto sulla nuova versione.');continue;}
    const target=`registry.fly.io/${app}:${label}`;
    await run('fly',['deploy','--app',app,'--config',config,'--image',target],{cwd:build,stream:true});
-   const after=await readLiveFiles(app,files);
+   const after=await readLiveFiles(app,trackedFiles);
    if(after.tag!==label)throw Error('Un altro deploy ha sostituito la versione appena pubblicata. Nessun successo dichiarato.');
-   for(const file of files){const expected=await fs.readFile(path.join(build,'overlay',file));if(after.files[file]===null||hash(Buffer.from(after.files[file],'base64'))!==hash(expected))throw Error('Verifica live non riuscita: '+file);}
+   for(const file of trackedFiles){const expected=await fs.readFile(path.join(build,'overlay',file));if(after.files[file]===null||hash(Buffer.from(after.files[file],'base64'))!==hash(expected))throw Error('Verifica live non riuscita: '+file);}
    record.image=after.image;record.tag=label;record.status='published';
    console.log('Pubblicazione verificata: '+label);return;
   }
@@ -151,13 +166,62 @@ async function publish(dir){
  }
 }
 
+async function recover(app,expectedTag,dir,files){
+ if(!/^[a-z0-9-]+$/.test(app))throw Error('Nome app non valido');
+ if(!/^safe-[0-9]+-[a-f0-9]{6}$/.test(expectedTag))throw Error('Specifica il tag esatto della versione da riparare.');
+ if(!files.length)throw Error('Specifica almeno un file per il ripristino.');
+ const desired=Object.fromEntries(await Promise.all([...new Set(files.map(safeFile))].map(async file=>{
+  const content=await fs.readFile(path.join(dir,file));
+  if(!content.length)throw Error('Il file di ripristino è vuoto: '+file);
+  return [file,content];
+ })));
+ activeLock=await acquireLock(app);
+ const record={app,started:new Date().toISOString(),recovery:true,expectedTag,files:Object.keys(desired).map(file=>({path:file,sha256:hash(desired[file])}))};
+ try{
+  const live=await liveImage(app);
+  if(live.tag!==expectedTag)throw Error(`Ripristino annullato: la versione live è ${live.tag}, attesa ${expectedTag}.`);
+  const build=path.join(dir,'recovery-build-'+crypto.randomUUID());await fs.mkdir(build,{recursive:true});
+  for(const[file,content]of Object.entries(desired)){const dest=path.join(build,'overlay',file);await fs.mkdir(path.dirname(dest),{recursive:true});await fs.writeFile(dest,content);}
+  const deps=Object.keys(desired).some(file=>['package.json','package-lock.json'].includes(file));
+  await fs.writeFile(path.join(build,'Dockerfile'),`FROM ${live.image}\nCOPY overlay/ /app/\n${deps?'RUN npm ci --omit=dev --no-audit --no-fund\n':''}`);
+  const config=path.join(build,'fly.toml');await fs.writeFile(config,`app = "${app}"\n`);
+  await run('fly',['config','save','--app',app,'--config',config,'--yes']);
+  const label='safe-'+Date.now()+'-'+crypto.randomBytes(3).toString('hex');
+  console.log('Preparo il ripristino sulla versione bloccata '+live.tag);
+  await run('fly',['deploy','--app',app,'--config',config,'--dockerfile',path.join(build,'Dockerfile'),'--build-only','--push','--image-label',label,'--compression','gzip'],{cwd:build,stream:true});
+  const beforeDeploy=await liveImage(app);
+  if(beforeDeploy.image!==live.image||beforeDeploy.tag!==expectedTag)throw Error('Ripristino annullato: la versione live è cambiata durante la preparazione.');
+  await run('fly',['deploy','--app',app,'--config',config,'--image',`registry.fly.io/${app}:${label}`],{cwd:build,stream:true});
+  let after,tagDeadline=Date.now()+60000;
+  while(Date.now()<tagDeadline){try{after=await liveImage(app);if(after.tag===label)break;}catch{}await wait(1500);}
+  if(after?.tag!==label)throw Error('La versione pubblicata non corrisponde al ripristino preparato.');
+  const deadline=Date.now()+90000;let response;
+  while(Date.now()<deadline){
+   try{response=await fetch(`https://${app}.fly.dev/`,{signal:AbortSignal.timeout(8000),redirect:'manual'});if(response.status>=200&&response.status<500)break;}catch{}
+   await wait(2500);
+  }
+  if(!response||response.status<200||response.status>=500)throw Error('Immagine riparata, ma il servizio non è ancora tornato sano.');
+  const verified=await readLiveFiles(app,Object.keys(desired));
+  if(verified.tag!==label)throw Error('Un altro deploy ha sostituito il ripristino.');
+  for(const[file,content]of Object.entries(desired)){if(verified.files[file]===null||hash(Buffer.from(verified.files[file],'base64'))!==hash(content))throw Error('Verifica live non riuscita: '+file);}
+  record.image=after.image;record.tag=label;record.httpStatus=response.status;record.status='recovered';
+  console.log('Ripristino verificato: '+label+' (HTTP '+response.status+')');
+ }catch(e){record.status='failed';record.error=e.message;throw e;}
+ finally{
+  record.finished=new Date().toISOString();
+  try{await fs.appendFile(path.join(stateRoot,app+'.jsonl'),JSON.stringify(record)+'\n');}
+  finally{await activeLock.release();activeLock=null;}
+ }
+}
+
 export async function main(args){
  const [command,...rest]=args,options={file:[]};
  for(let i=0;i<rest.length;i+=2){const key=rest[i].replace(/^--/,'');if(!rest[i].startsWith('--')||!rest[i+1])throw Error('Argomenti non validi');if(key==='file')options.file.push(safeFile(rest[i+1]));else options[key]=rest[i+1];}
- if(!options.dir)throw Error('Usa snapshot --app APP --dir DIR --file public/file oppure publish --dir DIR');
+ if(!options.dir)throw Error('Usa snapshot --app APP --dir DIR --file public/file, publish --dir DIR oppure recover --app APP --expected-tag TAG --dir DIR --file src/file.mjs');
  const dir=path.resolve(options.dir);
  if(command==='snapshot'){if(!options.app||!options.file.length)throw Error('Specifica --app e almeno un --file');if(!/^[a-z0-9-]+$/.test(options.app))throw Error('Nome app non valido');await snapshot(options.app,dir,[...new Set(options.file)]);}
- else if(command==='publish')await publish(dir);
+ else if(command==='publish')await publish(dir,options.note?.trim().slice(0,400));
+ else if(command==='recover'){if(!options.app||!options['expected-tag'])throw Error('Specifica --app e il tag esatto con --expected-tag');await recover(options.app,options['expected-tag'],dir,options.file);}
  else throw Error('Comando non valido: snapshot o publish');
 }
 if(process.argv[1]&&fileURLToPath(import.meta.url)===path.resolve(process.argv[1]))main(process.argv.slice(2)).catch(e=>{console.error(e.message);process.exitCode=1;});

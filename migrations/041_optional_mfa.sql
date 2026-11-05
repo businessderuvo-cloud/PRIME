@@ -1,0 +1,10 @@
+ALTER TABLE users ADD COLUMN email_2fa_enabled INTEGER NOT NULL DEFAULT 0 CHECK(email_2fa_enabled IN(0,1));
+ALTER TABLE users ADD COLUMN sms_2fa_enabled INTEGER NOT NULL DEFAULT 0 CHECK(sms_2fa_enabled IN(0,1));
+ALTER TABLE users ADD COLUMN sms_2fa_phone_cipher TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN two_factor_policy TEXT NOT NULL DEFAULT 'any' CHECK(two_factor_policy IN('any','all'));
+ALTER TABLE auth_challenges ADD COLUMN methods TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE auth_challenges ADD COLUMN verified TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE auth_challenges ADD COLUMN purpose TEXT NOT NULL DEFAULT 'login';
+ALTER TABLE auth_challenges ADD COLUMN policy TEXT NOT NULL DEFAULT 'any';
+CREATE TABLE auth_factor_codes(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,method TEXT NOT NULL,purpose TEXT NOT NULL,payload_cipher TEXT NOT NULL,expires_at INTEGER NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL);
+CREATE INDEX auth_factor_codes_user ON auth_factor_codes(user_id,created_at);

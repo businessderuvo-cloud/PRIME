@@ -1,5 +1,6 @@
 import { ApiError } from './validation.mjs';
 
+const operations = {"stats":{"title":"Crediti e utilizzo","route":"stats","fields":[]},"person":{"title":"Arricchisci persona","route":"people/enrich","post":true,"fields":["email","phone","linkedin_url","full_name","company[]","location","include[]"]},"linkedin":{"title":"Profilo LinkedIn completo","route":"linkedin/enrich","fields":["profile","profile_only?"]},"email":{"title":"Profilo da email","route":"email/enrich","fields":["email","include"]},"contacts":{"title":"Email e telefoni da LinkedIn","route":"people/linkedin","fields":["profile","include_phone?","email_type"]},"batch":{"title":"Recapiti LinkedIn in gruppo","route":"people/linkedin/batch","post":true,"fields":["profiles[]","include_phone?"]},"company":{"title":"Aziende da dominio","route":"domain/enrich","post":true,"fields":["domains[]"]},"search":{"title":"Cerca persone","route":"people/search","post":true,"fields":["name[]","job_title[]","company[]","location[]","page#","reveal_info?"]},"count":{"title":"Conta persone","route":"people/count","post":true,"fields":["name[]","job_title[]","company[]","location[]"]},"decision":{"title":"Trova decisori aziendali","route":"people/decision-makers","fields":["domain","name","linkedin_url","page#","reveal_info?"]},"companySearch":{"title":"Cerca aziende","route":"company/search","post":true,"fields":["name[]","domain[]","location[]","industry[]","page#"]},"emailLinkedin":{"title":"LinkedIn da email","route":"people/person","fields":["email"]},"personalCheck":{"title":"Disponibilità email personale","route":"people/linkedin/personal_email_status","fields":["profile"]},"workCheck":{"title":"Disponibilità email professionale","route":"people/linkedin/work_email_status","fields":["profile"]},"phoneCheck":{"title":"Disponibilità telefono","route":"people/linkedin/phone_status","fields":["profile"]},"verify":{"title":"Verifica email","route":"email/verify","fields":["email"]},"verifyBatch":{"title":"Verifica email in gruppo","route":"email/verify/batch","post":true,"fields":["emails[]"]}};
 const admin = (session) => {
   if (!['owner', 'manager'].includes(session.role)) throw new ApiError(403, 'Configurazione riservata al titolare o responsabile.');
 };
@@ -14,28 +15,30 @@ const linkedIn = (value) => {
 };
 
 export function normalizeContactOut(profile) {
-  const work = strings(profile.work_email).filter(email);
+  const work = strings(profile.work_email || profile.workEmail).filter(email);
   const personal = strings(profile.personal_email).filter(email);
   const known = new Set([...work, ...personal]);
   const other = strings(profile.email).filter((value) => email(value) && !known.has(value));
   return {
-    name: text(profile.full_name), profession: text(profile.headline).slice(0, 200),
-    linkedin: linkedIn(profile.url) ? profile.url : '',
+    name: text(profile.full_name || profile.fullName), profession: text(profile.headline).slice(0, 200),
+    linkedin: linkedIn(profile.url || profile.linkedinUrl) ? (profile.url || profile.linkedinUrl) : '',
     emails: [...work.map((value) => ({ value, kind: 'Email di lavoro' })), ...personal.map((value) => ({ value, kind: 'Email personale' })), ...other.map((value) => ({ value, kind: 'Email' }))],
     phones: strings(profile.phone).filter((value) => /^\+?[\d\s().-]{6,50}$/.test(value) && value.replace(/\D/g, '').length >= 6),
   };
 }
 
-export function contactOutService({ db, vault, fetcher = fetch, json, readBody, audit }) {
+export function contactOutService({ db, vault, fetcher = fetch, json, readBody, audit, demo = false, demoPlan = () => null }) {
+  const sampleToken = 'YVT6L3PiXqXLjI8V13W2zpcv';
   const pending = new Set();
   const context = (tenant) => `contactout:${tenant}`;
   const getConfig = (tenant) => {
+    if (demo) return demoPlan()==='secret' && process.env.PRIME_CONTACTOUT_SECRET_DEMO_TOKEN ? {api_token:process.env.PRIME_CONTACTOUT_SECRET_DEMO_TOKEN,mode:'live'} : { api_token: sampleToken, mode: 'test' };
     const row = db.prepare('SELECT * FROM contactout_settings WHERE tenant_id=?').get(tenant);
     return row ? { ...vault.open(row.credentials_cipher, context(tenant)), verified_at: row.verified_at } : {};
   };
   const publicConfig = (tenant) => {
     const config = getConfig(tenant);
-    return { configured: !!config.api_token, token_set: !!config.api_token, verified_at: config.verified_at || null };
+    return { mode: config.mode || 'live', configured: !!config.api_token, token_set: !!config.api_token, verified_at: config.verified_at || null };
   };
   async function call(token, route, body) {
     let response;
@@ -61,6 +64,25 @@ export function contactOutService({ db, vault, fetcher = fetch, json, readBody, 
   async function route(req, res, url, session) {
     if (!url.pathname.startsWith('/api/contactout')) return false;
     if (session.role === 'external') throw new ApiError(403, 'Accesso ContactOut non disponibile per questo profilo.');
+    if (url.pathname === '/api/contactout/operations' && req.method === 'GET') { json(res,200,{operations}); return true; }
+    if (url.pathname === '/api/contactout/query' && req.method === 'POST') {
+      const body=await readBody(req), op=Object.hasOwn(operations,body.operation)?operations[body.operation]:null, cfg=getConfig(session.tenant_id);
+      if(!op) throw new ApiError(400,'Funzione ContactOut non valida.');
+      if(!cfg.api_token) throw new ApiError(409,'Collega prima ContactOut.');
+      if(cfg.mode==='test' && body.operation!=='stats') throw new ApiError(409,'Le ricerche dedicate richiedono una chiave ContactOut live. Le ricerche campione restano disponibili dal CRM.');
+      if(body.operation!=='stats' && body.confirmed!==true) throw new ApiError(400,'Conferma la ricerca e il possibile consumo di crediti.');
+      const params=body.params||{}, allowed=op.fields.map(f=>f.replace(/\[\]|[?#]/g,''));
+      if(typeof params!=='object'||Array.isArray(params)||Object.keys(params).some(k=>!allowed.includes(k))) throw new ApiError(400,'Parametri ContactOut non consentiti.');
+      for(const field of op.fields){const key=field.replace(/\[\]|[?#]/g,''),v=params[key];if(v===undefined)continue;
+        if(field.endsWith('[]')?(!Array.isArray(v)||v.length>100||v.some(x=>typeof x!=='string'||x.length>500)):field.endsWith('?')?typeof v!=='boolean':field.endsWith('#')?(!Number.isInteger(v)||v<1||v>10000):(typeof v!=='string'||v.length>500)) throw new ApiError(400,'Parametro ContactOut non valido: '+key);
+      }
+      if(body.operation!=='stats'&&!Object.keys(params).length) throw new ApiError(400,'Inserisci almeno un dato di ricerca.');
+      const lock=session.tenant_id+':tools';if(pending.has(lock))throw new ApiError(429,'Una ricerca ContactOut è già in corso.');pending.add(lock);
+      try {const query=new URLSearchParams();if(!op.post)for(const [k,v] of Object.entries(params))query.set(k,String(v));
+        const result=await call(cfg.api_token,op.route+(query.size?'?'+query:''),op.post?params:undefined);
+        audit(session,'contactout.'+body.operation,'ricerca manuale');json(res,200,{result});return true;
+      }finally{pending.delete(lock);}
+    }
     if (url.pathname === '/api/contactout/settings') {
       if (req.method === 'GET') { json(res, 200, publicConfig(session.tenant_id)); return true; }
       admin(session);
@@ -71,14 +93,16 @@ export function contactOutService({ db, vault, fetcher = fetch, json, readBody, 
       }
       if (req.method !== 'PUT') throw new ApiError(405, 'Metodo non consentito.');
       const body = await readBody(req);
-      if (Object.keys(body).some((key) => key !== 'api_token')) throw new ApiError(400, 'Campo ContactOut non consentito.');
+      if (Object.keys(body).some((key) => !['api_token','mode'].includes(key))) throw new ApiError(400, 'Campo ContactOut non consentito.');
+      if (body.mode !== undefined && !['test','live'].includes(body.mode)) throw new ApiError(400, 'Modalità ContactOut non valida.');
       const old = getConfig(session.tenant_id);
-      const token = body.api_token === '' || body.api_token === undefined ? old.api_token : body.api_token;
+      const mode = body.mode || (body.api_token ? 'live' : old.mode || 'live');
+      const token = mode === 'test' ? sampleToken : body.api_token || (old.mode !== 'test' ? old.api_token : '');
       if (typeof token !== 'string' || !token.trim() || token.length > 8192 || /[\s\x00-\x1f\x7f]/.test(token)) throw new ApiError(400, 'Inserisci un token API ContactOut valido.');
       await call(token, 'stats');
       const now = new Date().toISOString();
       db.prepare('INSERT INTO contactout_settings(tenant_id,credentials_cipher,verified_at,updated_by,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(tenant_id) DO UPDATE SET credentials_cipher=excluded.credentials_cipher,verified_at=excluded.verified_at,updated_by=excluded.updated_by,updated_at=excluded.updated_at')
-        .run(session.tenant_id, vault.seal({ api_token: token }, context(session.tenant_id)), now, session.user_id, now);
+        .run(session.tenant_id, vault.seal({ api_token: token, mode }, context(session.tenant_id)), now, session.user_id, now);
       audit(session, 'contactout.settings_verified', session.tenant_id);
       json(res, 200, { ok: true, ...publicConfig(session.tenant_id) }); return true;
     }
@@ -104,7 +128,9 @@ export function contactOutService({ db, vault, fetcher = fetch, json, readBody, 
       pending.add(key);
       try {
         audit(session, 'contactout.enrich_requested', person.id);
-        const result = await call(config.api_token, 'people/enrich', payload);
+        const testMode = config.mode === 'test';
+        const outbound = testMode ? { linkedin_url: 'https://www.linkedin.com/in/example-person', include: ['work_email','personal_email','phone'] } : payload;
+        const result = await call(config.api_token, 'people/enrich', outbound);
         const profile = result.profile;
         if (profile && (typeof profile !== 'object' || Array.isArray(profile))) {
           if (Array.isArray(profile) && profile.length === 0) { json(res, 200, { found: false, candidate: null }); return true; }
@@ -113,7 +139,7 @@ export function contactOutService({ db, vault, fetcher = fetch, json, readBody, 
         const candidate = profile ? normalizeContactOut(profile) : null;
         const found = !!candidate && !!(candidate.name || candidate.profession || candidate.linkedin || candidate.emails.length || candidate.phones.length);
         audit(session, found ? 'contactout.enrich_found' : 'contactout.enrich_empty', person.id);
-        json(res, 200, { found, candidate: found ? candidate : null }); return true;
+        json(res, 200, { found, test_mode: testMode, candidate: found ? candidate : null }); return true;
       } finally { pending.delete(key); }
     }
     throw new ApiError(404, 'Operazione ContactOut non disponibile.');

@@ -2,7 +2,7 @@ import {randomBytes,createCipheriv,createDecipheriv,createHash} from 'node:crypt
 import {existsSync,readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import path from 'node:path';
 import {ApiError} from '../validation.mjs';
-export const providers=['google','apple','calendly','whatsapp'];
+export const providers=['google','apple','calendly','whatsapp','onedrive'];
 export const nowISO=()=>new Date().toISOString();
 export const sha=value=>createHash('sha256').update(value).digest('hex');
 export function createVault({directory,key}={}) {

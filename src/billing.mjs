@@ -1,7 +1,9 @@
+import {trustpilotRewards} from './trustpilot-rewards.mjs';
 import {plans,customerRates} from '../public/pricing.js';
 import {ApiError} from './validation.mjs';
 import {usageService} from './ai-usage.mjs';
 import {customerCallRate} from './provider-pricing.mjs';
+import {checkoutKybAccess} from './billing-kyb.mjs';
 
 // Only final customer-facing tariffs belong in this configuration.
 export function publicOverage(){return {...customerRates,minutes:customerCallRate()};}
@@ -11,14 +13,16 @@ function httpsUrl(value){
 }
 export function billingService({db,json,readBody,env=process.env}){
  const usage=usageService(db);
+ const reviews=trustpilotRewards({db,json,readBody,env});
  return async function route(req,res,url,s){
   if(!url.pathname.startsWith('/api/billing/'))return false;
+  if(await reviews(req,res,url,s))return true;
   if(s.role!=='owner')throw new ApiError(403,'Solo il titolare può gestire verifica e abbonamento');
   if(url.pathname==='/api/billing/usage'&&req.method==='GET'){
    json(res,200,{...usage.summary(s.tenant_id),events:usage.events(s.tenant_id)});return true;
   }
   const state=db.prepare('SELECT kyb_status FROM agency_billing WHERE tenant_id=?').get(s.tenant_id);
-  const approved=state?.kyb_status==='approved';
+  const checkoutAccess=checkoutKybAccess(db,{tenantId:s.tenant_id,userId:s.user_id,env});
   if(url.pathname==='/api/billing/enquiry'&&req.method==='POST'){
    const b=await readBody(req),message=String(b.message||'').trim();
    if(message.length<10||message.length>3000)throw new ApiError(400,'Descrivi la tua rete con un messaggio da 10 a 3.000 caratteri.');
@@ -26,7 +30,7 @@ export function billingService({db,json,readBody,env=process.env}){
    json(res,200,{saved:true});return true;
   }
   if(url.pathname==='/api/billing/status'&&req.method==='GET'){
-   json(res,200,{kyb:state?.kyb_status||'unverified',canChoosePlan:approved,canPay:approved});return true;
+   json(res,200,{kyb:state?.kyb_status||'unverified',canChoosePlan:checkoutAccess.allowed,canPay:checkoutAccess.allowed,temporaryCheckoutAccess:checkoutAccess.temporary,checkoutAccessUntil:checkoutAccess.until||null});return true;
   }
   if(url.pathname==='/api/billing/kyb'&&req.method==='POST'){
    const link=httpsUrl(env.PRIME_KYB_START_URL);
@@ -36,7 +40,7 @@ export function billingService({db,json,readBody,env=process.env}){
    json(res,200,{url:link});return true;
   }
   if(url.pathname==='/api/billing/checkout'&&req.method==='POST'){
-   if(!approved)throw new ApiError(403,'Completa la verifica aziendale e attendi l’approvazione prima di scegliere o pagare un piano.');
+   if(!checkoutAccess.allowed)throw new ApiError(403,'Completa la verifica aziendale e attendi l’approvazione prima di scegliere o pagare un piano.');
    const b=await readBody(req);
    if(b.plan==='secret')throw new ApiError(409,'Secret Plan richiede un preventivo personalizzato. Il contatto commerciale deve essere configurato.');
    const p=Object.hasOwn(plans,b.plan)?plans[b.plan]:null;

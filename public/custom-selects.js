@@ -1,3 +1,5 @@
+const currencyFlags={EUR:'eu',USD:'us',GBP:'gb',CHF:'ch',JPY:'jp',CAD:'ca',AUD:'au',NZD:'nz',SEK:'se',NOK:'no',DKK:'dk',PLN:'pl',CZK:'cz',HUF:'hu',RON:'ro',BGN:'bg',CNY:'cn',HKD:'hk',SGD:'sg',AED:'ae',INR:'in',ZAR:'za',TRY:'tr'};
+export function currencyMarkup(code,esc){const value=String(code||'').toUpperCase(),flag=currencyFlags[value];return '<span class="wallester-currency">'+(flag?'<img src="/assets/flags/'+flag+'.svg" alt="" aria-hidden="true" width="24" height="24">':'<span class="wallester-currency-symbol" aria-hidden="true">¤</span>')+'<span>'+esc(value||'—')+'</span></span>';}
 const enhanced = new WeakMap();
 const openMenus = new Set();
 let nextId = 0;

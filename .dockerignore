@@ -14,3 +14,27 @@
 !scripts/import-demo.mjs
 !scripts/setup-private-demo.mjs
 !scripts/backup-pc-setup.ps1
+# Large media not needed by the hosted OAuth/Stripe runtime
+public/assets/prime-professionista-*.mp4
+public/assets/vanessa-intro.mp4
+public/assets/veronica-*.mp4
+public/assets/charging-*.png
+public/assets/checkout-lake.png
+public/assets/prime-professionals.png
+public/assets/prime-hero-panorama.png
+public/assets/prime-bonus-chrome.png
+public/assets/veronica-poster.png
+public/assistant-avatar*.png
+# Keep the live Vanessa/site marks used by the app
+!public/assets/vanessa-poster.png
+!public/assets/vanessa-icon-v2.png
+!public/assets/vanessa-face-icon.png
+!public/assets/logo-light.png
+!public/assets/logo-dark.png
+!public/assets/assistant-avatar-light-chat-crop-v3.png
+# Veronica images are used by the live workspace assistant (the files live at
+# the public root, not under public/assets).
+!public/assistant-avatar-v5.png
+!public/assistant-avatar-v5-chat-crop-v3.png
+!public/assistant-avatar-light.png
+!public/assistant-avatar-light-chat-crop-v3.png

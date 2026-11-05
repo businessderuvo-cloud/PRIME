@@ -10,6 +10,28 @@
 /* Make the house-shaped language flag the only visible, easy-to-hit control. */
 .language-trigger .language-house{width:38px;height:38px;flex-basis:38px}@media(max-width:780px){.language-trigger .language-house{width:34px;height:34px;flex-basis:34px}}
 
-.site-header .header-actions>.language-control{transform:translateX(20px)}
+.site-header .header-actions>.language-control{transform:none}
 
 .app-language-slot .app-language-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--line);border-radius:8px;background:var(--surface2)}.app-language-slot .app-language-switch button{min-width:36px;height:30px;padding:0 8px;border:0;border-radius:5px;background:transparent;color:var(--muted);font:600 11px/1 inherit;cursor:pointer}.app-language-slot .app-language-switch button[aria-pressed=true]{background:var(--surface);color:var(--text);box-shadow:0 1px 3px #0002}
+
+.language-control > .prime-language-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.prime-language-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 10px; font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.prime-language-switch button[aria-pressed="true"] {
+  background: var(--button);
+  color: var(--button-text);
+}
+.site-header .header-actions > .language-control { transform: none; }

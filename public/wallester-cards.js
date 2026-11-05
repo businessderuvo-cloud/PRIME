@@ -1,0 +1,43 @@
+import {financeIcon} from './finance-icons.js?v=20261101-relief-icons';
+import {currencyMarkup} from './custom-selects.js?v=20261101-currency';
+const statusLabels={Active:'Attiva',Blocked:'Bloccata',Closed:'Chiusa',Created:'Creata',Pending:'In attesa'};
+const cardActions=[['GetCard','payments','Dettagli'],['UpdateCardLimits','fees','Limiti'],['BlockCard','connect','Blocca'],['UnblockCard','connect','Sblocca'],['ActivateCard','payments','Attiva'],['CloseCard','adjustments','Chiudi carta']];
+export async function renderWallesterCards({root,current,api,esc,canManage,onAction}){
+ let offset=0,total=0;
+ root.className='wallester-card-management';
+ root.innerHTML=`<div class="wallester-operation-heading"><div><h2>Carte Wallester</h2><p>Carte virtuali e fisiche, limiti e dati protetti.</p></div><div class="connect-actions">${canManage?`<button type="button" class="primary" data-new-card>${financeIcon('payments')} Crea carta</button>`:''}<button type="button" class="secondary" data-refresh-cards>Aggiorna carte</button></div></div><div data-card-list class="wallester-card-list"></div><div class="connect-actions"><button type="button" class="secondary" data-cards-prev>Precedenti</button><button type="button" class="secondary" data-cards-next>Successive</button></div><dialog class="wallester-card-dialog" data-card-dialog data-no-voice="true"><form data-unlock-card><h3>Dati protetti della carta</h3><p>Conferma la tua identità. Il dato verrà nascosto dopo 30 secondi o quando lasci questa finestra.</p><label>Dato da visualizzare<select name="kind"><option value="number">Numero completo</option><option value="cvv">CVV</option><option value="pin">PIN</option></select></label><label>Password PRIME<input type="password" name="password" autocomplete="current-password" required data-no-voice="true"></label><label data-card-totp hidden>Codice Authenticator<input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" data-no-voice="true"></label><div class="connect-actions"><button class="primary" type="submit">Verifica e mostra</button><button type="button" class="secondary" data-close-card>Chiudi</button></div><p data-unlock-status role="status"></p><output data-card-secret hidden aria-label="Dato protetto della carta"></output></form></dialog>`;
+ const list=root.querySelector('[data-card-list]'),dialog=root.querySelector('dialog'),form=root.querySelector('form'),secret=root.querySelector('[data-card-secret]'),feedback=root.querySelector('[data-unlock-status]');
+ let selected='',timer,requestVersion=0;
+ const mask=()=>{requestVersion++;clearTimeout(timer);secret.textContent='';secret.hidden=true;form.password.value='';form.code.value='';feedback.textContent='';form.querySelector('button[type="submit"]').disabled=false;};
+ const close=()=>{mask();dialog.close();};
+ root.querySelector('[data-close-card]').onclick=close;dialog.addEventListener('close',mask);dialog.addEventListener('cancel',mask);
+ const onBlur=()=>{if(dialog.open)close();};window.addEventListener('blur',onBlur);
+ const onHidden=()=>{if(document.hidden&&dialog.open)close();};document.addEventListener('visibilitychange',onHidden);
+ const observer=new MutationObserver(()=>{if(!root.isConnected){mask();window.removeEventListener('blur',onBlur);document.removeEventListener('visibilitychange',onHidden);observer.disconnect();}});observer.observe(document.body,{subtree:true,childList:true});
+ form.kind.onchange=mask;
+ async function load(){
+  list.textContent='Caricamento carte…';
+  try{
+   const response=await api('/api/connect/wallester/cards?offset='+offset);if(!root.isConnected)return;total=response.total;
+   list.innerHTML=response.cards.length?response.cards.map(card=>{
+    const account=current.accounts.find(account=>account.id===card.account_id),last4=String(card.masked_card_number||'').replace(/\D/g,'').slice(-4),expiry=card.expiry_date?new Date(card.expiry_date).toLocaleDateString('it-IT',{month:'2-digit',year:'2-digit'}):'—';
+    return `<article class="wallester-payment-card"><div class="wallester-card-top"><span>${financeIcon('payments')} ${card.type==='Virtual'?'Virtuale':'Fisica'}</span><span class="wallester-card-status">${esc(statusLabels[card.status]||card.status||'—')}</span></div><h3>${esc(card.name||'Carta Wallester')}</h3><div class="wallester-card-face" data-card-type="${card.type==='Virtual'?'virtual':'physical'}"><img class="wallester-card-art" src="/assets/wallester-cards/${card.type==='Virtual'?'virtual':'physical'}.png" alt="Modello Wallester ${card.type==='Virtual'?'virtuale':'fisico'} Visa Business">${card.type!=='Virtual'?'<svg class="wallester-card-chip" viewBox="0 0 48 36" aria-hidden="true"><rect x="1" y="1" width="46" height="34" rx="7"/><path d="M16 1v10H1m15 24V25H1m31-24v10h16M32 35V25h15M16 11h16v14H16zM1 18h15m16 0h15"/></svg>':''}<span class="wallester-card-demo-label" ${card.embossing_name==='ANTEPRIMA DI TEST'?'':'hidden'}>DATI DI TEST</span><p class="wallester-card-number">•••• •••• •••• ${esc(last4||'••••')}</p><div class="wallester-card-meta"><span>${esc(card.embossing_name||'Intestatario non indicato')}</span><span><small>SCADENZA</small>${esc(expiry)}</span></div></div>${account?`<p class="wallester-card-account">${currencyMarkup(account.currency_code,esc)} ${esc(account.name)}</p>`:''}<div class="wallester-card-actions">${cardActions.filter(([id])=>(canManage||id==='GetCard')&&!(id==='BlockCard'&&['Blocked','Closed'].includes(card.status))&&!(id==='UnblockCard'&&card.status!=='Blocked')&&!(id==='ActivateCard'&&['Active','Closed'].includes(card.status))&&!(id==='CloseCard'&&card.status==='Closed')).map(([id,icon,title])=>`<button type="button" class="secondary" data-card-action="${id}" data-card-id="${esc(card.id)}">${financeIcon(icon)} ${title}</button>`).join('')}${canManage?`<button type="button" class="secondary" data-reveal-card="${esc(card.id)}">${financeIcon('connect')} Dati protetti</button>`:''}</div></article>`;
+   }).join(''):'<p class="small-note">Nessuna carta disponibile. Crea la prima carta virtuale o fisica.</p>';
+   root.querySelector('[data-cards-prev]').disabled=offset===0;root.querySelector('[data-cards-next]').disabled=offset+24>=total;
+   list.querySelectorAll('[data-card-action]').forEach(button=>button.onclick=()=>onAction(button.dataset.cardAction,{'path.card_id':button.dataset.cardId}));
+   list.querySelectorAll('[data-reveal-card]').forEach(button=>button.onclick=async()=>{
+    selected=button.dataset.revealCard;mask();dialog.showModal();feedback.textContent='Verifica dei metodi di accesso…';const version=requestVersion;
+    try{const security=await api('/api/connect/wallester/cards/security');if(version!==requestVersion||!dialog.open)return;const totp=root.querySelector('[data-card-totp]');totp.hidden=!security.requires_totp;form.code.required=!!security.requires_totp;feedback.textContent=security.available?'':'La verifica dei dati protetti non è disponibile in questa anteprima.';form.querySelector('button[type="submit"]').disabled=!security.available;form.password.focus();}catch(error){feedback.textContent=error.message;form.querySelector('button[type="submit"]').disabled=true;}
+   });
+  }catch(error){list.textContent=error.message;root.querySelector('[data-cards-prev]').disabled=true;root.querySelector('[data-cards-next]').disabled=true;}
+ }
+ form.onsubmit=async event=>{
+  event.preventDefault();const kind=form.kind.value,password=form.password.value,code=form.code.value,version=++requestVersion,button=form.querySelector('button[type="submit"]');form.password.value='';form.code.value='';secret.textContent='';secret.hidden=true;button.disabled=true;feedback.textContent='Verifica in corso…';
+  try{const response=await api('/api/connect/wallester/cards/'+encodeURIComponent(selected)+'/reveal',{method:'POST',body:JSON.stringify({kind,password,code})});if(version!==requestVersion||!dialog.open||document.hidden)return;secret.textContent=response.value;secret.hidden=false;feedback.textContent='Visibile per 30 secondi.';timer=setTimeout(()=>{mask();feedback.textContent='Dato nascosto. Verifica nuovamente per mostrarlo.';},30000);}
+  catch(error){if(version===requestVersion)feedback.textContent=error.message;}
+  finally{button.disabled=false;}
+ };
+ root.querySelector('[data-new-card]')?.addEventListener('click',()=>onAction('CreateCard',{'body.type':'Virtual'}));
+ root.querySelector('[data-refresh-cards]').onclick=load;root.querySelector('[data-cards-prev]').onclick=()=>{offset=Math.max(0,offset-24);void load();};root.querySelector('[data-cards-next]').onclick=()=>{offset+=24;void load();};
+ await load();return {refresh:load};
+}

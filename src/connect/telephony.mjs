@@ -1,7 +1,7 @@
 import {createHash,createHmac} from 'node:crypto';
 import {ApiError} from '../validation.mjs';
 
-const providers=['zadarma','cloudtalk'];
+const providers=['telnyx'];
 export const telephonyAllowed=edition=>['vip','elite'].includes(edition);
 export function telephonyService({db,vault,json,readBody,audit,editionFor,fetcher=fetch,demo=false,clock=Date.now}){
   const attempts=new Map();
@@ -28,10 +28,11 @@ export function telephonyService({db,vault,json,readBody,audit,editionFor,fetche
     }
     if(req.method!=='PUT')throw new ApiError(405,'Metodo non disponibile.');
     const body=await readBody(req),key=String(body.apiKey||'').trim(),secret=String(body.apiSecret||'').trim();
-    if(!key||!secret||key.length>2048||secret.length>4096||/[\r\n:]/.test(key)||/[\r\n]/.test(secret))throw new ApiError(400,'Inserisci API Key e API Secret valide.');
+    const needsSecret=provider!=='telnyx';
+    if(!key||(needsSecret&&!secret)||key.length>2048||secret.length>4096||/[\r\n:]/.test(key)||/[\r\n]/.test(secret))throw new ApiError(400,needsSecret?'Inserisci API Key e API Secret valide.':'Inserisci una API Key Telnyx valida.');
     const phone=String(body.phoneNumber||'').replace(/[\s().-]/g,''),sip=String(body.sip||'').trim();
     if(!/^\+[1-9]\d{7,14}$/.test(phone))throw new ApiError(400,'Inserisci il numero con prefisso internazionale, per esempio +39.');
-    if(provider==='zadarma'&&!/^\d{3,6}-\d{3}$/.test(sip))throw new ApiError(400,'Inserisci il SIP supervisore nel formato 123456-101.');
+    if(provider!=='telnyx'&&!/^\d{3,6}-\d{3}$/.test(sip))throw new ApiError(400,'Inserisci il SIP supervisore nel formato 123456-101.');
     if(demo&&(key!=='demo-key'||secret!=='demo-secret'))throw new ApiError(400,'Usa solo le credenziali dimostrative precompilate nella demo pubblica.');
     const bucketKey=session.tenant_id+':'+provider,previous=attempts.get(bucketKey);
     if(previous&&clock()-previous.time<60000&&previous.count>=10)throw new ApiError(429,'Troppe verifiche: attendi un minuto.');
@@ -39,15 +40,11 @@ export function telephonyService({db,vault,json,readBody,audit,editionFor,fetche
     if(!demo){
       let response;
       try{
-        if(provider==='zadarma'){
-          const path='/v1/info/balance/',query='',digest=createHash('md5').update(query).digest('hex');
-          const signature=Buffer.from(createHmac('sha1',secret).update(path+query+digest).digest('hex')).toString('base64');
-          response=await fetcher('https://api.zadarma.com'+path,{headers:{Authorization:key+':'+signature,Accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(15000)});
-        }else response=await fetcher('https://my.cloudtalk.io/api/agents/index.json',{headers:{Authorization:'Basic '+Buffer.from(key+':'+secret).toString('base64'),Accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(15000)});
+        response=await fetcher('https://api.telnyx.com/v2/balance',{headers:{Authorization:'Bearer '+key,Accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(15000)});
       }catch{throw new ApiError(502,'Il provider non ha risposto alla verifica. Riprova.');}
       if(!response.ok)throw new ApiError(response.status===401||response.status===403?400:502,'Credenziali non verificate: controlla API Key, Secret e permessi nel provider.');
       const payload=await response.json().catch(()=>null);
-      if(provider==='zadarma'?payload?.status!=='success':!Array.isArray(payload?.responseData?.data))throw new ApiError(502,'Il provider non ha confermato l’accesso API.');
+      if(!payload?.data||typeof payload.data!=='object')throw new ApiError(502,'Telnyx non ha confermato l’accesso API.');
     }
     const stamp=new Date(clock()).toISOString(),cipher=vault.seal({apiKey:key,apiSecret:secret},context(session.tenant_id,provider));
     db.prepare('INSERT INTO telephony_settings VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,provider) DO UPDATE SET credentials_cipher=excluded.credentials_cipher,phone_number=excluded.phone_number,sip=excluded.sip,verified_at=excluded.verified_at,demo=excluded.demo,updated_by=excluded.updated_by').run(session.tenant_id,provider,cipher,phone,sip,stamp,demo?1:0,session.user_id);

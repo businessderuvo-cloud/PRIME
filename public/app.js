@@ -1,15 +1,27 @@
+import { activeSeasonalTheme, activeNewYearFireworks, demoSeasonalThemes } from './seasonal-themes.js?v=20261104-capodanno';
+import { syncNewYearFireworks } from './seasonal-fireworks.js?v=20261104-capodanno';
+import { showSeasonalTheme } from './seasonal-effects.js?v=20261104-vanessa-greetings';
+import {renderQrLogin} from './qr-login.js?v=20261103-biometric-v3';
+import {renderDevelopmentStatus} from './development-status.js?v=20261104-release-history';
+import {stripeSectionVisible} from './stripe-connect.js?v=20261104-connected-account';
+import {integrationGuides,integrationAllowed} from './integration-guides.js';
+import {renderSecurity,factorVerification} from './security.js?v=20261103-biometric-v3';
+import {renderWallesterDashboard} from './wallester-dashboard.js?v=20261104-wallester-full-operations';
 import { initializeAppLanguage, mountAppLanguage } from './app-locale.js';
-import { renderElite, mountEliteWidget, openEliteCallDialog } from './elite-ui.js?v=20261029-zadarma-auto';
+import { renderElite, mountEliteWidget, openEliteCallDialog } from './elite-ui.js?v=20261104-vanessa-greetings';
 import { renderUpgrade } from './upgrade.js';
-import { baseExcludedEntities, baseExcludedPages } from './edition.js';
+import { baseExcludedEntities, baseExcludedPages } from './edition.js?v=20261103-trustpilot-standard';
+import {renderConnect as renderStandardConnect,renderTrustpilot} from './connect.js?v=20261105-contactout-nav';
 import {startDocumentRenewalNotifications} from './didit.js';
 import { mountOperations } from './operations.js';
-import { renderConnect } from "./connect.js?v=20261029-email-section";
-import { renderStripeAgency } from './stripe-agency.js?v=20261030-stripe-chart-classic7';
+import { renderConnect, renderCalendlySection } from "./demo-pre5-connect.js?v=20261105-calendly-page-only";
+import { renderStorageSection } from "./secret-storage.js?v=20261105-calendly-section";
+import {renderTelephonyConnect} from './telephony-connect.js?v=20261104-voip-section';
+import { renderStripeAgency } from './stripe-agency.js?v=20261104-connected-account';
 import { renderPortals } from "./portals.js";
-import { mountContactOutEnrichment } from "./contactout.js";
+import { mountContactOutEnrichment, renderContactOutPage } from "./contactout.js?v=20261105-contactout-nav-labels";
 import { assistantResultMarkup, openAssistantRecordManager } from "./assistant-management.js";
-import { renderMail } from "./mail.js?v=20261029-no-proton";
+import { renderMail } from "./mail-demo-pre5min.js?v=20261104-finance-gating";
 import { renderMap } from "./map.js?v=20261101-auto-houses";
 import { mountRepeatableRecaps } from "./repeatable-recaps.js";
 import { schema, roleLabels } from "./schema.js";
@@ -19,7 +31,8 @@ import { finishedStatuses } from "./planner.js";
 import { renderTerritory } from "./territory.js";
 import { mountPersonRecaps } from "./person-recaps.js";
 import { startVoiceInput } from "./voice-input.js?v=20261030-outline-mic";
-import { startCustomSelects } from "./custom-selects.js?v=20261029-vanessa";
+import { startCustomSelects } from "./custom-selects.js?v=20261101-currency";
+import { renderDatagmaPage } from "./datagma-tools.js?v=20261105-theme-icons";
 let stopWpsClock;
 let stopDocumentRenewalNotifications;
 let agendaRefreshTimer;
@@ -41,7 +54,14 @@ const state = {
   assistantTyping: false,
   assistantWidgetOpen: false,
   assistantWidgetResizeHandler: null,
+  wallesterDemoActivated: false,
+  stripePublicDemoConnected: false,
+  telephonyConfigured: false,
+  storageConnections: [],
+  calendlyConnected: false,
+  datagmaConfigured: false,
 };
+const assistantDisplayName = () => state.me?.edition === "secret" ? "Vanessa" : "Veronica";
 const esc = (x) =>
   String(x ?? "").replace(
     /[&<>"']/g,
@@ -74,6 +94,10 @@ const icons = {
   documents: "M6 2h9l5 5v15H6zM14 2v6h6M9 13h8m-8 4h8",
   signature_requests: "M19.2 3.8a2.1 2.1 0 0 1 3 3L11 18l-4 1 1-4L19.2 3.8ZM15.5 7.5l3 3M3 21c1.2-1.4 2-.4 3-.2 1.1.2 1.8-1.7 3-.3 1 1.2 2.1.4 3-.4 1.2-1.1 2 .8 3.2.4 1.1-.3 1.6-1.2 2.8-1.7",
   connect: "M8 12h8M9 6l-3-3-4 4 3 3m10 8 3 3 4-4-3-3M7 7l10 10",
+  voip: "M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.2-1.3a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.8 2.1Z",
+  storage_drive: "M3 7.5 12 3l9 4.5v9L12 21l-9-4.5zM3 7.5l9 4.5 9-4.5M12 12v9",
+  storage_onedrive: "M8.5 18H19a4 4 0 0 0 .5-8A7 7 0 0 0 6 8a5 5 0 0 0 2.5 10Z",
+  storage_dropbox: "m7 3 5 3-5 3-5-3zm10 0 5 3-5 3-5-3zM7 10l5 3-5 3-5-3zm10 0 5 3-5 3-5-3zm-5 7 5-3 5 3-5 4z",
   support: "M3 13v-2a9 9 0 0 1 18 0v2m-18 0h4v7H5a2 2 0 0 1-2-2v-5Zm18 0h-4v7h2a2 2 0 0 0 2-2v-5Zm-5 7a4 4 0 0 1-4 2h-1",
   assistant: "M12 3 14.2 9.8 21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2L12 3z",
   audit: "M5 3h14v18H5zM9 7h6m-6 5h6m-6 5h4",
@@ -86,12 +110,29 @@ const icons = {
   moon: "M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z",
   sun: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1",
 };
-const icon = (name) =>
-  `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${icons[name] || icons.units}"/></svg>`;
+const connectionLogos = {
+  contactout: ['/brands/providers/contactout.png', 24],
+  calendly: ['/brands/providers/calendly.svg', 22],
+  storage_drive: ['/brands/providers/googledrive-nav-color.svg', 22],
+  storage_onedrive: ['/brands/providers/microsoftonedrive.svg', 22],
+  storage_dropbox: ['/brands/providers/dropbox.svg', 22],
+  stripe: ['/assets/stripe-connect-color.svg', 42],
+  wallester: ['/assets/wallester-connect-color.svg', 48],
+  voip: ['/assets/telnyx-connect-color.svg', 44],
+};
+const icon = (name) => {
+  const brand = connectionLogos[name];
+  return brand
+    ? `<img src="${brand[0]}" alt="" aria-hidden="true" width="${brand[1]}" height="22" style="width:${brand[1]}px;height:22px;object-fit:contain;flex:0 0 ${brand[1]}px;filter:none">`
+    : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${icons[name] || icons.units}"/></svg>`;
+};
 const dashboardIcon = (name) =>
   `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="stat-silver-${name}" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".22" stop-color="#bac5ce"/><stop offset=".43" stop-color="#f9fcff"/><stop offset=".49" stop-color="#ffffff"/><stop offset=".53" stop-color="#7c8a96"/><stop offset=".72" stop-color="#d8e2e9"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><path stroke="url(#stat-silver-${name})" d="${icons[name] || icons.units}"/></svg>`;
-const logo = () =>
-  `<img class="brand-image" src="/assets/logo-${state.me?.theme || "dark"}.png" alt="PRIME — logo ufficiale">`;
+const workspaceLogoSource = () => state.me?.customer_demo && state.me?.demo_plan === "vip" ? "/assets/prime-wordmark.svg" : `/assets/logo-${state.me?.theme || "dark"}.png`;
+const logo = () => {
+  const src = workspaceLogoSource();
+  return `<img class="brand-image" src="${src}" alt="PRIME — logo ufficiale">`;
+};
 const date = (x) =>
   x
     ? new Intl.DateTimeFormat((document.documentElement.lang==='en'?'en-GB':'it-IT'), {
@@ -132,12 +173,12 @@ function toast(message) {
   }
 }
 function assistantAvatarSrc() {
-  if (["vip","elite"].includes(state.me?.edition)) return "/assets/vanessa-poster.png";
-  return state.me?.theme === "light" ? "/assistant-avatar-light.png?v=20261026" : "/assistant-avatar-v5.png?v=20261026";
+  if (["vip","elite","secret"].includes(state.me?.edition)) return "/assets/vanessa-poster.png";
+  return state.me?.theme === "light" ? "/assets/assistant-avatar-light.png?v=20261026" : "/assets/assistant-avatar-v5.png?v=20261026";
 }
 function assistantAvatarThumbSrc() {
-  if (["vip","elite"].includes(state.me?.edition)) return "/assets/vanessa-icon-v2.png";
-  return state.me?.theme === "light" ? "/assistant-avatar-light-chat-crop-v3.png" : "/assistant-avatar-v5-chat-crop-v3.png";
+  if (["vip","elite","secret"].includes(state.me?.edition)) return "/assets/vanessa-icon-v2.png";
+  return state.me?.theme === "light" ? "/assets/assistant-avatar-light-chat-crop-v3.png" : "/assets/assistant-avatar-v5-chat-crop-v3.png";
 }
 const assistantShortcuts = [
   { label: "Memorizza", prompt: "Ricorda che " },
@@ -178,7 +219,7 @@ function assistantRequestMessages() {
   return state.assistantMessages.slice(-8).map((message) => ({ role: message.role, content: message.content.slice(0, 2000) }));
 }
 function assistantMessageMarkup(message, index) {
-  return `<article class="assistant-bubble ${message.role}">${message.role === "assistant" ? `<img class="assistant-message-avatar" src="${assistantAvatarThumbSrc()}" alt="" width="32" height="32" loading="lazy" decoding="async">` : ""}<strong>${message.role === "user" ? "Tu" : "Veronica"}</strong><p>${esc(message.content)}</p>${message.role === 'assistant' ? assistantResultMarkup(message, index, esc) : ''}</article>`;
+  return `<article class="assistant-bubble ${message.role}">${message.role === "assistant" ? `<img class="assistant-message-avatar" src="${assistantAvatarThumbSrc()}" alt="" width="32" height="32" loading="lazy" decoding="async">` : ""}<strong>${message.role === "user" ? "Tu" : assistantDisplayName()}</strong><p>${esc(message.content)}</p>${message.role === 'assistant' ? assistantResultMarkup(message, index, esc) : ''}</article>`;
 }
 function bindAssistantResults(container) {
   const redraw = () => {
@@ -229,7 +270,7 @@ function bindAssistantResults(container) {
 function drawAssistantMessages(container) {
   if (!container) return;
   container.innerHTML = state.assistantMessages.map(assistantMessageMarkup).join("") +
-    (state.assistantTyping ? `<article class="assistant-bubble assistant-typing" role="status" aria-label="Veronica sta scrivendo"><img class="assistant-message-avatar" src="${assistantAvatarThumbSrc()}" alt=""><strong>Veronica</strong><span class="assistant-typing-dots" aria-hidden="true"><i></i><i></i><i></i></span></article>` : "");
+    (state.assistantTyping ? `<article class="assistant-bubble assistant-typing" role="status" aria-label="${assistantDisplayName()} sta scrivendo"><img class="assistant-message-avatar" src="${assistantAvatarThumbSrc()}" alt=""><strong>${assistantDisplayName()}</strong><span class="assistant-typing-dots" aria-hidden="true"><i></i><i></i><i></i></span></article>` : "");
   container.scrollTop = container.scrollHeight;
   bindAssistantResults(container);
 }
@@ -310,7 +351,16 @@ function recordCell(entity, key, value) {
   if (field.type === 'number') return `<span class="record-number ${field.label.includes('€') ? 'record-money' : ''}">${esc(label)}</span>`;
   return `<span class="record-value ${field.type === 'ref' ? 'record-reference' : ''}">${esc(label)}</span>`;
 }
-function auth(mode = "login", error = "") {
+function continueAfterEmailVerification(){
+  let pending=false;
+  try{pending=sessionStorage.getItem("prime-onboarding-after-verification")==="1";if(pending)sessionStorage.removeItem("prime-onboarding-after-verification");}catch{}
+  if(!pending)return false;
+  location.assign("/checkout?choose=live");
+  return true;
+}
+function auth(mode = "login", error = "", messageType = "error") {
+  syncNewYearFireworks(false);
+  showSeasonalTheme('');
   stopDocumentRenewalNotifications?.();
   clearInterval(breakReminderTimer);
   if (breakReminderVisibilityHandler) document.removeEventListener("visibilitychange", breakReminderVisibilityHandler);
@@ -324,12 +374,23 @@ function auth(mode = "login", error = "") {
   const params=new URLSearchParams(location.search),tokenType=["verify","reset","invite"].find(k=>params.has(k));
   const token=tokenType?params.get(tokenType):"";
   const tokenForm=tokenType?`<h2>${tokenType==="verify"?"Verifica email.":tokenType==="invite"?"Accetta l’invito.":"Scegli una nuova password."}</h2><p class="muted">${tokenType==="verify"?"Conferma il tuo indirizzo per accedere a PRIME.":"Imposta una password sicura, di almeno 12 caratteri."}</p><form id="token-form"><div class="error" role="alert" hidden></div>${tokenType!=="verify"?'<label>Nuova password<input name="password" type="password" minlength="12" maxlength="128" required autocomplete="new-password"></label><label>Ripeti password<input name="confirm" type="password" minlength="12" maxlength="128" required autocomplete="new-password"></label>':''}<button class="primary wide">${tokenType==="verify"?"Verifica email":tokenType==="invite"?"Attiva account":"Aggiorna password"}</button></form><p class="auth-switch"><button id="back-login" class="text-button">Torna all’accesso</button></p>`:"";
-  app.innerHTML = `<main class="auth"><section class="auth-story"><div class="auth-brand">${logo()}</div><div><p class="eyebrow">IL TUO LAVORO. UNA NUOVA PROSPETTIVA.</p><h1>Il territorio diventa<br>opportunità.</h1><p class="lead">Persone, immobili e attività.<br>Uno spazio per farli crescere insieme.</p></div><footer>PRIME <span>GESTIONE IMMOBILIARE</span></footer></section><section class="auth-panel"><div class="auth-form"><span class="eyebrow">IL TUO SPAZIO OPERATIVO</span>${tokenType?tokenForm:`<h2>${mode === "register" ? "Benvenuto in PRIME." : "Bentornato."}</h2><p class="muted">${mode === "register" ? "Crea l’ambiente indipendente della tua agenzia." : "Accedi al workspace della tua agenzia."}</p><form id="auth-form"><div class="error" role="alert" ${error ? "" : "hidden"}>${esc(error)}</div>${mode === "register" ? '<label>Nome agenzia<input name="agency" required maxlength="120" autocomplete="organization"></label>' : ""}<label>Email<input name="email" type="email" autocomplete="username" required maxlength="254"></label><label>Password<input name="password" type="password" autocomplete="${mode === "register" ? "new-password" : "current-password"}" minlength="12" maxlength="128" required></label><small>Da 12 a 128 caratteri.</small><button class="primary wide" type="submit">${mode === "register" ? "Crea la tua agenzia" : "Accedi"} ${icon("arrow")}</button></form>${mode==="login"?'<p><button id="forgot-password" class="text-button">Password dimenticata?</button></p>':''}<p class="auth-switch">${mode === "register" ? "Hai già un account?" : "Nuova agenzia?"} <button id="auth-toggle" class="text-button">${mode === "register" ? "Accedi" : "Crea il tuo spazio"}</button></p><p class="setup-note">La verifica email e la protezione Authenticator sono disponibili. L’email viene consegnata dal provider configurato in produzione.</p>`}<p><a href="/privacy">Informativa privacy PRIME</a></p></div></section></main>`;
+  app.innerHTML = `<main class="auth"><section class="auth-story"><div class="auth-brand">${logo()}</div><div><p class="eyebrow">IL TUO LAVORO. UNA NUOVA PROSPETTIVA.</p><h1>Il territorio diventa<br>opportunità.</h1><p class="lead">Persone, immobili e attività.<br>Uno spazio per farli crescere insieme.</p></div><footer>PRIME <span>GESTIONE IMMOBILIARE</span></footer></section><section class="auth-panel"><div class="auth-form"><span class="eyebrow">IL TUO SPAZIO OPERATIVO</span>${tokenType?tokenForm:`<h2>${mode === "register" ? "Benvenuto in PRIME." : "Bentornato."}</h2><p class="muted">${mode === "register" ? "Crea l’ambiente indipendente della tua agenzia." : "Accedi al workspace della tua agenzia."}</p><form id="auth-form"><div class="error" role="alert" ${error ? "" : "hidden"}>${esc(error)}</div>${mode === "register" ? '<label>Nome agenzia<input name="agency" required maxlength="120" autocomplete="organization"></label>' : ""}<label>Email<input name="email" type="email" autocomplete="username" required maxlength="254"></label><label>Password<input name="password" type="password" autocomplete="${mode === "register" ? "new-password" : "current-password"}" minlength="12" maxlength="128" required></label><small>Da 12 a 128 caratteri.</small><button class="primary wide" type="submit">${mode === "register" ? "Crea la tua agenzia" : "Accedi"} ${icon("arrow")}</button></form>${mode==="login"?'<p><button type="button" id="qr-signin" class="secondary wide">Accedi con QR · PRIME Authenticator</button></p><p><button id="forgot-password" class="text-button">Password dimenticata?</button></p>':''}<p class="auth-switch">${mode === "register" ? "Hai già un account?" : "Nuova agenzia?"} <button id="auth-toggle" class="text-button">${mode === "register" ? "Accedi" : "Crea il tuo spazio"}</button></p><p class="setup-note">2FA facoltativa con Authenticator, email, SMS o una combinazione di metodi. L’email viene consegnata dal provider configurato in produzione.</p>`}<p><a href="/privacy">Informativa privacy PRIME</a></p></div></section></main>`;
+  if (messageType === "success") {
+    const notice = document.querySelector("#auth-form .error");
+    if (notice) {
+      notice.classList.replace("error", "success-message");
+      notice.setAttribute("role", "status");
+      const next = document.createElement("p");
+      next.innerHTML = '<a class="primary wide" href="/?account=login">Accedi e scegli piano e pagamento</a>';
+      notice.after(next);
+    }
+  }
   if(tokenType){
     document.querySelector("#back-login").onclick=()=>{history.replaceState(null,"",location.pathname);auth();};
-    document.querySelector("#token-form").onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,err=form.querySelector(".error"),values=Object.fromEntries(new FormData(form));if(values.password&&values.password!==values.confirm){err.textContent="Le password non coincidono.";err.hidden=false;return;}try{const endpoint=tokenType==="verify"?"/api/auth/verify-email":tokenType==="invite"?"/api/auth/invitations/accept":"/api/auth/reset-password";const result=await api(endpoint,{method:"POST",body:JSON.stringify({token,password:values.password})});history.replaceState(null,"",location.pathname);auth("login",result.message);}catch(ex){err.textContent=ex.message;err.hidden=false;}};
+    document.querySelector("#token-form").onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,err=form.querySelector(".error"),values=Object.fromEntries(new FormData(form));if(values.password&&values.password!==values.confirm){err.textContent="Le password non coincidono.";err.hidden=false;return;}try{const endpoint=tokenType==="verify"?"/api/auth/verify-email":tokenType==="invite"?"/api/auth/invitations/accept":"/api/auth/reset-password";const result=await api(endpoint,{method:"POST",body:JSON.stringify({token,password:values.password})});if(tokenType==="verify")try{sessionStorage.setItem("prime-onboarding-after-verification","1");}catch{}history.replaceState(null,"",location.pathname);auth("login",result.message,tokenType==="verify"?"success":"error");}catch(ex){err.textContent=ex.message;err.hidden=false;}};
     return;
   }
+  document.querySelector('#qr-signin')?.addEventListener('click',()=>renderQrLogin({container:app,api,esc,factorVerification,onComplete:async()=>{if(!continueAfterEmailVerification())await boot();}}));
   document.querySelector("#auth-toggle").onclick = () =>
     auth(mode === "login" ? "register" : "login");
   document.querySelector("#auth-form").onsubmit = async (e) => {
@@ -347,8 +408,9 @@ function auth(mode = "login", error = "") {
           mode,
         }),
       });
-      if(result.requires_email_verification){app.innerHTML=`<main class="auth"><section class="auth-panel"><div class="auth-form"><h2>Controlla la tua email.</h2><p>Abbiamo inviato il link di verifica a <strong>${esc(new FormData(form).get("email"))}</strong>.</p>${result.mailbox_url?`<p><a class="primary" href="${esc(result.mailbox_url)}" target="_blank" rel="noreferrer">Apri la casella locale di sviluppo</a></p>`:""}<button class="text-button" id="resend-verification">Invia di nuovo</button><button class="text-button" id="return-login">Torna all’accesso</button></div></section></main>`;document.querySelector("#return-login").onclick=()=>auth();document.querySelector("#resend-verification").onclick=async()=>{try{await api("/api/auth/resend-verification",{method:"POST",body:JSON.stringify({email:new FormData(form).get("email")})});toast("Link di verifica inviato.");}catch(ex){toast(ex.message);}};return;}
-      if(result.requires_two_factor){const challenge=result.challenge;app.innerHTML=`<main class="auth"><section class="auth-panel"><div class="auth-form"><h2>Verifica in due passaggi.</h2><p>Inserisci il codice a sei cifre della tua app Authenticator.</p><form id="totp-login"><label>Codice<input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code"></label><button class="primary wide">Verifica e accedi</button><p class="error" hidden role="alert"></p></form></div></section></main>`;document.querySelector("#totp-login").onsubmit=async ev=>{ev.preventDefault();const f=ev.currentTarget,err=f.querySelector(".error");try{await api("/api/auth/2fa/verify",{method:"POST",body:JSON.stringify({challenge,code:new FormData(f).get("code")})});await boot();}catch(ex){err.textContent=ex.message;err.hidden=false;}};return;}
+      if(result.requires_email_verification){app.innerHTML=`<main class="auth"><section class="auth-panel"><div class="auth-form"><h2>Controlla la tua email.</h2><p>Abbiamo inviato il link di verifica a <strong>${esc(new FormData(form).get("email"))}</strong>.</p>${result.mailbox_url?`<p><a class="primary" href="${esc(result.mailbox_url)}" target="_blank" rel="noreferrer">Apri la casella locale di sviluppo</a></p>`:""}<div class="verification-actions"><button type="button" class="text-button" id="resend-verification">Invia di nuovo</button><button type="button" class="text-button" id="return-login">Torna all’accesso</button></div></div></section></main>`;document.querySelector("#return-login").onclick=()=>auth();document.querySelector("#resend-verification").onclick=async()=>{try{await api("/api/auth/resend-verification",{method:"POST",body:JSON.stringify({email:new FormData(form).get("email")})});toast("Link di verifica inviato.");}catch(ex){toast(ex.message);}};return;}
+      if(result.requires_two_factor){app.innerHTML='<main class="auth"><section class="auth-panel"><div class="auth-form" id="login-verification"></div></section></main>';factorVerification({container:document.querySelector('#login-verification'),api,esc,result,onComplete:async()=>{if(!continueAfterEmailVerification())await boot();}});return;}
+      if(continueAfterEmailVerification())return;
       await boot();
     } catch (ex) {
       err.textContent = ex.message;
@@ -368,6 +430,28 @@ async function loadData() {
   state.data = Object.fromEntries(entries);
   state.members = await api("/api/members");
   state.media = await api("/api/media");
+  const demoFinanceActivated=provider=>{try{return sessionStorage.getItem('prime-demo-finance-'+provider)==='1';}catch{return false;}};
+  state.wallesterDemoActivated=!!state.me.customer_demo&&['pro','vip','elite','secret'].includes(state.me.demo_plan)&&demoFinanceActivated('wallester');
+  state.stripePublicDemoConnected=!!state.me.customer_demo&&state.me.demo_plan==='elite'&&demoFinanceActivated('stripe');
+  if(state.stripePublicDemoConnected)state.me.stripe_demo_simulation=true;
+  state.wallesterConnected=(['vip','elite'].includes(state.me.edition)||(state.me.customer_demo&&['pro','vip','elite','secret'].includes(state.me.demo_plan)))&&['owner','manager'].includes(state.me.role) ? state.me.customer_demo ? state.wallesterDemoActivated : await api('/api/connect/wallester').then(status=>status.configured===true) : false;
+  state.stripeStatuses=state.me.stripe_enabled===true&&['owner','manager'].includes(state.me.role)?Object.fromEntries(await Promise.all(['test','live'].map(async mode=>[mode,await api('/api/stripe/status?mode='+mode).catch(()=>null)]))):{};
+  const stripeReturn=new URLSearchParams(location.search),stripeOutcome=stripeReturn.get('stripe_connect');
+  const returnMode=stripeReturn.get('stripe_mode')==='test'?'test':'live';
+  if(['complete','manage'].includes(stripeOutcome)&&state.me.stripe_enabled){
+    state.me.stripe_demo_simulation=false;
+    state.stripeMode=returnMode;
+    state.page=state.stripeStatuses[returnMode]?.configured?'stripe':'connect';
+  }
+  if(!state.stripeStatuses[state.stripeMode]?.configured)state.stripeMode=state.stripeStatuses.live?.configured===true||state.me.customer_demo?'live':'test';
+  state.telephonyConfigured=false;state.storageConnections=[];state.calendlyConnected=false;
+  if(['vip','elite','secret'].includes(state.me.edition))state.telephonyConfigured=(await api('/api/connect/telephony').catch(()=>null))?.providers?.some(item=>item.configured)===true;
+  const connectState=await api('/api/connect').catch(()=>null);
+  const contactoutState=await api("/api/contactout/settings").catch(()=>null);state.contactoutConfigured=contactoutState?.configured===true && contactoutState?.mode==='live';
+  state.datagmaConfigured=connectState?.datagma?.configured===true;
+  state.calendlyConnected=!!connectState?.connections?.some(item=>item.provider==='calendly'&&item.status==='connected');
+  const storagePlan=state.me.customer_demo?state.me.demo_plan:state.me.edition;
+  if(storagePlan==='secret')state.storageConnections=(connectState?.connections||[]).filter(item=>['drive','onedrive','dropbox'].includes(item.provider)&&item.status==='connected');
 }
 function focusTerritoryRow(entity, row) {
   const selection = (state.territory ??= {});
@@ -412,7 +496,15 @@ const globalNavigation = [
   ["signature_requests", "Firme elettroniche"],
   ["section", "CONNESSIONI"],
   ["connect", "PRIME Connect"],
+  ["datagma", "Datagma · Ricerche"],
+  ["contactout", "ContactOut · Ricerche"],
+  ["calendly", "Calendly"],
+  ["voip", "Telefonia VoIP"],
+  ["storage_drive", "Google Drive"],
+  ["storage_onedrive", "OneDrive"],
+  ["storage_dropbox", "Dropbox"],
   ["stripe", "Stripe · Pagamenti"],
+  ["wallester", "Wallester · Finanze"],
   ["mail", "Email"],
   ["assistant", "Veronica"],
   ["roadmap", "Stato sviluppo"],
@@ -449,27 +541,150 @@ function previewStandardTheme() {
     if (state.me?.edition === 'base') toast('Solo per piani Pro');
   }, 3000);
 }
+function workspaceThemePlan(){return state.me.theme_plan||state.me.demo_plan||({base:'standard',full:'pro'}[state.me.edition]||state.me.edition);}
+function workspaceThemeOptions(){
+  const ranks=['standard','pro','vip','elite','secret'],rank=ranks.indexOf(workspaceThemePlan());
+  const seasonalOptions = state.me.customer_demo ? demoSeasonalThemes(workspaceThemePlan()) : [];
+  const baseOptions = [['light','Bianco','Tema chiaro'],['pro','Pro','Grigio medio'],['vip','Blu VIP','Blu PRIME'],['elite','Elite','Nero e argento'],['secret','Secret','Nero e oro']].filter(([key])=>key==='light'||ranks.indexOf(key)<=rank);
+  return [...baseOptions, ...seasonalOptions.map(({id,name,dates,palette})=>[id,name,palette+' · '+dates])];
+}
+function workspaceDarkTheme(){return workspaceThemeOptions().some(([key])=>key===state.me.theme_variant)?state.me.theme_variant:workspaceThemePlan();}
+function usesWorkspaceThemePicker() {
+  return ['vip','elite','secret'].includes(workspaceThemePlan()) ||
+    (state.me.customer_demo && demoSeasonalThemes(workspaceThemePlan()).length > 0);
+}
+
+function syncWorkspaceSeason(refreshShell = true) {
+  const plan = workspaceThemePlan();
+  const now = new Date(Date.now() + (state.clockOffset || 0));
+  const normalVariant = state.me.theme === 'light' ? 'light' : workspaceDarkTheme();
+  const season = state.me.customer_demo
+    ? (demoSeasonalThemes(plan).some(theme => theme.id === normalVariant) ? normalVariant : '')
+    : activeSeasonalTheme(plan, now);
+  const fireworks = state.me.customer_demo
+    ? season !== 'christmas' && demoSeasonalThemes(plan).length > 0 && new URLSearchParams(location.search).get('fireworks') === '1'
+    : activeNewYearFireworks(plan, now);
+  syncNewYearFireworks(fireworks);
+  if (!refreshShell && season === (document.documentElement.dataset.seasonalTheme || '')) return;
+  document.documentElement.dataset.theme = season ? 'dark' : state.me.theme;
+  document.documentElement.dataset.themeVariant = season || normalVariant;
+  for (const logo of document.querySelectorAll('.sidebar .brand-image, .compact-brand .brand-image')) {
+    logo.src = season ? '/assets/prime-seasonal-' + season + '.svg' : workspaceLogoSource();
+  }
+  showSeasonalTheme(season);
+}
+
+setInterval(() => {
+  if (!state.me || state.me.customer_demo || !document.querySelector('.workspace')) return;
+  syncWorkspaceSeason(false);
+}, 30000);
+
+async function showWorkspaceThemePicker(){
+  const selected=state.me.theme==='light'?'light':workspaceDarkTheme();
+  const dialog=document.createElement('dialog');dialog.className='workspace-theme-dialog';
+  dialog.setAttribute('aria-labelledby','workspace-theme-title');
+  const options=workspaceThemeOptions();
+  dialog.innerHTML='<h2 id="workspace-theme-title">Scegli il tema</h2><p>'+ (state.me.customer_demo ? 'Prova i temi del piano e le anteprime stagionali disponibili tutto l’anno.' : 'Scegli il tema del tuo piano o di uno dei piani inferiori.') +'</p><div class="workspace-theme-options">'+options.map(([key,title,description])=>'<button type="button" data-seasonal-preview="'+key+'" data-workspace-theme="'+key+'" aria-pressed="'+(selected===key)+'"><span class="workspace-theme-swatch workspace-theme-swatch--'+key+'" aria-hidden="true"></span><span><strong>'+title+'</strong><small>'+description+'</small></span></button>').join('')+'</div><p class="error" role="alert" hidden></p><form method="dialog"><button class="secondary">Chiudi</button></form>';
+  dialog.addEventListener('close',()=>dialog.remove(),{once:true});document.body.append(dialog);
+  dialog.querySelectorAll('[data-workspace-theme]').forEach(button=>button.onclick=async()=>{
+    const choice=button.dataset.workspaceTheme;if(choice===selected){dialog.close();return;}
+    const error=dialog.querySelector('.error');error.hidden=true;
+    dialog.querySelectorAll('button').forEach(control=>control.disabled=true);
+    try{
+      const value=await api('/api/preferences',{method:'PATCH',body:JSON.stringify({theme:choice==='light'?'light':'dark',theme_variant:choice==='light'?'':choice})});
+      state.me.theme=value.theme;state.me.theme_variant=value.theme_variant;dialog.close();shell();await renderPage();
+    }catch(e){error.textContent=e.message;error.hidden=false;dialog.querySelectorAll('button').forEach(control=>control.disabled=false);}
+  });
+  dialog.showModal();dialog.querySelector('[aria-pressed="true"]').focus();
+}
+let profilePhotoObjectUrl = '', profilePhotoSource = '';
+function workspaceProfilePhotoUrl() {
+  const photo = state.me.profile_photo || '';
+  if (photo !== profilePhotoSource) {
+    if (profilePhotoObjectUrl) URL.revokeObjectURL(profilePhotoObjectUrl);
+    profilePhotoObjectUrl = ''; profilePhotoSource = photo;
+    if (photo) {
+      const bytes = Uint8Array.from(atob(photo.split(',')[1]), char => char.charCodeAt(0));
+      profilePhotoObjectUrl = URL.createObjectURL(new Blob([bytes], {type:'image/jpeg'}));
+    }
+  }
+  return profilePhotoObjectUrl;
+}
+
+async function openWorkspaceProfile() {
+  const dialog = document.querySelector('#editor');
+  const nameDayEnabled = !state.me.customer_demo && ['vip','elite','secret'].includes(state.me.edition);
+  const currentNameDay = state.me.name_day || '';
+  const [savedMonth, savedDay] = currentNameDay.split('-');
+  const dateOptions = (size, selected, label) => Array.from({length:size}, (_, index) => {
+    const value = String(index + 1).padStart(2,'0');
+    return '<option value="'+value+'"'+(value===selected?' selected':'')+'>'+esc(label(index))+'</option>';
+  }).join('');
+  const monthLabel = new Intl.DateTimeFormat(document.documentElement.lang || 'it',{month:'long',timeZone:'UTC'});
+  const nameDayFields = nameDayEnabled ? '<fieldset><legend>Onomastico</legend>' +
+    '<label>Giorno <select name="name_day_day"><option value="">Giorno</option>'+dateOptions(31,savedDay,index=>index+1)+'</select></label>' +
+    '<label>Mese <select name="name_day_month"><option value="">Mese</option>'+dateOptions(12,savedMonth,index=>monthLabel.format(Date.UTC(2024,index,1)))+'</select></label>' +
+    '<small class="small-note">Vanessa ti farà gli auguri in questa data. Lascia vuoti entrambi i campi per disattivarli.</small></fieldset>' : '';
+  dialog.innerHTML = `<form id="workspace-profile-form"><header class="dialog-header"><h2 id="editor-title">Profilo</h2><button type="button" class="icon-button" aria-label="Chiudi">×</button></header><div class="dialog-body">${state.me.role === 'owner' ? `<label>Nome agenzia<input name="agency_name" value="${esc(state.me.tenant)}" maxlength="120" required></label>` : ''}<label>Foto profilo<input name="photo" type="file" accept="image/jpeg,image/png,image/webp"></label><p class="small-note">Scegli una foto JPG, PNG o WebP, massimo 5 MB.</p>${nameDayFields}<p class="error" role="alert" hidden></p></div><footer class="dialog-footer"><button type="submit" class="primary">Salva</button></footer></form>`;
+  dialog.querySelector('[aria-label="Chiudi"]').onclick = () => dialog.close();
+  dialog.querySelector('form').onsubmit = async event => {
+    event.preventDefault();
+    const form = event.currentTarget, submit = form.querySelector('[type="submit"]'), error = form.querySelector('[role="alert"]');
+    submit.disabled = true; error.hidden = true;
+    try {
+      const body = {};
+      if (state.me.role === 'owner') body.agency_name = form.elements.agency_name.value.trim();
+      if (nameDayEnabled) {
+        const day = form.elements.name_day_day.value, month = form.elements.name_day_month.value;
+        if (Boolean(day) !== Boolean(month)) throw Error('Seleziona sia il giorno sia il mese dell’onomastico.');
+        const nameDay = day ? month+'-'+day : '';
+        if (nameDay !== currentNameDay) body.name_day = nameDay;
+      }
+      const file = form.elements.photo.files[0];
+      if (file) {
+        if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) throw new Error('Scegli una foto JPG, PNG o WebP fino a 5 MB.');
+        const bitmap = await createImageBitmap(file);
+        const canvas = document.createElement('canvas'); canvas.width = canvas.height = 256;
+        const ctx = canvas.getContext('2d'), size = Math.min(bitmap.width, bitmap.height);
+        ctx.fillStyle = '#fff'; ctx.fillRect(0,0,256,256);
+        ctx.drawImage(bitmap, (bitmap.width-size)/2, (bitmap.height-size)/2, size, size, 0,0,256,256); bitmap.close();
+        body.photo = canvas.toDataURL('image/jpeg', 0.85);
+      }
+      if (!Object.keys(body).length) { dialog.close(); return; }
+      await api('/api/preferences/profile', {method:'PATCH', body:JSON.stringify(body)});
+      state.me = await api('/api/me'); dialog.close(); shell(); await renderPage(); toast('Profilo aggiornato.');
+    } catch (e) { error.textContent = e.message; error.hidden = false; }
+    finally { submit.disabled = false; }
+  };
+  dialog.showModal();
+}
+
 function shell() {
   const isBase = state.me.edition === 'base';
   syncStandardTheme();
-  const hasStripe = state.me.stripe_enabled===true || (state.me.stripe_enabled===undefined && state.me.edition==='elite');
+  const hasStripe = stripeSectionVisible(state.me,state.stripeStatuses);
   if (!hasStripe && state.page === 'stripe') state.page = 'dashboard';
   if (isBase && baseExcludedPages.includes(state.page)) state.page = 'dashboard';
-  const navigation = globalNavigation.filter(([page,label]) => (state.me.role === 'owner' || !['agents','upgrade'].includes(page)) && (page !== 'stripe' || hasStripe) && (!isBase || (!baseExcludedPages.includes(page) && label !== 'CONNESSIONI')));
+  const storagePlan=state.me.customer_demo?state.me.demo_plan:state.me.edition;
+  const navigation = globalNavigation.filter(([page,label]) => (state.me.role === 'owner' || !['agents','upgrade'].includes(page)) && (page !== 'stripe' || hasStripe) && (page !== 'contactout' || (!isBase && state.contactoutConfigured)) && (page !== 'datagma' || state.datagmaConfigured) && (page !== 'calendly' || state.calendlyConnected) && (page !== 'wallester' || state.wallesterConnected) && (page!=='voip'||state.telephonyConfigured) && (!page.startsWith('storage_')||(storagePlan==='secret'&&state.storageConnections.some(item=>'storage_'+item.provider===page))) && (!isBase || !baseExcludedPages.includes(page)));
   stopWpsClock?.();
   document.documentElement.dataset.theme = state.me.theme;
-  app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => k === "section" ? `<p class="nav-section-label">${label}</p>` : `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><div class="avatar">${esc(state.me.tenant.slice(0, 2).toUpperCase())}</div><div><strong>${esc(state.me.tenant)}</strong><small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off"><span class="key-hint">/</span><div id="global-results" class="search-results" hidden></div></div><button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button><span class="workspace-badge">ANTEPRIMA DI SVILUPPO</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><a href="mailto:phoenix@primegestionale.it">Assistenza: phoenix@primegestionale.it</a><a href="/privacy">Privacy</a><span>Versione 0.4 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
+  document.documentElement.dataset.edition = workspaceThemePlan();
+  app.innerHTML = `<a class="skip" href="#main">Vai al contenuto</a><div class="workspace"><aside class="sidebar"><div class="brand">${logo()}</div><p class="sidebar-label">WORKSPACE</p><nav aria-label="Navigazione principale">${navigation.map(([k, label]) => k === "section" ? `<p class="nav-section-label">${label}</p>` : `<button data-page="${k}" class="nav-item ${state.page === k ? "active" : ""}">${icon(k)}<span>${label}</span>${k === "activities" ? '<span class="nav-dot"></span>' : ""}</button>`).join("")}${["owner", "manager"].includes(state.me.role) ? `<button data-page="audit" class="nav-item">${icon("audit")}<span>Registro attività</span></button>` : ""}</nav><div class="sidebar-bottom"><button type="button" class="avatar profile-avatar" id="profile-photo" aria-label="Modifica foto profilo">${state.me.profile_photo ? `<img src="${esc(workspaceProfilePhotoUrl())}" alt="La tua foto profilo">` : esc(state.me.tenant.slice(0, 2).toUpperCase())}</button><div>${state.me.role === "owner" ? `<button type="button" id="agency-profile" class="agency-profile" aria-label="Modifica nome agenzia"><strong>${esc(state.me.tenant)}</strong></button>` : `<strong>${esc(state.me.tenant)}</strong>`}<small>${roleLabels[state.me.role]}</small></div><button id="logout" title="Esci" aria-label="Esci">↗</button></div></aside><div class="main-wrap"><header class="topbar"><button class="icon-button" id="menu" aria-label="Apri o chiudi menu" aria-expanded="true">${icon("menu")}</button><div class="global-search">${icon("search")}<input id="global-search" aria-label="Ricerca universale" placeholder="Cerca in tutto PRIME…" autocomplete="off">${state.me.hide_search_shortcut ? "" : '<span class="key-hint">/</span>'}<div id="global-results" class="search-results" hidden></div></div>${isBase ? "" : `<button id="theme" class="icon-button" aria-label="${state.me.theme === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}">${icon("sun")}</button>`}<span class="workspace-badge">ANTEPRIMA DI SVILUPPO</span></header><main id="main" tabindex="-1"></main><footer class="main-footer">PRIME <span>Uno spazio, tutte le connessioni.</span><a href="mailto:phoenix@primegestionale.it">Assistenza: phoenix@primegestionale.it</a><a href="/privacy">Privacy</a><span>Versione 0.4 · Sviluppo</span></footer></div></div><div id="notice" role="status" hidden></div><dialog id="editor" aria-labelledby="editor-title"></dialog>`;
+  document.querySelector('#profile-photo').onclick = openWorkspaceProfile;
+  if (state.me.role === 'owner') document.querySelector('#agency-profile').onclick = openWorkspaceProfile;
   syncStandardTheme();
   if (state.me.edition === 'elite') {
     document.querySelector('.sidebar nav').insertAdjacentHTML('beforeend', '<a class="nav-item remote-support-nav" href="https://www.teamviewer.com/it/download/portal/" target="_blank" rel="noopener noreferrer">'+icon('support')+'<span>Assistenza remota</span></a>');
   }
-  if (!isBase) { mountMailInbox(); if(["vip","elite"].includes(state.me.edition)) mountEliteWidget({api,esc,state,navigate,loadData}); else mountAssistantChatWidget(); }
-  if(["vip","elite"].includes(state.me.edition)) {document.querySelector('[data-page="assistant"] span').textContent="Vanessa";document.querySelector(".sidebar-label").textContent=state.me.edition === "vip" ? "PRIME VIP" : "PRIME ELITE";}
+  if (!isBase) { mountMailInbox(); if(["vip","elite","secret"].includes(state.me.edition)) mountEliteWidget({api,esc,state,navigate,loadData}); else mountAssistantChatWidget(); }
+  if(["vip","elite","secret"].includes(state.me.edition)) {document.querySelector('[data-page="assistant"] span').textContent="Vanessa";document.querySelector(".sidebar-label").textContent=state.me.edition === "vip" ? "PRIME VIP" : state.me.edition === "secret" ? "PRIME SECRET" : "PRIME ELITE";}
   if (isBase) { document.title = "PRIME Base · Gestionale immobiliare"; document.querySelector(".sidebar-label").textContent = "PRIME BASE · STANDARD"; }
   const compactBrand = document.createElement("div");
   compactBrand.className = "compact-brand";
   compactBrand.innerHTML = logo();
   document.querySelector(".global-search").before(compactBrand);
+  syncWorkspaceSeason();
   if (innerWidth < 850)
     document.querySelector("#global-search").placeholder = "Cerca…";
   document.querySelector(".workspace-badge").textContent =
@@ -502,7 +717,10 @@ function shell() {
       String(!document.body.classList.contains("nav-collapsed")),
     );
   };
-  document.querySelector("#theme").onclick = async () => {
+  if(usesWorkspaceThemePicker())document.querySelector('#theme').setAttribute('aria-label','Scegli tema: '+workspaceThemeOptions().map(([,label])=>label).join(', '));
+  const themeToggle=document.querySelector("#theme");
+  if(themeToggle)themeToggle.onclick = async () => {
+    if(usesWorkspaceThemePicker()){await showWorkspaceThemePicker();return;}
     if (state.me.edition === 'base') { previewStandardTheme(); return; }
     try {
       const value = await api("/api/preferences", {
@@ -599,7 +817,10 @@ async function navigate(page) {
     .forEach((el) => el.classList.toggle("active", el.dataset.page === page));
   document.querySelector("#global-results").hidden = true;
   try {
+    const hadContactOutNav = !!document.querySelector('[data-page="contactout"]');
     await loadData();
+    const needsContactOutNav = state.me.edition !== 'base' && state.contactoutConfigured === true;
+    if (hadContactOutNav !== needsContactOutNav) shell();
     await renderPage();
     if (innerWidth < 850) document.body.classList.add("nav-collapsed");
     document
@@ -664,11 +885,7 @@ async function renderPage() {
   const main = document.querySelector("#main"),
     page = state.page;
   if(page==="security"){
-    const security=await api("/api/account/security");
-    main.innerHTML=pageHeader("ACCOUNT PRIME","Sicurezza account","Verifica email e proteggi l’accesso con un codice temporaneo Authenticator.")+`<section class="panel"><h2>Email</h2><p>${security.email_verified?"Indirizzo verificato":"Indirizzo non verificato"}</p></section><section class="panel"><h2>Autenticazione a due fattori</h2><p>${security.two_factor_enabled?"Authenticator attivo su questo account.":"Aggiungi un secondo passaggio con Google Authenticator, Microsoft Authenticator o un’app TOTP compatibile."}</p>${security.two_factor_enabled?`<form id="totp-disable" class="stack-form"><label>Password attuale<input name="password" type="password" required autocomplete="current-password"></label><label>Codice Authenticator<input name="code" inputmode="numeric" maxlength="6" required autocomplete="one-time-code"></label><button class="secondary">Disattiva 2FA</button></form>`:`<form id="totp-setup" class="stack-form"><label>Password attuale<input name="password" type="password" required autocomplete="current-password"></label><button class="primary">Configura Authenticator</button></form><div id="totp-enroll" hidden></div>`}<p id="security-status" role="status" class="small-note"></p></section><section class="panel"><h2>Email di sicurezza</h2><p>${security.email_provider_configured?"Provider email transazionale configurato.":"In produzione serve configurare Resend e un dominio mittente verificato per consegnare inviti, verifica e recupero password."}</p></section>`;
-    const status=document.querySelector("#security-status");
-    document.querySelector("#totp-setup")?.addEventListener("submit",async e=>{e.preventDefault();try{const result=await api("/api/account/security/totp/setup",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.currentTarget)))});const box=document.querySelector("#totp-enroll");box.hidden=false;box.innerHTML=`<p>Inserisci questa chiave nella tua app Authenticator:</p><p><code>${esc(result.secret)}</code></p><p>Oppure apri questo URI se il dispositivo supporta l’importazione:</p><p><code>${esc(result.otpauth_url)}</code></p><form id="totp-enable" class="stack-form"><label>Codice a sei cifre<input name="code" inputmode="numeric" maxlength="6" required autocomplete="one-time-code"></label><button class="primary">Conferma e attiva</button></form>`;document.querySelector("#totp-enable").onsubmit=async ev=>{ev.preventDefault();try{await api("/api/account/security/totp/enable",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(ev.currentTarget)))});await renderPage();}catch(ex){status.textContent=ex.message;}};}catch(ex){status.textContent=ex.message;}});
-    document.querySelector("#totp-disable")?.addEventListener("submit",async e=>{e.preventDefault();try{await api("/api/account/security/totp/disable",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.currentTarget)))});await renderPage();}catch(ex){status.textContent=ex.message;}});
+    await renderSecurity({main,api,pageHeader,esc,refresh:renderPage});
     return;
   }
   if (page === "mail") { await renderMail({ state, main, api, pageHeader, esc, navigate }); return; }
@@ -763,7 +980,7 @@ async function renderPage() {
     }
     return;
   }
-  if (page === "assistant" && ["vip","elite"].includes(state.me.edition)) { await renderElite({main,api,esc,state,loadData});return; }
+  if (page === "assistant" && ["vip","elite","secret"].includes(state.me.edition)&&state.guideAssistant!=='veronica') { await renderElite({main,api,esc,state,loadData});return; }
   if (page === "assistant") {
     const status = await api("/api/assistant/status");
     const feedbackItems = status.isDeveloper ? await api("/api/assistant/feedback") : null;
@@ -951,10 +1168,32 @@ async function renderPage() {
     drawRecords();
     return;
   }
-  if (page === "connect") {
-    await renderConnect({main,state,api,esc,pageHeader,toast});
+  if (page === "voip") {
+    if(!state.telephonyConfigured){state.page='connect';await renderPage();return;}
+    main.innerHTML=pageHeader('CONNESSIONI','Telefonia VoIP','Gestisci la connessione Telnyx e apri la sezione dedicata quando il numero è attivo.');
+    await renderTelephonyConnect({main,state,api,esc,dedicated:true});return;
+  }
+  if (page.startsWith('storage_')) {
+    const provider=page.slice('storage_'.length);
+    await renderStorageSection({main,state,api,esc,pageHeader,provider});return;
+  }
+  if (page === 'calendly') {
+    const active=(await api('/api/connect')).connections?.find(item=>item.provider==='calendly'&&item.status==='connected');
+    if(!active){state.calendlyConnected=false;state.page='connect';shell();await renderPage();return;}
+    await renderCalendlySection({main,state,api,esc,pageHeader,toast,navigate,calendly:active,standalone:true});
     return;
   }
+  if (page === "contactout") { await renderContactOutPage({main,state,api,esc,pageHeader,navigate}); return; }
+  if (page === "datagma") {
+    await renderDatagmaPage({main,state,api,esc,pageHeader,navigate});
+    return;
+  }
+  if (page === "connect") {
+    if(state.me.edition==='base')await renderStandardConnect({main,state,api,esc,pageHeader,toast,navigate});
+    else {await renderConnect({main,state,api,esc,pageHeader,toast,navigate});const host=document.createElement('div');await renderTrustpilot({main:host,state,api,esc,pageHeader,toast});const trustpilot=host.querySelector('[data-trustpilot-panel]'),intro=main.querySelector('.page-heading')?.nextElementSibling;if(trustpilot)(intro||main.querySelector('.page-heading'))?.insertAdjacentElement('afterend',trustpilot);}
+    return;
+  }
+  if (page === "wallester") {await renderWallesterDashboard({main,state,api,esc,pageHeader,toast,navigate});return;}
   if (page === "stripe") {
     await renderStripeAgency({main,state,api,esc,pageHeader,toast});
     return;
@@ -1012,57 +1251,7 @@ async function renderPage() {
     return;
   }
   if (page === "roadmap") {
-    const phases = [
-      [
-        "01",
-        "Fondamenta",
-        "In corso",
-        "Database con migrazioni, autenticazione, controlli tenant e ruoli, temi per utente, navigazione e ricerche. Mancano inviti, verifica email, recupero password, 2FA e console Super Admin.",
-      ],
-      [
-        "02",
-        "Gestione territoriale",
-        "Parziale",
-        "CRUD vie, civici e interni collegati; recapiti condominiali. Da completare gerarchia città/zone/scale/piani, censimento rapido, mappe, offline e ricerca salvata.",
-      ],
-      [
-        "03",
-        "Operatività e WPS",
-        "Parziale",
-        "Attività WPS assegnate, priorità, scadenze, obiettivi, avanzamento, esiti, prossime azioni e appuntamenti condivisi con controlli di sovrapposizione. CRM e immobili di base. Mancano ricorrenze, disponibilità, feedback e matching.",
-      ],
-      [
-        "04",
-        "Gestione commerciale",
-        "Da sviluppare",
-        "Trattative, offerte, contratti, locazioni, valutazioni, provvigioni, documenti e report approfonditi.",
-      ],
-      [
-        "05",
-        "Ecosistema",
-        "Da sviluppare",
-        "Didit, Stripe, calendari, portali, PRIME Connect, aree proprietari/acquirenti, AI Assistant e app mobile. Start €50/mese (2 utenti), Pro €100/mese (10 utenti), utenti oltre 10 €25/mese: fatturazione e limiti ancora da implementare.",
-      ],
-    ];
-    main.innerHTML =
-      pageHeader(
-        "TRASPARENZA SUL PRODOTTO",
-        "Il percorso di PRIME.",
-        "Requisiti preservati. Stato dei flussi dichiarato senza simulazioni.",
-      ) +
-      `<section class="panel">${searchBox("Cerca modulo o funzionalità…")}<div id="roadmap-list"></div></section>`;
-    const draw = () =>
-      (document.querySelector("#roadmap-list").innerHTML = phases
-        .filter((x) =>
-          x.join(" ").toLowerCase().includes(state.query.toLowerCase()),
-        )
-        .map(
-          ([n, title, status, text]) =>
-            `<article class="roadmap-row"><span class="phase-number">${n}</span><div><h2>${title}</h2><p class="muted">${text}</p></div><span class="pill">${status}</span></article>`,
-        )
-        .join(""));
-    draw();
-    bindSearch(draw);
+    await renderDevelopmentStatus({main,state,api,pageHeader,esc});
   }
 }
 function empty(title, description) {
@@ -1381,7 +1570,7 @@ async function openEditor(entity, record = null, prefill = {}) {
     dialog.querySelector(".dialog-body").append(hint);
     if(record && state.me.edition !== "base"){
       mountContactOutEnrichment({ dialog, record, methods: (state.data.contact_methods || []).filter((item) => item.contact_id === record.id), api, esc });
-      const panel=document.createElement('section');panel.className='datagma-enrichment panel';panel.innerHTML=`<div><p class="eyebrow">RICERCA PROFESSIONALE</p><h3>Arricchisci con Datagma</h3><p class="small-note">PRIME invierà a Datagma l’email professionale oppure il profilo LinkedIn salvato. La ricerca può consumare crediti. Nessun risultato viene registrato senza la tua revisione e il successivo salvataggio della scheda.</p><label class="checkbox-label"><input type="checkbox" data-datagma-consent>Ho verificato che questa ricerca sia consentita e desidero inviare questi dati a Datagma.</label><button type="button" class="secondary" data-datagma-run ${record.do_not_contact?'disabled':''}>Cerca contatto</button><p class="small-note" role="status" data-datagma-status>${record.do_not_contact?'Ricerca disabilitata: il contatto ha chiesto di non essere ricontattato.':''}</p><div data-datagma-results></div></div>`;dialog.querySelector('.dialog-body').append(panel);
+      const panel=document.createElement('section');panel.className='datagma-enrichment panel';panel.innerHTML=`<div><p class="eyebrow">RICERCA PROFESSIONALE</p><h3 class="provider-brand-title"><img src="/brands/providers/datagma-official.svg" alt="Datagma" width="180" height="40"></h3><p class="small-note">PRIME invierà a Datagma l’email professionale oppure il profilo LinkedIn salvato. La ricerca può consumare crediti. Nessun risultato viene registrato senza la tua revisione e il successivo salvataggio della scheda.</p><label class="checkbox-label"><input type="checkbox" data-datagma-consent>Ho verificato che questa ricerca sia consentita e desidero inviare questi dati a Datagma.</label><button type="button" class="secondary" data-datagma-run ${record.do_not_contact?'disabled':''}>Cerca contatto</button><p class="small-note" role="status" data-datagma-status>${record.do_not_contact?'Ricerca disabilitata: il contatto ha chiesto di non essere ricontattato.':''}</p><div data-datagma-results></div></div>`;dialog.querySelector('.dialog-body').append(panel);
       const runSearch=panel.querySelector('[data-datagma-run]'),status=panel.querySelector('[data-datagma-status]'),results=panel.querySelector('[data-datagma-results]'),consent=panel.querySelector('[data-datagma-consent]');
       runSearch.onclick=async()=>{if(!consent.checked){status.textContent='Conferma di aver verificato la base giuridica e di poter condividere questi dati con Datagma.';return;}runSearch.disabled=true;status.textContent='Ricerca Datagma in corso…';results.replaceChildren();try{const result=await api('/api/connect/datagma/enrich',{method:'POST',body:JSON.stringify({contact_id:record.id})});const c=result.candidate||{};status.textContent=result.found?`Risultati trovati${c.credit_burn?` · crediti usati: ${esc(c.credit_burn)}`:''}. Seleziona cosa vuoi inserire, poi salva la scheda.`:'Datagma non ha trovato dati utilizzabili.';const suggestions=[];if(c.profession)suggestions.push({field:'profession',label:'Professione',value:c.profession});if(c.email)suggestions.push({field:'email',label:'Email professionale',value:c.email});for(const phone of c.phones||[])suggestions.push({field:'phone',label:phone.kind||'Telefono',value:phone.value,kind:phone.kind});if(c.linkedin)suggestions.push({field:'linkedin',label:'LinkedIn',value:c.linkedin});results.innerHTML=suggestions.map(item=>`<div class="datagma-result-row"><span><strong>${esc(item.label)}</strong><small>${esc(item.value)}</small></span><button type="button" class="text-button" data-apply="${esc(item.field)}" data-value="${esc(item.value)}" data-kind="${esc(item.kind||'')}">Inserisci</button></div>`).join('')||'';results.querySelectorAll('[data-apply]').forEach(button=>button.onclick=()=>{const value=button.dataset.value,field=button.dataset.apply;if(field==='profession'){const input=dialog.querySelector('[name="profession"]');if(!input.value.trim())input.value=value;else{status.textContent='Professione già presente: non è stata sovrascritta.';return;}}else if(field==='email'){const input=dialog.querySelector('[name="email"]');if(!input.value.trim())input.value=value;else{status.textContent='Email già presente: non è stata sovrascritta.';return;}}else if(field==='phone'){const primary=dialog.querySelector('[name="phone"]'),kind=button.dataset.kind||'Cell di lavoro';if(!primary.value.trim()){primary.value=value;const selector=dialog.querySelector('[name="phone_kind"]');if(selector)selector.value=kind;}else{dialog.querySelector('[data-add-phone]')?.click();const row=[...dialog.querySelectorAll('.repeatable-recap-row')].reverse().find(el=>el.querySelector('[data-recap-value]')&&!el.querySelector('[data-recap-value]').value);if(row){row.querySelector('[data-recap-value]').value=value;row.querySelector('[data-recap-type]').value=kind;}}}else if(field==='linkedin'){const exists=(state.data.contact_methods||[]).some(m=>m.contact_id===record.id&&m.method_type==='LinkedIn'&&m.value===value);if(exists){status.textContent='Questo profilo LinkedIn è già presente.';return;}dialog.querySelector('[data-add-social]')?.click();const row=[...dialog.querySelectorAll('.repeatable-recap-row')].reverse().find(el=>el.querySelector('[data-recap-value]')&&!el.querySelector('[data-recap-value]').value);if(row){row.querySelector('[data-recap-value]').value=value;row.querySelector('[data-recap-type]').value='LinkedIn';}}button.textContent='Inserito';button.disabled=true;});}catch(error){status.textContent=error.message;}finally{runSearch.disabled=false;}};
     }
@@ -1389,7 +1578,7 @@ async function openEditor(entity, record = null, prefill = {}) {
   if (entity === "documents" && record) {
     const uploadPanel = document.createElement("section");
     uploadPanel.className = "document-file-actions";
-    uploadPanel.innerHTML = `<p class="small-note">PDF nell’archivio privato dell’agenzia · massimo 20 MB.</p><input id="document-file-input" type="file" accept="application/pdf,.pdf" hidden><button type="button" class="secondary" id="document-upload">${record.status === "disponibile" ? "Sostituisci PDF" : "Carica PDF"}</button>${record.status === "disponibile" ? ` <a class="text-button" href="/api/documents/${encodeURIComponent(record.id)}/content" target="_blank" rel="noopener noreferrer">Apri PDF ↗</a>` : ""}<p id="document-upload-status" class="small-note" role="status"></p>`;
+    uploadPanel.innerHTML = `<p class="small-note">PDF nell’archivio privato dell’agenzia · massimo 20 MB.</p><input id="document-file-input" type="file" accept="application/pdf,.pdf" hidden><button type="button" class="secondary" id="document-upload">${record.status === "disponibile" ? "Sostituisci PDF" : "Carica PDF"}</button>${record.status === "disponibile" ? ` <a class="text-button" href="/api/documents/${encodeURIComponent(record.id)}/content" download="${esc(record.file_name || record.title || 'documento')}.pdf" target="_blank" rel="noopener noreferrer">Scarica sul PC ↓</a>` : ""}<p id="document-upload-status" class="small-note" role="status"></p>`;
     dialog.querySelector(".dialog-body").append(uploadPanel);
     const fileInput = uploadPanel.querySelector("#document-file-input"), uploadButton = uploadPanel.querySelector("#document-upload"), uploadStatus = uploadPanel.querySelector("#document-upload-status");
     uploadButton.onclick = () => fileInput.click();
@@ -1591,8 +1780,18 @@ async function boot() {
       return;
     }
     await loadData();
+    const guideParams=new URL(location.href).searchParams,guideProvider=guideParams.get('provider'),connectProvider=guideParams.get('connect_provider');
+    if(integrationAllowed(connectProvider,state.me.edition))state.page='connect';
+    if(integrationAllowed(guideProvider,state.me.edition)&&['veronica','vanessa'].includes(guideParams.get('guide_help'))){
+      const requested=guideParams.get('guide_help');
+      if(requested==='veronica'||['vip','elite','secret'].includes(state.me.edition)){state.guideAssistant=requested;state.page='assistant';}
+    }
     shell();
     await renderPage();
+    if(state.guideAssistant){
+      const field=document.querySelector(state.guideAssistant==='veronica'?'#assistant-question':'#elite-chat-input');
+      if(field){field.value='Guidami nella configurazione di '+integrationGuides[guideProvider].name+' in PRIME. Spiegami un passaggio alla volta. Non chiedermi password o chiavi e non inviare moduli o pagamenti.';field.dispatchEvent(new Event('input',{bubbles:true}));field.focus();}
+    }
     if (state.me.edition !== "base") startMailNotifications();
     stopDocumentRenewalNotifications?.();
     stopDocumentRenewalNotifications = startDocumentRenewalNotifications({state,api});
@@ -1608,13 +1807,12 @@ async function boot() {
 function mountMailInbox() {
   const inbox = document.createElement("div");
   inbox.className = "mail-inbox";
-  inbox.innerHTML = `<button id="mail-inbox-toggle" aria-expanded="false" aria-controls="mail-inbox-panel" aria-label="Inbox email">${icon("mail")}<span>Inbox</span><b id="mail-inbox-count" hidden>0</b></button><section id="mail-inbox-panel" aria-label="Notifiche email" hidden><header><strong>Inbox · Notifiche email</strong><button id="mail-inbox-close" class="icon-button" aria-label="Chiudi inbox">×</button></header><div id="mail-inbox-items"><p>Caricamento…</p></div><footer><button id="mail-inbox-all" class="text-button">Apri tutte le email →</button><small>Solo mittente e oggetto</small></footer></section>`;
+  inbox.innerHTML = `<button id="mail-inbox-toggle" aria-expanded="false" aria-controls="mail-inbox-panel" aria-label="Inbox email">${icon("mail")}<span>Inbox</span><b id="mail-inbox-count" hidden>0</b></button><section id="mail-inbox-panel" aria-label="Notifiche email" hidden><header><strong>Inbox · Ultime 10 notifiche</strong><button id="mail-inbox-close" class="icon-button" aria-label="Chiudi inbox">×</button></header><div id="mail-inbox-items"><p>Caricamento…</p></div><footer><small>Aggiornamento automatico · Solo mittente e oggetto</small></footer></section>`;
   document.querySelector("#theme").before(inbox);
   const toggle = inbox.querySelector("#mail-inbox-toggle"), panel = inbox.querySelector("#mail-inbox-panel");
   const close = () => { panel.hidden = true; toggle.setAttribute("aria-expanded", "false"); };
   toggle.onclick = () => { panel.hidden = !panel.hidden; toggle.setAttribute("aria-expanded", String(!panel.hidden)); if (!panel.hidden) refreshMailInbox(); };
   inbox.querySelector("#mail-inbox-close").onclick = () => { close(); toggle.focus(); };
-  inbox.querySelector("#mail-inbox-all").onclick = () => { close(); navigate("mail"); };
   inbox.addEventListener("keydown", event => { if (event.key === "Escape") { close(); toggle.focus(); } });
   inbox.addEventListener("focusout", event => { if (!inbox.contains(event.relatedTarget)) close(); });
   refreshMailInbox();
@@ -1624,7 +1822,7 @@ function mountAssistantChatWidget() {
   if (state.assistantWidgetResizeHandler) window.removeEventListener("resize", state.assistantWidgetResizeHandler);
   const root = document.createElement("div");
   root.className = "assistant-chat-widget";
-  root.innerHTML = `<button id="assistant-chat-fab" class="assistant-chat-fab" type="button" aria-label="Apri la chat con Veronica" aria-expanded="${state.assistantWidgetOpen}" title="Trascina per spostare · clicca per chattare"><img src="${assistantAvatarThumbSrc()}" alt="Volto di Veronica" decoding="async"></button><section id="assistant-chat-panel" class="assistant-chat-panel" role="dialog" aria-label="Chat con Veronica" ${state.assistantWidgetOpen ? "" : "hidden"}><header class="assistant-chat-header"><img src="${assistantAvatarSrc()}" alt="Veronica" loading="lazy" decoding="async"><div><strong>Veronica</strong><p class="assistant-chat-intro-message">Ciao! 😊 Sono qui per aiutarti con la tua agenzia. Da dove cominciamo?</p></div><button id="assistant-chat-close" type="button" class="icon-button" aria-label="Chiudi la chat">×</button></header><div id="assistant-chat-thread" class="assistant-chat-thread" aria-live="polite"></div><div class="assistant-chat-actions" role="group" aria-label="Azioni rapide di Veronica">${assistantShortcutsMarkup(true)}</div><form id="assistant-chat-form" class="assistant-chat-form"><textarea id="assistant-chat-question" rows="2" maxlength="2000" aria-label="Scrivi a Veronica" placeholder="Scrivimi qui…" required></textarea><button class="primary" type="submit" aria-label="Invia messaggio">Invia</button></form><p class="assistant-chat-footnote">Feedback sull’app visibile allo sviluppatore PRIME</p></section>`;
+  root.innerHTML = `<button id="assistant-chat-fab" class="assistant-chat-fab" type="button" aria-label="Apri la chat con ${assistantDisplayName()}" aria-expanded="${state.assistantWidgetOpen}" title="Trascina per spostare · clicca per chattare"><img src="${assistantAvatarThumbSrc()}" alt="Volto di ${assistantDisplayName()}" decoding="async"></button><section id="assistant-chat-panel" class="assistant-chat-panel" role="dialog" aria-label="Chat con ${assistantDisplayName()}" ${state.assistantWidgetOpen ? "" : "hidden"}><header class="assistant-chat-header"><img src="${assistantAvatarSrc()}" alt="${assistantDisplayName()}" loading="lazy" decoding="async"><div><strong>${assistantDisplayName()}</strong><p class="assistant-chat-intro-message">Ciao! 😊 Sono qui per aiutarti con la tua agenzia. Da dove cominciamo?</p></div><button id="assistant-chat-close" type="button" class="icon-button" aria-label="Chiudi la chat">×</button></header><div id="assistant-chat-thread" class="assistant-chat-thread" aria-live="polite"></div><div class="assistant-chat-actions" role="group" aria-label="Azioni rapide di ${assistantDisplayName()}">${assistantShortcutsMarkup(true)}</div><form id="assistant-chat-form" class="assistant-chat-form"><textarea id="assistant-chat-question" rows="2" maxlength="2000" aria-label="Scrivi a ${assistantDisplayName()}" placeholder="Scrivimi qui…" required></textarea><button class="primary" type="submit" aria-label="Invia messaggio">Invia</button></form><p class="assistant-chat-footnote">Feedback sull’app visibile allo sviluppatore PRIME</p></section>`;
   app.append(root);
 
   const fab = root.querySelector("#assistant-chat-fab");
@@ -1661,14 +1859,14 @@ function mountAssistantChatWidget() {
     state.assistantWidgetOpen = open;
     panel.hidden = !open;
     fab.setAttribute("aria-expanded", String(open));
-    fab.setAttribute("aria-label", open ? "Chiudi la chat con Veronica" : "Apri la chat con Veronica");
+    fab.setAttribute("aria-label", open ? `Chiudi la chat con ${assistantDisplayName()}` : `Apri la chat con ${assistantDisplayName()}`);
     if (open) { draw(); place(); question.focus(); }
   };
 
   place();
   if (state.assistantWidgetOpen) draw();
   fab.addEventListener("click", () => setOpen(!state.assistantWidgetOpen));
-  root.querySelector("#assistant-chat-close").addEventListener("click", () => setOpen(false));
+  root.querySelector("#assistant-chat-close").addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); setOpen(false); fab.focus({ preventScroll: true }); });
   bindAssistantShortcuts(panel, question);
   panel.addEventListener("keydown", (event) => {
     if (event.key === "Escape") { setOpen(false); fab.focus(); }
@@ -1757,7 +1955,7 @@ function drawMailInbox(items) {
   count.textContent = items.length; count.hidden = !items.length;
   toggle.setAttribute("aria-label", `Inbox email, ${items.length} notifiche`);
   const providers = {gmail:"Gmail",outlook:"Outlook"};
-  list.innerHTML = items.map(item => `<a class="mail-inbox-item" href="${esc(item.provider_url)}" target="_blank" rel="noopener noreferrer"><div><span>${esc(providers[item.provider] || "Email")}</span><time>${esc(new Date(item.received_at).toLocaleString((document.documentElement.lang==='en'?'en-GB':'it-IT'), {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}))}</time></div><strong>${esc(item.sender)}</strong><p>${esc(item.subject || "Senza oggetto")}</p><small>${esc(item.account_label)} · Apri email ↗</small></a>`).join("") || `<div class="mail-inbox-empty">${icon("mail")}<strong>Nessuna notifica email</strong><p>Le notifiche degli account collegati compariranno qui. Gestisci i collegamenti dalla pagina Email.</p></div>`;
+  list.innerHTML = items.slice(0, 10).map(item => `<a class="mail-inbox-item" href="${esc(item.provider_url)}" target="_blank" rel="noopener noreferrer"><strong>${esc(item.sender)}</strong><p>${esc(item.subject || "Senza oggetto")}</p></a>`).join("") || `<div class="mail-inbox-empty">${icon("mail")}<strong>Nessuna notifica email</strong><p>Le notifiche degli account collegati compariranno qui. Gestisci i collegamenti dalla pagina Email.</p></div>`;
 }
 async function refreshMailInbox() {
   try { drawMailInbox(await api("/api/connect/mail-notifications")); }
@@ -1788,3 +1986,25 @@ function startMailNotifications(){
 startCustomSelects();
 startVoiceInput();
 boot();
+
+
+window.addEventListener('prime-open-wallester',()=>void navigate('wallester'));
+window.addEventListener('prime-wallester-connected',()=>{try{sessionStorage.setItem('prime-demo-finance-wallester','1');}catch{}if(document.querySelector('[data-page=wallester]'))return;const nav=document.querySelector('.sidebar nav'),button=document.createElement('button');if(!nav)return;button.className='nav-item';button.dataset.page='wallester';button.innerHTML=icon('wallester')+'<span>Wallester · Finanze</span>';button.onclick=()=>void navigate('wallester');nav.append(button);});
+
+window.addEventListener('prime-wallester-disconnected',()=>document.querySelector('[data-page=wallester]')?.remove());
+
+window.addEventListener('prime-telephony-status',async event=>{
+  state.telephonyConfigured=event.detail?.configured===true;
+  if(!state.telephonyConfigured&&state.page==='voip')state.page='connect';
+  shell();await renderPage();
+});
+
+window.addEventListener('prime-stripe-demo-connected',()=>{
+  try{sessionStorage.setItem('prime-demo-finance-stripe','1');}catch{}
+  if(!state.me.customer_demo||document.querySelector('[data-page=stripe]'))return;
+  const nav=document.querySelector('.sidebar nav'),button=document.createElement('button');
+  if(!nav)return;
+  button.className='nav-item';button.dataset.page='stripe';
+  button.innerHTML=icon('stripe')+'<span>Stripe</span>';
+  button.onclick=()=>void navigate('stripe');nav.append(button);
+});

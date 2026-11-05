@@ -35,5 +35,8 @@
  body.money-cursor-enabled [data-native-cursor] input[type=range]{cursor:ew-resize!important}
  body.money-cursor-enabled [data-native-cursor] input[type=number]{cursor:text!important}
  body.money-cursor-enabled [data-native-cursor] button{cursor:pointer!important}
+ body.money-cursor-enabled dialog,body.money-cursor-enabled dialog *,body.money-cursor-enabled [role="dialog"],body.money-cursor-enabled [role="dialog"] *,body.money-cursor-enabled [aria-modal="true"],body.money-cursor-enabled [aria-modal="true"] *{cursor:default!important}
+ body.money-cursor-enabled dialog button,body.money-cursor-enabled dialog a,body.money-cursor-enabled dialog summary,body.money-cursor-enabled dialog label,body.money-cursor-enabled [role="dialog"] button,body.money-cursor-enabled [role="dialog"] a,body.money-cursor-enabled [aria-modal="true"] button,body.money-cursor-enabled [aria-modal="true"] a{cursor:pointer!important}
+ body.money-cursor-enabled dialog input:not([type="checkbox"]):not([type="radio"]),body.money-cursor-enabled dialog textarea,body.money-cursor-enabled [role="dialog"] input:not([type="checkbox"]):not([type="radio"]),body.money-cursor-enabled [role="dialog"] textarea{cursor:text!important}
  .money-cursor.is-native-area{display:none}
 }

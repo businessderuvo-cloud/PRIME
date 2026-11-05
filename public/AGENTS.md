@@ -12,3 +12,5 @@ The user explicitly requires that future changes preserve these pillars unless t
 Before publication: take a fresh live snapshot. Make the smallest targeted edit. Compare untouched pillars against the live snapshot, preserving their current content and asset URLs. Never copy an older whole HTML/CSS/JS file over current live files. Update cache versions only for intentionally changed assets.
 
 Verify in the integrated Codex browser: automatic play at center, pause offscreen, resume without reset, no hover-triggered restart, poster-to-video transition, lower-video interaction; inspect home colors, plan icons, cookie collapse and preferences dialog. If verification cannot run, state that limitation. Record hashes/behavior checks so future releases cannot silently revert these pillars. Follow docs/SAFE-PUBLISHING.md for every Fly publication.
+
+User-approved update, 2 November 2026: on phones (max-width:760px), dark home surfaces are slightly lighter: --bg:#10161b; --panel:#161e25; --soft:#1c2730. Preserve this mobile-only adjustment; desktop and light theme keep their prior colors.

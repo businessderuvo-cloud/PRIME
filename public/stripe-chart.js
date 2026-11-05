@@ -37,9 +37,12 @@ const seriesLabel = series => ({
   pending: text('In attesa', 'Pending'),
   cost: text('Uscite', 'Expenses'),
 }[series.key]);
-const euro = value => new Intl.NumberFormat(locale(), {
-  style: 'currency', currency: 'EUR', maximumFractionDigits: 0,
-}).format(value / 100);
+const amountFormatter = currency => {
+  const base = new Intl.NumberFormat(locale(), {style:'currency',currency});
+  const digits = ['isk','ugx'].includes(currency.toLowerCase()) ? 2 : base.resolvedOptions().maximumFractionDigits;
+  const display = new Intl.NumberFormat(locale(), {style:'currency',currency,maximumFractionDigits:0});
+  return value => display.format(value / 10 ** digits);
+};
 const percent = value => `${value.toFixed(1).replace('.', locale() === 'it-IT' ? ',' : '.')}%`;
 const monthLabel = month => {
   const match = month.match(/(?:^|[-/])(\d{2})$/);
@@ -54,7 +57,7 @@ const niceMaximum = value => {
   return (fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10) * scale;
 };
 
-function axes(rows, width = 720, height = 280) {
+function axes(rows, amount, width = 720, height = 280) {
   const plot = { left: 76, right: width - 14, top: 18, bottom: height - 44 };
   const maxValue = Math.max(0, ...rows.flatMap(row => SERIES.map(series => row[series.key])));
   const maximum = niceMaximum(maxValue);
@@ -63,13 +66,13 @@ function axes(rows, width = 720, height = 280) {
   for (let tick = 0; tick <= 4; tick += 1) {
     const value = maximum * tick / 4;
     const y = plot.bottom - plotHeight * tick / 4;
-    markup += `<line class="stripe-gridline" x1="${plot.left}" y1="${y}" x2="${plot.right}" y2="${y}"/><text class="stripe-axis-label" x="${plot.left - 9}" y="${y + 4}" text-anchor="end">${esc(euro(value))}</text>`;
+    markup += `<line class="stripe-gridline" x1="${plot.left}" y1="${y}" x2="${plot.right}" y2="${y}"/><text class="stripe-axis-label" x="${plot.left - 9}" y="${y + 4}" text-anchor="end">${esc(amount(value))}</text>`;
   }
   return { plot, maximum, markup };
 }
 
-function renderBars(rows) {
-  const { plot, maximum, markup } = axes(rows);
+function renderBars(rows, amount) {
+  const { plot, maximum, markup } = axes(rows, amount);
   const groupWidth = (plot.right - plot.left) / rows.length;
   const barWidth = Math.min(15, groupWidth * 0.19);
   const gap = Math.min(3, groupWidth * 0.04);
@@ -84,15 +87,15 @@ function renderBars(rows) {
       const y = plot.bottom - barHeight;
       const share = total ? value / total * 100 : 0;
       const label = seriesLabel(series);
-      return `<rect class="stripe-${series.key}" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="2" tabindex="0" aria-label="${esc(row.month)} · ${label}: ${esc(euro(value))}, ${percent(share)} ${text('del mese', 'of month')} "><title>${esc(row.month)} · ${label}: ${esc(euro(value))} · ${percent(share)} ${text('del mese', 'of month')}</title></rect>`;
+      return `<rect class="stripe-${series.key}" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="2" tabindex="0" aria-label="${esc(row.month)} · ${label}: ${esc(amount(value))}, ${percent(share)} ${text('del mese', 'of month')} "><title>${esc(row.month)} · ${label}: ${esc(amount(value))} · ${percent(share)} ${text('del mese', 'of month')}</title></rect>`;
     }).join('');
     return `${rects}<text class="stripe-month-label" x="${center}" y="${plot.bottom + 23}" text-anchor="middle">${esc(monthLabel(row.month))}</text>`;
   }).join('');
   return `<svg class="stripe-chart-svg" viewBox="0 0 720 280" preserveAspectRatio="none" role="img" aria-label="${text('Grafico a barre mensile con importi e quote percentuali', 'Monthly bar chart with amounts and percentages')}"><g>${markup}</g><g>${bars}</g></svg>`;
 }
 
-function renderLines(rows) {
-  const { plot, maximum, markup } = axes(rows);
+function renderLines(rows, amount) {
+  const { plot, maximum, markup } = axes(rows, amount);
   const groupWidth = (plot.right - plot.left) / rows.length;
   const seriesMarkup = SERIES.map(series => {
     const points = rows.map((row, index) => ({
@@ -104,7 +107,7 @@ function renderLines(rows) {
     }));
     const path = points.map((point, index) => `${index ? 'L' : 'M'}${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' ');
     const label = seriesLabel(series);
-    const dots = points.map(point => `<circle class="stripe-${series.key} stripe-line-point" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="4" tabindex="0" aria-label="${esc(point.row.month)} · ${label}: ${esc(euro(point.value))}, ${percent(point.share)} ${text('del mese', 'of month')}"><title>${esc(point.row.month)} · ${label}: ${esc(euro(point.value))} · ${percent(point.share)} ${text('del mese', 'of month')}</title></circle>`).join('');
+    const dots = points.map(point => `<circle class="stripe-${series.key} stripe-line-point" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="4" tabindex="0" aria-label="${esc(point.row.month)} · ${label}: ${esc(amount(point.value))}, ${percent(point.share)} ${text('del mese', 'of month')}"><title>${esc(point.row.month)} · ${label}: ${esc(amount(point.value))} · ${percent(point.share)} ${text('del mese', 'of month')}</title></circle>`).join('');
     return `<path class="stripe-line stripe-${series.key}" d="${path}"/>${dots}`;
   }).join('');
   const months = rows.map((row, index) => {
@@ -119,17 +122,17 @@ function totals(rows) {
   return { sums, total: sums.reduce((sum, amount) => sum + amount, 0) };
 }
 
-function renderSummary(rows) {
+function renderSummary(rows, amount) {
   const { sums, total } = totals(rows);
-  const items = SERIES.map((series, index) => `<div class="stripe-chart-summary-item stripe-summary-${series.key}"><span class="stripe-chart-summary-label"><i aria-hidden="true"></i>${seriesLabel(series)}</span><strong>${esc(euro(sums[index]))}</strong><small>${percent(total ? sums[index] / total * 100 : 0)} ${text('del totale mostrato', 'of displayed total')}</small></div>`).join('');
+  const items = SERIES.map((series, index) => `<div class="stripe-chart-summary-item stripe-summary-${series.key}"><span class="stripe-chart-summary-label"><i aria-hidden="true"></i>${seriesLabel(series)}</span><strong>${esc(amount(sums[index]))}</strong><small>${percent(total ? sums[index] / total * 100 : 0)} ${text('del totale mostrato', 'of displayed total')}</small></div>`).join('');
   return `<div class="stripe-chart-summary" aria-label="${text('Totali del periodo', 'Period totals')}">${items}</div>`;
 }
 
-function renderPie(rows) {
+function renderPie(rows, amount) {
   const { sums, total } = totals(rows);
   if (!(total > 0)) return `<div class="stripe-pie-empty">${text('Nessun movimento nel periodo', 'No activity in this period')}</div>`;
-  const items = SERIES.map((series, index) => `<div class="stripe-pie-row stripe-summary-${series.key}"><i aria-hidden="true"></i><span>${seriesLabel(series)}</span><strong>${esc(euro(sums[index]))}</strong><small>${percent(sums[index] / total * 100)}</small></div>`).join('');
-  const label = SERIES.map((series, index) => `${seriesLabel(series)} ${esc(euro(sums[index]))}, ${percent(sums[index] / total * 100)}`).join('; ');
+  const items = SERIES.map((series, index) => `<div class="stripe-pie-row stripe-summary-${series.key}"><i aria-hidden="true"></i><span>${seriesLabel(series)}</span><strong>${esc(amount(sums[index]))}</strong><small>${percent(sums[index] / total * 100)}</small></div>`).join('');
+  const label = SERIES.map((series, index) => `${seriesLabel(series)} ${esc(amount(sums[index]))}, ${percent(sums[index] / total * 100)}`).join('; ');
   const cx = 125, cy = 125, radius = 112;
   let angle = -Math.PI / 2;
   const slices = SERIES.map((series, index) => {
@@ -143,22 +146,23 @@ function renderPie(rows) {
     } else {
       const x1 = cx + radius * Math.cos(angle), y1 = cy + radius * Math.sin(angle);
       const x2 = cx + radius * Math.cos(end), y2 = cy + radius * Math.sin(end);
-      shape = `<path d="M${cx} ${cy} L${x1.toFixed(2)} ${y1.toFixed(2)} A${radius} ${radius} 0 ${sweep > Math.PI ? 1 : 0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z" fill="${series.color}" stroke="#15181a" stroke-width="2"><title>${seriesLabel(series)}: ${esc(euro(value))} · ${percent(value / total * 100)}</title></path>`;
+      shape = `<path d="M${cx} ${cy} L${x1.toFixed(2)} ${y1.toFixed(2)} A${radius} ${radius} 0 ${sweep > Math.PI ? 1 : 0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z" fill="${series.color}" stroke="#15181a" stroke-width="2"><title>${seriesLabel(series)}: ${esc(amount(value))} · ${percent(value / total * 100)}</title></path>`;
     }
     angle = end;
     return shape;
   }).join('');
-  return `<div class="stripe-pie-layout"><svg class="stripe-chart-svg stripe-pie-svg" viewBox="0 0 250 250" role="img" aria-label="${text('Ripartizione', 'Breakdown')}: ${label}">${slices}</svg><div class="stripe-pie-legend"><p class="stripe-pie-total"><span>${text('Totale periodo', 'Period total')}</span><strong>${esc(euro(total))}</strong></p>${items}<p>${text('Quote calcolate sul totale dei movimenti visualizzati.', 'Percentages are based on all displayed activity.')}</p></div></div>`;
+  return `<div class="stripe-pie-layout"><svg class="stripe-chart-svg stripe-pie-svg" viewBox="0 0 250 250" role="img" aria-label="${text('Ripartizione', 'Breakdown')}: ${label}">${slices}</svg><div class="stripe-pie-legend"><p class="stripe-pie-total"><span>${text('Totale periodo', 'Period total')}</span><strong>${esc(amount(total))}</strong></p>${items}<p>${text('Quote calcolate sul totale dei movimenti visualizzati.', 'Percentages are based on all displayed activity.')}</p></div></div>`;
 }
 
-export function renderStripeChartSvg(source, style = 'bars') {
+export function renderStripeChartSvg(source, style = 'bars', currency = 'EUR') {
+  const amount=amountFormatter(currency);
   const rows = normalizeStripeSeries(source);
-  if (style === 'pie') return renderPie(rows);
+  if (style === 'pie') return renderPie(rows, amount);
   if (!rows.length) return `<div class="stripe-chart-empty">${text('Nessun dato disponibile', 'No data available')}</div>`;
-  return style === 'line' ? renderLines(rows) : renderBars(rows);
+  return style === 'line' ? renderLines(rows, amount) : renderBars(rows, amount);
 }
 
-export function wireStripeChart(panel, source) {
+export function wireStripeChart(panel, source, currency = 'EUR') {
   if (!panel) return;
   const chart = panel.querySelector('.stripe-chart');
   if (!chart) return;
@@ -169,7 +173,7 @@ export function wireStripeChart(panel, source) {
   controls.setAttribute('aria-label', text('Stile grafico', 'Chart style'));
   const summary = document.createElement('div');
   summary.className = 'stripe-chart-summary-wrap';
-  summary.innerHTML = renderSummary(rows);
+  summary.innerHTML = renderSummary(rows, amountFormatter(currency));
   for (const [style, label] of [['bars', text('Barre', 'Bars')], ['line', text('Linee', 'Lines')], ['pie', text('Torta', 'Pie')]]) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -181,12 +185,12 @@ export function wireStripeChart(panel, source) {
       chart.style.display = 'block';
       chart.style.gridTemplateColumns = 'none';
       chart.style.minWidth = '0';
-      chart.innerHTML = renderStripeChartSvg(rows, style);
+      chart.innerHTML = renderStripeChartSvg(rows, style, currency);
       summary.hidden = style === 'pie' || !rows.length;
     });
     controls.append(button);
   }
-  chart.innerHTML = renderStripeChartSvg(rows, 'bars');
+  chart.innerHTML = renderStripeChartSvg(rows, 'bars', currency);
   chart.dataset.style = 'bars';
   chart.style.display = 'block';
   chart.style.removeProperty('grid-template-columns');

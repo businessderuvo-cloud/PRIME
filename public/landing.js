@@ -13,6 +13,8 @@ const paths={
   search:'M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',
   sparkles:'m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM20 2v4M18 4h4',
   phone:'M22 16.9v3a2 2 0 0 1-2.2 2 20 20 0 0 1-8.6-3.1 20 20 0 0 1-6.1-6.1A20 20 0 0 1 2 4.1 2 2 0 0 1 4 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L8 10a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.7 2',
+  video:'M4 6h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2m12 4 6-3v10l-6-3',
+  cloud:'M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6 9.5 4.5 4.5 0 0 0 7 18',
   calendar:'M4 5h16v16H4ZM8 2v6M16 2v6M4 11h16M8 15h2M14 15h2',
   check:'m5 12 4 4L19 6',
   minus:'M6 12h12',
@@ -20,12 +22,47 @@ const paths={
   clock:'M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0M12 6v6l4 2',
   link:'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2',
   mail:'M3 5h18v14H3ZM3 5l9 7 9-7',
+  card:'M3 6h18v12H3zM3 10h18M7 15h3',
   chart:'M3 3v18h18M7 16l4-5 4 2 5-7',
   mic:'M9 5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0ZM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8',
   moon:'M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10',
   sun:'M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
 };
-function icon(name,extra=''){return `<svg class="icon ${extra}" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name]||paths.check}"/></svg>`;}
+function icon(name,extra=''){return `<svg class="icon icon--${name} ${extra}" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name]||paths.check}"/></svg>`;}
+const providerMark=(src,extra='')=>`<img class="service-mark service-mark--provider ${extra}" src="${src}" alt="" aria-hidden="true" decoding="async">`;
+const providerGroup=(items,extra='')=>`<span class="service-mark-group ${extra}" aria-hidden="true">${items.map(item=>providerMark(item[0],item[1]||'')).join('')}</span>`;
+function serviceMark(label){
+ const text=label.toLowerCase();
+ if(text.includes('detective')||text.includes('indagini'))return providerGroup([
+  ['/brands/providers/datagma-official.svg','service-mark--datagma'],
+  ['/brands/providers/whuis.png','service-mark--whuis'],
+  ['/brands/providers/telecontact.png','service-mark--telecontact'],
+  ['/brands/providers/contactout.png','service-mark--contactout']
+ ],'service-mark-group--detective');
+ if(text.includes('zoom')||text.includes('teams')||text.includes('calendly'))return providerGroup([
+  ['/brands/providers/zoom.svg','service-mark--zoom'],['/brands/providers/microsoftteams.svg','service-mark--teams'],['/brands/providers/calendly.svg','service-mark--calendly']
+ ]);
+ if(text.includes('onedrive')||text.includes('google drive')||text.includes('dropbox'))return providerGroup([
+  ['/brands/providers/microsoftonedrive.svg','service-mark--onedrive'],['/brands/providers/googledrive.svg','service-mark--googledrive'],['/brands/providers/dropbox.svg','service-mark--dropbox']
+ ]);
+ if(text.includes('calendario')||text.includes('calendari'))return providerGroup([
+  ['/brands/providers/googlecalendar.svg','service-mark--googlecalendar'],['/brands/providers/apple.svg','service-mark--apple']
+ ]);
+ if(text.includes('email:'))return providerGroup([
+  ['/brands/providers/gmail.svg','service-mark--gmail'],['/brands/providers/outlook.svg','service-mark--outlook']
+ ]);
+ if(text.includes('whatsapp'))return providerMark('/brands/providers/whatsapp.svg','service-mark--whatsapp');
+ if(text.includes('stripe'))return '<span class="service-mark service-mark--stripe" aria-hidden="true"></span>';
+ if(text.includes('wallester'))return '<span class="service-mark service-mark--wallester" aria-hidden="true"></span>';
+ if(text.includes('teamviewer'))return '<span class="service-mark service-mark--teamviewer" aria-hidden="true"></span>';
+ return '';
+}
+function benefitIcon(label){
+ const mark=serviceMark(label);if(mark)return mark;
+ const text=label.toLowerCase();
+ const name=/agenti? umani|umani|team/.test(text)?'users':/indagini|detective/.test(text)?'search':/voce.*personalizzat/.test(text)?'mic':/minuti|chiamate|voce/.test(text)?'phone':/zoom|teams|calendly|videochiamate/.test(text)?'video':/onedrive|google drive|dropbox|backup cloud/.test(text)?'cloud':/email|supporto/.test(text)?'mail':/importazione|documenti|contratti|trascrizione|istruzioni|fatture/.test(text)?'file':/calendario|pianificazione|wps/.test(text)?'calendar':/api|integrazioni|portali/.test(text)?'link':/carte aziendali/.test(text)?'card':/contabilità|quote|operazioni|iban|op\./.test(text)?'chart':/attivazione/.test(text)?'clock':/immobili|gestionale/.test(text)?'building':/ai|funzionalità|personalizzat|configurazione/.test(text)?'sparkles':'home';
+ return icon(name,'benefit-icon');
+}
 document.querySelectorAll('[data-icon]').forEach(el=>el.insertAdjacentHTML('afterbegin',icon(el.dataset.icon)));
 const euro=(v,d=0)=>new Intl.NumberFormat((window.primeI18n?.language==='en'?'en-GB':'it-IT'),{style:'currency',currency:'EUR',minimumFractionDigits:d,maximumFractionDigits:Math.max(2,d)}).format(v);
 const integer=v=>new Intl.NumberFormat((window.primeI18n?.language==='en'?'en-GB':'it-IT')).format(v);
@@ -34,13 +71,14 @@ const descriptions={standard:'L’essenziale per iniziare',pro:'Più strumenti, 
 const benefits={
  standard:['Gestionale Base completo','2 agenti umani inclusi','Extra umani: 55,25 €/mese ciascuno','Supporto solo email'],
  pro:['Tutto Standard + integrazioni','Importazione dati da altri gestionali','10 agenti umani inclusi','Extra umani: 27,63 €/mese ciascuno','AI Assistant base','Supporto solo email'],
- vip:['Tutte le funzionalità Pro','Agenti umani illimitati','1 agente AI · extra 110,49 €/mese','1.238 minuti · 225 op. semplici','50 indagini medie · 20 complesse','Email + WhatsApp prioritario','Attivazione entro 24 ore lavorative'],
- elite:['Tutte le funzionalità VIP','Agenti umani illimitati','2 agenti AI · extra 55,25 €/mese','Voce AI personalizzata','3.738 minuti · 675 op. semplici','150 indagini medie · 60 complesse','Stripe Connect: incassi, fatture e report finanziari','Carte aziendali · in arrivo','Email + WhatsApp prioritario','Assistenza remota con TeamViewer','Attivazione entro 24 ore lavorative'],
- secret:['Configurazione personalizzata','Quote per grandi volumi','Integrazioni dedicate','Stripe Connect: incassi, fatture e report finanziari','Carte aziendali · in arrivo','Assistenza remota con TeamViewer','Accordi di supporto su misura','Attivazione entro 24 ore lavorative']};
+ vip:['Tutte le funzionalità Pro','WhatsApp Business API · in arrivo','Wallester Business · partner ufficiale PRIME','Zoom, Teams e Calendly','OneDrive, Google Drive e Dropbox','Agenti umani illimitati','1 agente AI · extra 110,49 €/mese','1.238 minuti · 225 op. semplici','50 indagini medie · 20 complesse','Email + WhatsApp prioritario','Attivazione entro 24 ore lavorative'],
+ elite:['Tutte le funzionalità VIP','WhatsApp Business API · in arrivo','Wallester Business · partner ufficiale PRIME','Zoom, Teams e Calendly','OneDrive, Google Drive e Dropbox','Agenti umani illimitati','2 agenti AI · extra 55,25 €/mese','Voce AI personalizzata','3.738 minuti · 675 op. semplici','150 indagini medie · 60 complesse','Stripe Connect: incassi, fatture e report finanziari','Carte aziendali · in arrivo','Email + WhatsApp prioritario','Assistenza remota con TeamViewer','Attivazione entro 24 ore lavorative'],
+ secret:['Configurazione personalizzata','Collegamento del sito web dell’agenzia · su richiesta','Quote per grandi volumi','Integrazioni dedicate','Zoom, Teams e Calendly','OneDrive, Google Drive e Dropbox','WhatsApp Business API · su preventivo','Stripe Connect: incassi, fatture e report finanziari','Carte aziendali · in arrivo','Assistenza remota con TeamViewer','Accordi di supporto su misura','Attivazione entro 24 ore lavorative']};
+const secretPortalAnnouncement=`<div class="secret-portal-announcement"><p class="secret-portal-kicker">ANNUNCIO PER TUTTE LE AGENZIE</p><h4>Il tuo sito aziendale, collegato a PRIME</h4><p>Su richiesta colleghiamo il sito web della tua agenzia al gestionale primegestionale.it: gli immobili pubblicati in PRIME aggiornano contemporaneamente il tuo sito e i principali portali immobiliari. Il collegamento del sito web dell’agenzia è disponibile su richiesta; l’attivazione dei singoli portali segue i relativi servizi e autorizzazioni ufficiali.</p><div class="secret-portal-logos" aria-label="Portali immobiliari collegabili su richiesta"><a href="https://www.wikicasa.it/" target="_blank" rel="noopener noreferrer" aria-label="Wikicasa"><img src="/brands/wikicasa.svg?v=20261105-original" alt="Wikicasa" width="132" height="36" loading="lazy"></a><a href="https://www.idealista.it/" target="_blank" rel="noopener noreferrer" aria-label="idealista"><img src="/brands/idealista.png" alt="idealista" width="132" height="36" loading="lazy"></a><a href="https://www.immobiliare.it/" target="_blank" rel="noopener noreferrer" aria-label="Immobiliare.it"><img src="/brands/immobiliare.png" alt="Immobiliare.it" width="132" height="36" loading="lazy"></a><a href="https://www.casa.it/" target="_blank" rel="noopener noreferrer" aria-label="Casa.it"><img src="/brands/casa.svg" alt="Casa.it" width="132" height="36" loading="lazy"></a></div><p class="secret-portal-note">La verifica tecnica, i tracciati e le autorizzazioni dei singoli portali vengono concordati insieme prima dell’attivazione.</p></div>`;
 let annual=false;
 function drawPlans(){
  $('.crypto-promo').hidden=!annual;$('#annual-crypto-note').hidden=!annual;
- $('#plan-cards').innerHTML=[...Object.keys(plans),'secret'].map(id=>{const p=plans[id];return `<article class="plan ${id==='vip'?'featured':''}">${id==='vip'?'<span class="plan-tag">PIÙ SCELTO</span>':''}${icon(symbols[id],'plan-symbol')}<h3>${p?.name.toUpperCase()||'SECRET PLAN'}</h3><p class="plan-description">${descriptions[id]}</p><p class="price"><strong>${p?euro(annual&&p.annual?p.annual:p.monthly):'Su preventivo'}</strong>${p?` <small>/${annual&&p.annual?'anno':'mese'}</small>`:''}</p><p class="annual-note">${p?.annual?(annual?`${euro(p.annual/12,2)}/mese equivalenti · pagamento annuale`:`${euro(p.annual)}/anno con l’annuale`):id==='secret'?'Un piano disegnato sulla tua rete':'Fatturazione mensile'}</p><div class="klarna-plan"><img src="/brands/klarna-badge.svg" alt="Klarna" width="68" height="29" loading="lazy"><span>Klarna · rate disponibili previa approvazione</span></div>${p&&annual?`<div class="crypto-offer"><span class="crypto-offer-label">PAGHI IN CRYPTO?</span>${cryptoCoins}<strong class="crypto-offer-gift">3 MESI GRATIS</strong><span class="crypto-offer-price">${euro(Math.round(p.monthly*100*(annual?9:1))/100,2)}<span>/${annual?'anno':'mese'}</span></span><p>2 mesi dell’annuale + 1 mese extra crypto. <b>Sconto già incluso.</b></p></div>`:''}<${id==='secret'?'button':'a'} ${id==='secret'?'type="button" data-contact':'href="#inizia"'} class="button ${id==='vip'?'primary':''}">${id==='secret'?'Richiedi informazioni':'Scopri come iniziare'}</${id==='secret'?'button':'a'}><ul>${benefits[id].map(t=>`<li>${icon('check')}<span>${t}</span></li>`).join('')}</ul></article>`;}).join('');
+ $('#plan-cards').innerHTML=[...Object.keys(plans),'secret'].map(id=>{const p=plans[id];return `<article class="plan ${id==='vip'?'featured':''}">${id==='vip'?'<span class="plan-tag">PIÙ SCELTO</span>':''}${icon(symbols[id],'plan-symbol')}<h3>${p?.name.toUpperCase()||'SECRET PLAN'}</h3><p class="plan-description">${descriptions[id]}</p><p class="price"><strong>${p?euro(annual&&p.annual?p.annual:p.monthly):'Su preventivo'}</strong>${p?` <small>/${annual&&p.annual?'anno':'mese'}</small>`:''}</p><p class="annual-note">${p?.annual?(annual?`${euro(p.annual/12,2)}/mese equivalenti · pagamento annuale`:`${euro(p.annual)}/anno con l’annuale`):id==='secret'?'Un piano disegnato sulla tua rete':'Fatturazione mensile'}</p><div class="klarna-plan"><img src="/brands/klarna-badge.svg" alt="Klarna" width="68" height="29" loading="lazy"><span>Klarna · rate disponibili previa approvazione</span></div>${p&&annual?`<div class="crypto-offer"><span class="crypto-offer-label">PAGHI IN CRYPTO?</span>${cryptoCoins}<strong class="crypto-offer-gift">3 MESI GRATIS</strong><span class="crypto-offer-price">${euro(Math.round(p.monthly*100*(annual?9:1))/100,2)}<span>/${annual?'anno':'mese'}</span></span><p>2 mesi dell’annuale + 1 mese extra crypto. <b>Sconto già incluso.</b></p></div>`:''}<${id==='secret'?'button':'a'} ${id==='secret'?'type="button" data-contact':'href="#inizia"'} class="button ${id==='vip'?'primary':''}">${id==='secret'?'Richiedi informazioni':'Scopri come iniziare'}</${id==='secret'?'button':'a'}>${id==='secret'?secretPortalAnnouncement:''}<ul>${benefits[id].map(t=>`<li>${benefitIcon(t)}<span>${t}</span></li>`).join('')}</ul></article>`;}).join('');
  $('[data-contact]').onclick=()=>openAccount('contact');
 }
 document.querySelectorAll('[name=billing]').forEach(x=>x.onchange=()=>{annual=x.value==='annual';drawPlans();});drawPlans();
@@ -77,7 +115,11 @@ const rows=[
  ['calendar','Sincronizzazione calendari esterni',pro],
  ['mail','Email: mittente, oggetto e collegamento al provider',pro],
  ['chart','Contabilità e provvigioni per agente e titolare',pro],
+ ['link','WhatsApp Business API',[no,no,yes,yes]],
+ ['video','Zoom, Teams e Calendly',[no,no,yes,yes]],
+ ['cloud','OneDrive, Google Drive e Dropbox',[no,no,yes,yes]],
  ['category','VIP ed Elite · operatività AI avanzata'],
+ ['link','Wallester Business · conto aziendale con IBAN multivaluta',[no,no,'Consigliato','Consigliato']],
  ['sparkles','AI avanzata e agenti AI',ai],
  ['home','Gestione annunci con AI',ai],
  ['phone','Chiamate AI',ai],
@@ -88,7 +130,7 @@ const rows=[
  ['link','API per le funzionalità AI avanzate',ai],
  ['chart','Stripe Connect: incassi, fatture e report finanziari',[no,no,no,yes]],
 ];
-$('#comparison').innerHTML=rows.map(([name,label,values])=>name==='category'?`<tr class="category"><th colspan="6">${label}</th></tr>`:`<tr><th scope="row"><span class="row-label">${icon(name)}${label}</span></th>${values.map(v=>`<td>${v===true?`${icon('check')}<span class="sr-only">Incluso</span>`:v===false?`${icon('minus')}<span class="sr-only">Non incluso</span>`:v}</td>`).join('')}<td>${['Assistenza remota con TeamViewer','Stripe Connect: incassi, fatture e report finanziari'].includes(label)?'Inclusa':'Su preventivo'}</td></tr>`).join('');
+$('#comparison').innerHTML=rows.map(([name,label,values])=>name==='category'?`<tr class="category"><th colspan="6">${label}</th></tr>`:`<tr><th scope="row"><span class="row-label">${serviceMark(label)||icon(name)}${label}</span></th>${values.map(v=>`<td>${v===true?`${icon('check')}<span class="sr-only">Incluso</span>`:v===false?`${icon('minus')}<span class="sr-only">Non incluso</span>`:v}</td>`).join('')}<td>${['Assistenza remota con TeamViewer','Stripe Connect: incassi, fatture e report finanziari','Zoom, Teams e Calendly','OneDrive, Google Drive e Dropbox'].includes(label)?'Inclusa':'Su preventivo'}</td></tr>`).join('');
 const labels={minutes:'Minuti di conversazioni AI',simple:'Operazioni semplici',medium:'Indagini Detective medie',complex:'Indagini Detective complesse'};
 const quotaKeys=['minutes','simple','medium','complex'];
 let rates={...customerRates};
@@ -181,13 +223,95 @@ function positionBilling(){
  billingToggle.style.setProperty('--laptop-width',(iw*.335)+'px');
 }
 new ResizeObserver(positionBilling).observe(heroPhoto);window.addEventListener('resize',positionBilling,{passive:true});positionBilling();
-heroPhoto.closest('.hero').insertAdjacentHTML('afterend',`<section class="cloudtalk-feature wrap" aria-labelledby="cloudtalk-title">
- <div class="cloudtalk-card">
-  <div class="cloudtalk-copy"><p class="eyebrow">IL NUMERO PER LE TUE CHIAMATE AI</p><h2 id="cloudtalk-title">Ti serve un numero VoIP per gli AI Agent?</h2><p>Collega un numero telefonico agli agenti AI PRIME basati su ElevenLabs. Scegli una soluzione professionale con CloudTalk oppure l’alternativa più economica ed essenziale di Zadarma. I servizi telefonici hanno abbonamenti e consumi separati dai minuti AI PRIME.</p></div>
-  <div class="voip-options">
-   <article class="voip-option"><a class="cloudtalk-brand" href="https://www.cloudtalk.io/" target="_blank" rel="noopener noreferrer" aria-label="Visita CloudTalk"><img src="/assets/cloudtalk-logo.svg" alt="CloudTalk" width="136" height="16"></a><h3>La soluzione più professionale</h3><p><strong>Consigliamo CloudTalk solo per un piano senza AI Agent.</strong> Usa la telefonia insieme agli agenti AI PRIME. CloudTalk può offrire anche un proprio AI Agent, ma è più costoso e <strong>solo parzialmente integrabile con PRIME</strong>: non ha accesso autonomo ai dati del gestionale. I dati da usare in Copilot e per le ricerche devono essere caricati manualmente.</p></article>
-   <article class="voip-option"><a class="cloudtalk-brand zadarma-brand" href="https://zadarma.com/it/?ref=880d9879e576f890c9488173d439235e" target="_blank" rel="noopener noreferrer sponsored" aria-label="Visita Zadarma, link affiliato"><img src="/assets/zadarma-logo.svg" alt="Zadarma" width="116" height="30"></a><h3>L’alternativa più economica ed essenziale</h3><p>Una soluzione meno strutturata per chi cerca soprattutto un numero VoIP. <strong>L’integrazione Zadarma include SOLO il numero di telefono</strong>, senza AI Agent: l’intelligenza artificiale rimane quella degli agenti PRIME.</p><p class="fineprint">Link affiliato: PRIME può ricevere una commissione.</p></article>
-  </div>
-  <div class="cloudtalk-business-email"><div class="cloudtalk-email-copy"><strong>Per registrarti a CloudTalk serve un’email aziendale.</strong><p>Usa un indirizzo sul dominio della tua agenzia. Per scegliere il servizio di posta aziendale, consulta i partner PRIME.</p><a class="text-link" href="/partners#partner-ufficiali">Scopri i partner per la posta aziendale <span aria-hidden="true">↗</span></a></div></div>
- </div>
-</section>`);
+
+
+
+// Anteprima delle palette; la CTA apre la demo PRIME con il piano e il tema scelti.
+(() => {
+  const section = document.querySelector('#temi');
+  if (!section) return;
+  const plan = section.querySelector('#presentation-theme-plan');
+  const preview = section.querySelector('.theme-workspace-preview');
+  const buttons = [...section.querySelectorAll('button[data-presentation-theme]')];
+  const fireworksButton = section.querySelector('#presentation-fireworks');
+  const note = section.querySelector('#presentation-theme-note');
+  const logo = preview.querySelector('.theme-preview-logo');
+  const decoration = preview.querySelector('.theme-preview-decoration');
+  const ranks = ['standard', 'pro', 'vip', 'elite', 'secret'];
+  const dates = { valentine: '14 febbraio', halloween: '31 ottobre', christmas: 'dal 21 al 30 dicembre', 'new-year': '31 dicembre e 1° gennaio' };
+  const ornaments = { valentine: '♡ ♥ ♡', halloween: '🎃 🦇', christmas: '❄ ✦ ❄' };
+  const positive = { light: '#278b53', pro: '#65c98b', vip: '#36c98f', elite: '#87d9ac', secret: '#87d9ac' };
+  let chosen = 'vip', fireworks = false;
+  const planTheme = () => plan.value === 'standard' ? 'light' : plan.value;
+  const available = (key, rank) => key === 'light' || (Object.hasOwn(dates, key) ? rank > 0 : ranks.indexOf(key) <= rank);
+  function draw() {
+    const rank = ranks.indexOf(plan.value), seasonal = Object.hasOwn(dates, chosen), seasonalLogo = ['valentine', 'halloween', 'christmas'].includes(chosen);
+    if (!['christmas','new-year'].includes(chosen)) preview.querySelector('.theme-preview-effect')?.remove();
+    section.dataset.presentationTheme = chosen;
+    preview.dataset.previewTheme = chosen;
+    if (seasonal) preview.dataset.seasonalPreview = chosen;
+    else delete preview.dataset.seasonalPreview;
+    const label = buttons.find(button => button.dataset.presentationTheme === chosen)?.textContent.trim() || (chosen === 'new-year' ? 'Capodanno' : chosen);
+    preview.setAttribute('aria-label', 'Anteprima del tema '+label+(fireworks?' con i fuochi di Capodanno':''));
+    for (const button of buttons) {
+      button.hidden = !available(button.dataset.presentationTheme, rank);
+      button.setAttribute('aria-pressed', String(button.dataset.presentationTheme === chosen));
+    }
+    fireworksButton.hidden = rank === 0;
+    fireworksButton.setAttribute('aria-pressed', String(chosen === 'new-year'));
+    preview.classList.toggle('theme-preview-fireworks', fireworks);
+    logo.src = seasonalLogo ? '/assets/prime-seasonal-'+chosen+'.svg' : '/assets/prime-wordmark.svg';
+    decoration.textContent = fireworks ? '✷ ✧ ✺' : ornaments[chosen] || '';
+    note.textContent = rank === 0 ? 'Standard include il tema bianco.' : fireworks
+      ? 'Capodanno · Fuochi d’artificio attivi al tocco. Provali nella demo tutto l’anno.' : seasonal
+        ? label+' · '+dates[chosen]+'. '+(chosen === 'christmas' ? 'Neve attiva al tocco. ' : '')+'Da Pro in su. Disponibile tutto l’anno nella demo.'
+        : 'Seleziona un tema per vedere la palette. I temi stagionali sono inclusi da Pro in su.';
+    const url = new URL('/demo/', location.origin);
+    url.searchParams.set('plan', plan.value);
+    url.searchParams.set('theme_variant', chosen === 'new-year' ? planTheme() : chosen);
+    if (fireworks) url.searchParams.set('fireworks', '1');
+    document.querySelectorAll('.demo-live-link').forEach(link => link.href = url.pathname+url.search);
+    document.querySelector('.demo-live-header')?.style.setProperty('--demo-live-green', positive[chosen] || positive[plan.value] || positive.light);
+  }
+  plan.addEventListener('change', () => { chosen = planTheme(); fireworks = false; draw(); });
+  function triggerEffect(kind) {
+    preview.querySelector('.theme-preview-effect')?.remove();
+    const effect = document.createElement('div');
+    effect.className = 'theme-preview-effect theme-preview-effect--' + kind;
+    if (kind === 'christmas') {
+      effect.innerHTML = '<i></i>'.repeat(24);
+      effect.querySelectorAll('i').forEach((flake, i) => {
+        flake.style.setProperty('--snow-x', ((i * 37 + 7) % 100) + '%');
+        flake.style.setProperty('--snow-delay', '-' + (i * 0.45) + 's');
+        flake.style.setProperty('--snow-time', (4 + i % 5) + 's');
+      });
+    } else {
+      for (let burst = 0; burst < 3; burst++) {
+        for (let n = 0; n < 36; n++) {
+          const spark = document.createElement('i');
+          const angle = n / 36 * Math.PI * 2;
+          const distance = 55 + (n % 4) * 14;
+          spark.style.cssText = '--burst-x:'+([35,62,78][burst])+'%;--burst-y:'+([42,30,58][burst])+'%;--burst-color:'+(['#ffd36a','#72dfff','#ff7cab'][burst])+';--dx:'+Math.cos(angle)*distance+'px;--dy:'+Math.sin(angle)*distance+'px;--delay:'+burst*.25+'s';
+          effect.append(spark);
+        }
+      }
+    }
+    effect.setAttribute('aria-hidden', 'true');
+    preview.append(effect);
+  }
+  buttons.forEach(button => button.addEventListener('click', () => {
+    chosen = button.dataset.presentationTheme;
+    fireworks = chosen === 'new-year';
+    if (chosen === 'christmas' || fireworks) triggerEffect(chosen);
+    draw();
+  }));
+  preview.addEventListener('click', () => {
+    if (chosen === 'christmas') triggerEffect('christmas');
+    if (chosen === 'new-year') triggerEffect('new-year');
+  });
+  draw();
+})();
+
+
+
+

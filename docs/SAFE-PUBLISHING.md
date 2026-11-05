@@ -29,3 +29,7 @@ La coda e il registro sono in `Documents/Codex/.prime-deploy/`; il registro cont
 Tutte le chat di questo computer devono usare questo comando. Un `fly deploy` manuale o un rilascio da un altro computer non partecipa al blocco locale. Il controllo della versione rileva cambiamenti durante la preparazione, ma non può impedire a un altro client Fly di sostituire successivamente l'immagine. Per più computer occorre una sola pipeline CI con coda server. Non si pubblicano database, `.env`, segreti o rimozioni di file con questo comando.
 
 Gli aggiornamenti dei pacchetti richiedono di includere entrambi i manifesti e vengono installati nel build. Le migrazioni restano soggette alle normali verifiche di compatibilità e reversibilità.
+
+## Stato sviluppo
+
+Il comando publish aggiorna automaticamente il registro Ultimi aggiornamenti pubblicati. Usa --note per descrivere in una frase cosa cambia per il team. Il registro compare solo con la nuova versione verificata dal publisher.

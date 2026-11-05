@@ -1,0 +1,6 @@
+const cache='prime-authenticator-20261103-native-android-v102';
+const files=['./','./index.html','./main.js','./crypto.js','./prime-qr.js','./biometric.js','./qr-decoder.js','./style.css','./icon.svg','./icon-192.png','./icon-512.png','./manifest.webmanifest'];
+const allowed=new Set(files.map(f=>new URL(f,self.location).pathname));
+self.addEventListener('install',e=>e.waitUntil(caches.open(cache).then(c=>c.addAll(files)).then(()=>self.skipWaiting())));
+self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('prime-authenticator-')&&k!==cache).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
+self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||!allowed.has(u.pathname))return;const key=u.origin+u.pathname;e.respondWith(fetch(e.request).then(async r=>{if(r.ok){const c=await caches.open(cache);await c.put(key,r.clone());}return r;}).catch(async()=>{const c=await caches.open(cache);const hit=await c.match(key);if(hit)return hit;return new Response('Apri PRIME Authenticator online almeno una volta prima di usarla offline.',{status:503,headers:{'Content-Type':'text/plain;charset=utf-8'}});}));});

@@ -2,9 +2,10 @@ const decode64=(value)=>{const raw=atob(value),out=new Uint8Array(raw.length);fo
 function pcmBuffer(context,encoded,rate){const bytes=decode64(encoded),samples=new Int16Array(bytes.buffer,bytes.byteOffset,Math.floor(bytes.byteLength/2)),buffer=context.createBuffer(1,samples.length,rate),channel=buffer.getChannelData(0);for(let i=0;i<samples.length;i++)channel[i]=samples[i]/32768;return buffer;}
 function linearResample(input,from,to){if(from===to)return input;const length=Math.floor(input.length*to/from),result=new Float32Array(length),ratio=from/to;for(let i=0;i<length;i++){const pos=i*ratio,left=Math.floor(pos),mix=pos-left,right=Math.min(left+1,input.length-1);result[i]=input[left]*(1-mix)+input[right]*mix;}return result;}
 function encodePcm(samples){const bytes=new Uint8Array(samples.length*2);const view=new DataView(bytes.buffer);for(let i=0;i<samples.length;i++){const value=Math.max(-1,Math.min(1,samples[i]));view.setInt16(i*2,value<0?value*32768:value*32767,true);}let raw='';for(let i=0;i<bytes.length;i+=0x8000)raw+=String.fromCharCode(...bytes.subarray(i,Math.min(i+0x8000,bytes.length)));return btoa(raw);}
+function stopCapture(...streams){for(const track of new Set(streams.flatMap(stream=>stream?.getTracks()||[])))track.stop();}
 
 /** Capture only sources the operator selected, mix them locally, and stream PCM to the signed ElevenLabs session. */
-export async function startEliteCopilotAudio({clientTools={},signedUrl,dynamicVariables,firstMessage,micStream,tabStream,playAudio=true,captureCall,onTranscript,onAgentMessage,onStatus,onConversationCreated}){
+export async function startEliteCopilotAudio({clientTools={},signedUrl,dynamicVariables,firstMessage,micStream,tabStream,playAudio=true,captureCall,onTranscript,onAgentMessage,onStatus,onConversationCreated,onEnd}){
   if(!micStream?.getAudioTracks().length&&!tabStream?.getAudioTracks().length)throw Error('Scegli almeno il microfono o l’audio della chiamata.');
   if(!window.isSecureContext||!navigator.mediaDevices)throw Error('La condivisione audio richiede HTTPS oppure localhost e un browser compatibile.');
   let context=null,socket=null,processor=null,mix=null,silent=null,closed=false,ready=false,conversationId='',playAt=0,inputFormat='pcm_16000',outputFormat='pcm_16000';
@@ -13,8 +14,9 @@ export async function startEliteCopilotAudio({clientTools={},signedUrl,dynamicVa
   async function cleanup(){
     if(closed)return;closed=true;ready=false;stopPlayback();
     processor?.disconnect();mix?.disconnect();silent?.disconnect();inputs.forEach(source=>source.disconnect());
-    micStream?.getTracks().forEach(track=>track.stop());tabStream?.getTracks().forEach(track=>track.stop());
-    if(socket?.readyState===WebSocket.OPEN)socket.close();
+    stopCapture(micStream,tabStream);
+    if(socket?.readyState<2)socket.close();
+    onEnd?.();
     await context?.close().catch(()=>{});
   }
   function formatRate(format){const match=/^(pcm|ulaw)_(\d+)$/.exec(format);if(!match||Number(match[2])<8000||Number(match[2])>96000||(match[1]==='ulaw'&&match[2]!=='8000'))throw Error('Formato audio ElevenLabs non supportato: '+format);return Number(match[2]);}
@@ -37,9 +39,10 @@ export async function startEliteCopilotAudio({clientTools={},signedUrl,dynamicVa
     await new Promise((resolve,reject)=>{
       const timer=setTimeout(()=>reject(Error('Vanessa non ha confermato la sessione audio. Riprova.')),15000);
       const fail=message=>{clearTimeout(timer);reject(Error(message));};
-      socket.addEventListener('error',()=>fail('Collegamento audio con ElevenLabs non riuscito.'),{once:true});
+      socket.addEventListener('error',()=>{if(ready){onStatus?.('Collegamento audio con ElevenLabs interrotto. Riavvia il copilot.');void cleanup();}else fail('Collegamento audio con ElevenLabs non riuscito.');},{once:true});
       socket.addEventListener('close',event=>{if(!ready)fail('ElevenLabs ha chiuso la sessione audio: '+(event.reason||'verifica configurazione e credito.'));else{onStatus?.('Il collegamento audio con Vanessa è terminato.');void cleanup();}},{once:true});
       socket.addEventListener('message',event=>{
+        if(closed)return;
         try{
           const data=JSON.parse(event.data);
           if(data.type==='conversation_initiation_metadata'){
@@ -64,31 +67,47 @@ export async function startEliteCopilotAudio({clientTools={},signedUrl,dynamicVa
       event.outputBuffer.getChannelData(0).fill(0);if(closed||!ready||socket?.readyState!==WebSocket.OPEN)return;
       const samples=linearResample(event.inputBuffer.getChannelData(0),context.sampleRate,formatRate(inputFormat));if(samples.length)socket.send(JSON.stringify({user_audio_chunk:encodeInput(samples)}));
     };
-    tabStream?.getAudioTracks().forEach(track=>track.addEventListener('ended',()=>{if(!closed){onStatus?.('La condivisione audio è terminata. Riavvia il copilot per ricollegarla.');void cleanup();}}));
+    for(const track of new Set([micStream,tabStream].flatMap(stream=>stream?.getTracks()||[])))track.addEventListener('ended',()=>{if(!closed){onStatus?.('La sorgente audio è terminata. Riavvia il copilot per ricollegarla.');void cleanup();}});
     return {getId:()=>conversationId,isActive:()=>ready&&!closed,sendUserMessage(text){if(!closed&&ready&&socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type:'user_message',text}));},async endSession(){await cleanup();}};
   }catch(error){await cleanup();throw error;}
 }
 
 /** Transcribe a selected live call with Scribe, then send only committed text to Vanessa's text-only agent session. */
-export async function startEliteCopilotText({api,clientTools={},signedUrl,dynamicVariables,firstMessage,tabStream,onTranscript,onAgentMessage,onStatus,onConversationCreated}){
+export async function startEliteCopilotText({api,clientTools={},signedUrl,dynamicVariables,firstMessage,micStream,tabStream,language='it',onTranscript,onAgentMessage,onStatus,onConversationCreated,onEnd,loadClient=()=>import('/vendor/elevenlabs/client.js?v=20261027-2')}){
   if(!tabStream?.getAudioTracks().length)throw Error('Collega l’audio della chiamata prima di avviare il copilot testuale.');
   if(!window.isSecureContext)throw Error('Il copilot richiede una connessione HTTPS.');
-  let context=null,processor=null,source=null,silent=null,scribe=null,session=null,closed=false;
+  let context=null,processor=null,mix=null,silent=null,scribe=null,session=null,closed=false,ready=false,rejectStartup=null;
+  const inputs=[];
+  async function cleanup(message){
+    if(closed)return;closed=true;ready=false;
+    if(message){onStatus?.(message);rejectStartup?.(Error(message));}
+    processor?.disconnect();mix?.disconnect();silent?.disconnect();inputs.forEach(source=>source.disconnect());
+    stopCapture(micStream,tabStream);scribe?.close();onEnd?.();
+    try{await session?.endSession();}catch{}
+    await context?.close().catch(()=>{});
+  }
   try{
-    const {Conversation,Scribe,AudioFormat,CommitStrategy,RealtimeEvents}=await import('/vendor/elevenlabs/client.js?v=20261027-2');
-    session=await Conversation.startSession({clientTools,signedUrl,connectionType:'websocket',textOnly:true,dynamicVariables,overrides:{agent:{firstMessage}},onConversationCreated:c=>onConversationCreated?.(c.getId()),onConnect:()=>onStatus?.('Vanessa è collegata in modalità testo; attendo la trascrizione live.'),onDisconnect:()=>{if(!closed)onStatus?.('La sessione testuale di Vanessa si è interrotta.');},onError:()=>onStatus?.('Collegamento testuale con Vanessa interrotto.'),onMessage:m=>{if(m.message&&m.source!=='user')onAgentMessage?.(m.message);}});
+    const {Conversation,Scribe,AudioFormat,CommitStrategy,RealtimeEvents}=await loadClient();
+    session=await Conversation.startSession({clientTools,signedUrl,connectionType:'websocket',textOnly:true,dynamicVariables,overrides:{agent:{firstMessage}},onConversationCreated:c=>onConversationCreated?.(c.getId()),onConnect:()=>onStatus?.('Vanessa è collegata in modalità testo; attendo la trascrizione live.'),onDisconnect:()=>{if(!closed)void cleanup('La sessione testuale di Vanessa si è interrotta. Riavvia il copilot.');},onError:()=>{if(!closed)void cleanup('Collegamento testuale con Vanessa interrotto. Riavvia il copilot.');},onMessage:m=>{if(!closed&&m.message&&m.source!=='user')onAgentMessage?.(m.message);}});
+    if(closed){await session.endSession();throw Error('La sessione testuale di Vanessa si è interrotta.');}
     const tokenData=await api('/api/elite/scribe-token',{method:'POST',body:'{}'});
-    scribe=Scribe.connect({token:tokenData.token,modelId:'scribe_v2_realtime',audioFormat:AudioFormat.PCM_16000,sampleRate:16000,languageCode:'ita',commitStrategy:CommitStrategy.VAD,vadSilenceThresholdSecs:0.65,minSpeechDurationMs:120,minSilenceDurationMs:180});
-    scribe.on(RealtimeEvents.SESSION_STARTED,()=>onStatus?.('Trascrizione live attiva. Vanessa riceve il testo della chiamata.'));
-    scribe.on(RealtimeEvents.PARTIAL_TRANSCRIPT,data=>{if(data.text)onStatus?.('Trascrivo: '+data.text);});
-    scribe.on(RealtimeEvents.COMMITTED_TRANSCRIPT,data=>{const transcript=String(data.text||'').trim();if(!transcript)return;onTranscript?.(transcript);session?.sendUserMessage('Trascrizione live della chiamata (testo riconosciuto): '+transcript);});
-    scribe.on(RealtimeEvents.ERROR,data=>onStatus?.('Errore trascrizione live: '+String(data.error||'controlla saldo, permessi Scribe e connessione.')));
-    scribe.on(RealtimeEvents.QUOTA_EXCEEDED,()=>onStatus?.('Credito di trascrizione ElevenLabs esaurito.'));
-    scribe.on(RealtimeEvents.AUTH_ERROR,()=>onStatus?.('ElevenLabs non autorizza Scribe Realtime: verifica i permessi della chiave API.'));
-    await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Scribe Realtime non si è collegato.')),12000);scribe.on(RealtimeEvents.SESSION_STARTED,()=>{clearTimeout(timer);resolve();});scribe.on(RealtimeEvents.ERROR,data=>{clearTimeout(timer);reject(Error(data.error||'Errore di connessione Scribe Realtime.'));});scribe.on(RealtimeEvents.AUTH_ERROR,()=>{clearTimeout(timer);reject(Error('Chiave ElevenLabs senza accesso a Scribe Realtime.'));});});
-    context=new AudioContext({sampleRate:16000});await context.resume();source=context.createMediaStreamSource(new MediaStream(tabStream.getAudioTracks()));processor=context.createScriptProcessor(2048,1,1);silent=context.createGain();silent.gain.value=0;source.connect(processor);processor.connect(silent);silent.connect(context.destination);
-    processor.onaudioprocess=event=>{if(closed)return;const samples=event.inputBuffer.getChannelData(0);scribe?.send({audioBase64:encodePcm(samples),sampleRate:16000});event.outputBuffer.getChannelData(0).fill(0);};
-    tabStream.getAudioTracks().forEach(track=>track.addEventListener('ended',()=>{if(!closed)onStatus?.('Audio della chiamata terminato.');}));
-    return {getId:()=>session?.getId?.()||'',sendUserMessage:text=>session?.sendUserMessage(text),async endSession(){if(closed)return;closed=true;processor?.disconnect();source?.disconnect();silent?.disconnect();scribe?.close();try{await session?.endSession();}catch{}await context?.close().catch(()=>{});}};
-  }catch(error){closed=true;processor?.disconnect();source?.disconnect();silent?.disconnect();scribe?.close();try{await session?.endSession();}catch{}await context?.close().catch(()=>{});throw error;}
+    if(closed)throw Error('La sessione testuale di Vanessa si è interrotta.');
+    scribe=Scribe.connect({token:tokenData.token,modelId:'scribe_v2_realtime',audioFormat:AudioFormat.PCM_16000,sampleRate:16000,languageCode:language==='en'?'eng':'ita',commitStrategy:CommitStrategy.VAD,vadSilenceThresholdSecs:0.65,minSpeechDurationMs:120,minSilenceDurationMs:180});
+    scribe.on(RealtimeEvents.PARTIAL_TRANSCRIPT,data=>{if(!closed&&data.text)onStatus?.('Trascrivo: '+data.text);});
+    scribe.on(RealtimeEvents.COMMITTED_TRANSCRIPT,data=>{const transcript=String(data.text||'').trim();if(closed||!ready||!transcript)return;onTranscript?.(transcript);session.sendUserMessage('Trascrizione live della chiamata (testo riconosciuto): '+transcript);});
+    await new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>void cleanup('Scribe Realtime non si è collegato. Riavvia il copilot.'),12000);
+      rejectStartup=error=>{clearTimeout(timer);reject(error);};
+      scribe.on(RealtimeEvents.SESSION_STARTED,()=>{if(closed)return;ready=true;clearTimeout(timer);rejectStartup=null;onStatus?.('Trascrizione live attiva. Vanessa riceve il testo della chiamata.');resolve();});
+      scribe.on(RealtimeEvents.ERROR,data=>void cleanup('Trascrizione live interrotta: '+String(data.error||'verifica credito, permessi Scribe e connessione.')));
+      scribe.on(RealtimeEvents.CLOSE,()=>{if(!closed)void cleanup('La trascrizione live si è interrotta. Riavvia il copilot.');});
+    });
+    if(closed)throw Error('La trascrizione live si è interrotta.');
+    context=new AudioContext({sampleRate:16000});await context.resume();mix=context.createGain();
+    for(const stream of [micStream,tabStream])if(stream?.getAudioTracks().length){const source=context.createMediaStreamSource(stream);source.connect(mix);inputs.push(source);}
+    processor=context.createScriptProcessor(2048,1,1);silent=context.createGain();silent.gain.value=0;mix.connect(processor);processor.connect(silent);silent.connect(context.destination);
+    processor.onaudioprocess=event=>{event.outputBuffer.getChannelData(0).fill(0);if(closed||!ready)return;const samples=linearResample(event.inputBuffer.getChannelData(0),context.sampleRate,16000);try{scribe.send({audioBase64:encodePcm(samples),sampleRate:16000});}catch{void cleanup('Invio audio alla trascrizione interrotto. Riavvia il copilot.');}};
+    for(const track of new Set([micStream,tabStream].flatMap(stream=>stream?.getTracks()||[])))track.addEventListener('ended',()=>{if(!closed)void cleanup('La sorgente audio è terminata. Riavvia il copilot.');});
+    return {getId:()=>session?.getId?.()||'',isActive:()=>ready&&!closed,sendUserMessage(text){if(!closed&&ready)session.sendUserMessage(text);},async endSession(){await cleanup();}};
+  }catch(error){await cleanup();throw error;}
 }

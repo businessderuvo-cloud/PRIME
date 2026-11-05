@@ -1,42 +1,50 @@
-import { renderPartnerMail } from './partner-mail.js?v=20261029-no-proton';
-import { renderZohoPec } from './zoho-pec.js?v=20261029-mail-controls';
-const providers = { gmail: 'Gmail', outlook: 'Outlook' };
+import { renderPartnerMail } from './partner-mail.js?v=20261102-infomaniak-inbox-layout';
+import { renderZohoPec } from './zoho-pec.js?v=20261101-transparent-logos';
+const providers = { gmail: 'Gmail', outlook: 'Outlook', zoho: 'Zoho Mail' };
 const brandIcons = { gmail: 'gmail', outlook: 'outlook' };
-const brandIcon = provider => `<span class="integration-brand-icon" aria-hidden="true"><img src="/brands/providers/${brandIcons[provider]}.svg" alt="" width="28" height="28"></span>`;
-const guides = {
-  gmail: {
-    url: 'https://console.cloud.google.com/apis/credentials',
-    steps: ['Nel progetto Google Cloud abilita Gmail API e configura il consenso OAuth.', 'Crea una credenziale web OAuth e registra l’indirizzo di ritorno qui sotto. In modalità di prova aggiungi gli account di titolare e agenti.', 'In Ambiti autorizza https://www.googleapis.com/auth/gmail.metadata e openid email. PRIME richiede soltanto mittente, oggetto e data. Google può richiedere la verifica dell’app per la distribuzione agli utenti fuori dal gruppo di prova.', 'Incolla Client ID e Client secret. Se il progetto è in modalità test, rinnova l’autorizzazione quando Google la fa scadere.']
-  },
-  outlook: {
-    url: 'https://entra.microsoft.com/',
-    steps: ['In Microsoft Entra registra un’applicazione per account organizzativi e personali e aggiungi il ritorno qui sotto come URI di reindirizzamento della piattaforma Web.', 'Aggiungi il permesso delegato Microsoft Graph Mail.ReadBasic. PRIME richiede anche gli ambiti OpenID openid, profile ed email e offline_access per rinnovare la connessione.', 'Crea un client secret e inserisci Client ID e secret in PRIME. Ogni agente autorizza il proprio account.', 'PRIME mostra soltanto mittente, oggetto e data; il link apre Outlook sul web.']
-  }
-};
-
+const brandIcon = provider => provider === 'zoho' ? '<span class="integration-brand-icon" aria-hidden="true"><img src="/assets/zoho-mail-logo.svg" alt="" width="28" height="28"></span>' : `<span class="integration-brand-icon" aria-hidden="true"><img src="/brands/providers/${brandIcons[provider]}.svg" alt="" width="28" height="28"></span>`;
 export async function renderMail({ state, main, api, pageHeader, esc }) {
   const data = await api('/api/connect');
-  const owner = state.me.role === 'owner';
-  const setupMarkup = provider => {
-    if (!owner) return '<p class="small-note">Chiedi al titolare di preparare il collegamento di questo provider.</p>';
-    const guide = guides[provider.provider];
-    return `<details class="mail-provider-setup"><summary>Configurazione dell’agenzia</summary><ol>${guide.steps.map(step => `<li>${esc(step)}</li>`).join('')}<li>Indirizzo di ritorno: <code>${esc(provider.base_url || location.origin)}/api/connect/callback/${provider.provider}</code></li></ol><a href="${guide.url}" target="_blank" rel="noopener noreferrer">Apri la console di ${providers[provider.provider]} ↗</a><form data-mail-form="${provider.provider}" class="connect-form"><label>Indirizzo di PRIME<input name="base_url" type="url" required value="${esc(provider.base_url || location.origin)}"></label><label>Client ID<input name="client_id" required value="${esc(provider.settings?.client_id || '')}"></label><label>Client secret${provider.client_secret_set ? ' · salvato, lascia vuoto per conservarlo' : ''}<input name="client_secret" type="password" autocomplete="new-password" data-no-voice="true"></label><button class="primary">Salva configurazione</button><p class="connect-feedback" role="status"></p></form></details>`;
-  };
   data.mailProviders = data.mailProviders.filter(provider => provider.provider !== 'yahoo');
   data.mail = data.mail.filter(message => message.provider !== 'yahoo');
-  main.innerHTML = pageHeader('LA TUA POSTA, A COLPO D’OCCHIO', 'Email', 'Collega i tuoi account email e PEC in un unico spazio.') + '<p class="small-note">La posta è personale: ogni utente vede soltanto le proprie notifiche. PRIME mostra mittente e oggetto, non importa corpo o allegati e non invia email. Il controllo automatico avviene ogni 5 minuti.</p>' + `<div class="mail-provider-grid">${data.mailProviders.map(provider => {
+  const canZapier = false;
+  const zapierMail = data.zapier_mail || { configured: false, endpoint: '/api/connect/webhook/zapier/mail' };
+  main.innerHTML = pageHeader('LA TUA POSTA, A COLPO D’OCCHIO', 'Email', 'Collega i tuoi account email e PEC in un unico spazio.') + '<p class="small-note">La posta è personale: ogni utente vede soltanto le proprie notifiche. PRIME mostra mittente e oggetto. Le richieste Trustpilot automatiche partono dalla casella Zoho Mail autorizzata, dopo 7 giorni dall’attivazione, con richiesta di ricevuta di lettura.</p>' + `<div class="mail-provider-grid">${data.mailProviders.filter(provider => provider.provider !== 'yahoo').map(provider => {
     const account = data.connections.find(item => item.provider === provider.provider && item.status !== 'disconnected');
     const status = !account ? provider.configured ? 'Da collegare' : 'Non configurato' : account.status === 'reauthorize' ? 'Da ricollegare' : account.status === 'error' ? 'Controllo non riuscito' : 'Collegato';
     const connect = !account || account.status === 'reauthorize' ? provider.configured ? `<button class="primary" data-mail-connect="${provider.provider}">${account ? 'Ricollega' : 'Collega'} ${providers[provider.provider]}</button>` : '' : '';
-    const setup = provider.configured ? (owner ? setupMarkup(provider) : '') : setupMarkup(provider);
-    const mailboxType = provider.provider==='outlook' ? 'personal' : account?.account_label.startsWith('PEC · ') ? 'pec' : 'personal';
+    const mailboxType = account?.account_label.startsWith('PEC · ') ? 'pec' : 'personal';
     const mailboxName = account?.account_label.replace(/^(?:Personale|PEC) · /, '') || '';
-    const switchMarkup = provider.provider==='outlook' ? '' : '<div class="partner-switch mail-account-switch" role="group" aria-label="Tipo di casella per '+providers[provider.provider]+'"><button type="button" data-mailbox-mode="personal" class="'+(mailboxType==='personal'?'active':'')+'" aria-pressed="'+(mailboxType==='personal')+'">Personale</button><button type="button" data-mailbox-mode="pec" class="'+(mailboxType==='pec'?'active':'')+'" aria-pressed="'+(mailboxType==='pec')+'">PEC</button></div>';
-    const mailboxDescription = provider.provider==='outlook' ? 'Account Outlook personale: PRIME non offre collegamenti PEC tramite Outlook.' : mailboxType === 'pec' ? 'In PRIME questa casella è classificata come PEC.' : 'In PRIME questa casella è classificata come email personale.';
-    const connected = account ? `<p>${esc(mailboxName)}</p><p class="small-note">Ultimo controllo: ${account.last_sync_at ? esc(new Date(account.last_sync_at).toLocaleString((document.documentElement.lang==='en'?'en-GB':'it-IT'))) : 'in attesa del primo controllo'}</p>${account.last_error ? `<p class="error">${esc(account.last_error)}</p>` : ''}<div class="connect-actions"><button class="secondary" data-mail-check="${esc(account.id)}">Controlla ora</button><button class="text-button" data-mail-unlink="${esc(account.id)}">Scollega</button></div>` : `<p>Accedi al tuo account Outlook personale e autorizza PRIME a mostrarti le notifiche.</p>`;
-    return `<section class="panel mail-provider" data-mail-account="${provider.provider}" data-mailbox-type="${mailboxType}"><h2 class="mail-provider-title">${brandIcon(provider.provider)}<span>${providers[provider.provider]}${provider.provider==='outlook'?' personale':''}</span></h2><div class="mail-provider-controls"><span class="pill">${esc(status)}</span>${switchMarkup}</div><p class="small-note" data-mailbox-description>${mailboxDescription}</p>${connected}${connect}${setup}<p class="connect-feedback" role="status"></p></section>`;
+    const switchMarkup = '<div class="partner-switch mail-account-switch" role="group" aria-label="Tipo di casella per '+providers[provider.provider]+'"><button type="button" data-mailbox-mode="personal" class="'+(mailboxType==='personal'?'active':'')+'" aria-pressed="'+(mailboxType==='personal')+'">Personale</button><button type="button" data-mailbox-mode="pec" class="'+(mailboxType==='pec'?'active':'')+'" aria-pressed="'+(mailboxType==='pec')+'">PEC</button></div>';
+    const mailboxDescription = mailboxType === 'pec' ? 'In PRIME questa casella è classificata come PEC.' : 'In PRIME questa casella è classificata come email personale.';
+    const testButton = provider.provider === 'zoho' && account && ['owner','manager'].includes(state.me.role) ? '<button class="secondary" type="button" data-trustpilot-test>Invia test Trustpilot a deruvomichele@gmail.com</button>' : '';
+    const connected = account ? `<p>${esc(mailboxName)}</p><p class="small-note">Ultimo controllo: ${account.last_sync_at ? esc(new Date(account.last_sync_at).toLocaleString((document.documentElement.lang==='en'?'en-GB':'it-IT'))) : 'in attesa del primo controllo'}</p>${account.last_error ? `<p class="error">${esc(account.last_error)}</p>` : ''}<div class="connect-actions"><button class="secondary" data-mail-check="${esc(account.id)}">Controlla ora</button>${testButton}<button class="text-button" data-mail-unlink="${esc(account.id)}">Scollega</button></div>` : `<p>${state.me.customer_demo ? "Il collegamento reale della posta non è attivo nella demo." : provider.configured ? "Accedi al tuo account e autorizza PRIME a mostrarti le notifiche." : "Collegamento in preparazione. Contatta l’assistenza PRIME."}</p>`;
+    return `<section class="panel mail-provider" data-mail-account="${provider.provider}" data-mailbox-type="${mailboxType}"><h2 class="mail-provider-title">${brandIcon(provider.provider)}<span>${providers[provider.provider]}${''}</span></h2><div class="mail-provider-controls"><span class="pill">${esc(status)}</span>${switchMarkup}</div><p class="small-note" data-mailbox-description>${mailboxDescription}</p>${connected}${connect}<p class="connect-feedback" role="status"></p></section>`;
   }).join('')}</div><section class="panel mail-panel"><h2>Notifiche email</h2><label>Cerca mittente o oggetto<input id="mail-search" type="search" placeholder="Cerca nelle notifiche…"></label><p class="small-note">“Nascondi notifica” agisce soltanto in PRIME: non archivia e non modifica la casella email.</p><div id="mail-list" class="mail-notifications"></div><p id="mail-feedback" role="status"></p></section>`;
-  renderPartnerMail(main, { data, api, refresh: () => renderMail({ state, main, api, pageHeader, esc }) });
+  if (canZapier) {
+    const zapierPanel = document.createElement('section');
+    zapierPanel.className = 'panel zapier-mail-panel';
+    zapierPanel.innerHTML = "<p class='eyebrow'>AUTOMAZIONE DIRETTA</p><h2>Zapier → PRIME</h2><p>Collega il tuo Zapier a questa agenzia. Le nuove email di Outlook arriveranno nelle notifiche PRIME; vengono importati solo mittente, oggetto, data e link alla casella.</p><p><strong>1.</strong> In Zapier crea un trigger Microsoft Outlook “New Email”. <strong>2.</strong> Aggiungi “Webhooks by Zapier” con evento <strong>POST</strong>, payload <strong>JSON</strong> e Basic Auth <code>PRIME:la tua chiave</code>. <strong>3.</strong> Mappa i campi <code>id</code>, <code>from</code>, <code>subject</code>, <code>webLink</code> e <code>receivedDateTime</code>.</p><label>URL di destinazione<input readonly value='" + esc(location.origin + zapierMail.endpoint) + "'></label><p class='small-note'>" + (zapierMail.configured ? 'Zapier è abilitato per questa agenzia.' : 'Genera una chiave da inserire nel passaggio Webhooks del tuo Zap.') + "</p><button class='primary' type='button' data-zapier-key>" + (zapierMail.configured ? 'Rigenera chiave Zapier' : 'Genera chiave Zapier') + "</button>" + (zapierMail.configured ? " <button class='text-button' type='button' data-zapier-revoke>Scollega Zapier</button>" : '') + "<p class='small-note' data-zapier-key-feedback role='status'></p><div data-zapier-secret hidden><p>Username Basic Auth: <code>PRIME</code></p><p>Password Basic Auth (visibile una sola volta): <code data-zapier-password></code></p><p><button class='secondary' type='button' data-zapier-copy>Copia chiave</button></p></div>";
+    main.querySelector('.mail-provider-grid')?.after(zapierPanel);
+    zapierPanel.querySelector('[data-zapier-key]').onclick = async event => {
+      const button = event.currentTarget, feedback = zapierPanel.querySelector('[data-zapier-key-feedback]');
+      button.disabled = true; feedback.textContent = 'Genero una nuova chiave…';
+      try { const result = await api('/api/connect/zapier/mail-token', { method: 'POST', body: '{}' }); zapierPanel.querySelector('[data-zapier-password]').textContent = result.password; zapierPanel.querySelector('[data-zapier-secret]').hidden = false; feedback.textContent = 'Chiave generata. Copiala ora e inseriscila nel tuo Zap.'; }
+      catch (error) { feedback.textContent = error.message; }
+      finally { button.disabled = false; }
+    };
+    zapierPanel.querySelector('[data-zapier-copy]').onclick = async () => {
+      const password = zapierPanel.querySelector('[data-zapier-password]').textContent;
+      try { await navigator.clipboard.writeText(password); zapierPanel.querySelector('[data-zapier-key-feedback]').textContent = 'Chiave copiata.'; }
+      catch { zapierPanel.querySelector('[data-zapier-key-feedback]').textContent = 'Seleziona e copia la chiave visualizzata.'; }
+    };
+    zapierPanel.querySelector('[data-zapier-revoke]')?.addEventListener('click', async event => {
+      const button = event.currentTarget; button.disabled = true;
+      try { await api('/api/connect/zapier/mail-token', { method: 'DELETE' }); await renderMail({ state, main, api, pageHeader, esc }); }
+      catch (error) { zapierPanel.querySelector('[data-zapier-key-feedback]').textContent = error.message; button.disabled = false; }
+    });
+  }
+  renderPartnerMail(main, { data, api, customerDemo: Boolean(state.me.customer_demo), refresh: () => renderMail({ state, main, api, pageHeader, esc }) });
   renderZohoPec({ main, state });
   const extensionPanel = document.createElement('section');
   extensionPanel.className = 'panel mail-request-panel';
@@ -55,7 +63,7 @@ export async function renderMail({ state, main, api, pageHeader, esc }) {
   function draw() {
     const query = main.querySelector('#mail-search').value.trim().toLocaleLowerCase('it');
     const notifications = data.mail.filter(mail => `${mail.sender} ${mail.subject}`.toLocaleLowerCase('it').includes(query));
-    main.querySelector('#mail-list').innerHTML = notifications.map(mail => `<article class="mail-notification"><span class="pill">${providers[mail.provider] || ({ infomaniak: 'Infomaniak', zoho: 'Zoho Mail', infocert: 'InfoCert PEC' }[mail.provider] || esc(mail.provider))}</span><div><strong>${esc(mail.sender)}</strong><p>${esc(mail.subject)}</p><small>${esc(mail.account_label)} · ${esc(new Date(mail.received_at).toLocaleString((document.documentElement.lang==='en'?'en-GB':'it-IT')))}</small></div><a href="${esc(mail.provider_url)}" target="_blank" rel="noopener noreferrer">Apri email ↗</a><button class="text-button" data-hide-mail="${esc(mail.message_id)}" data-connection="${esc(mail.connection_id)}">Nascondi notifica</button></article>`).join('') || '<p class="muted">Nessuna notifica da mostrare.</p>';
+    main.querySelector('#mail-list').innerHTML = notifications.map(mail => `<article class="mail-notification"><span class="pill">${providers[mail.provider] || ({ infomaniak: 'Infomaniak', zoho: 'Zoho Mail', infocert: 'InfoCert PEC' }[mail.provider] || esc(mail.provider))}</span><div><strong>${esc(mail.sender)}</strong><p>${esc(mail.subject)}</p><small>${esc(mail.account_label)} · ${esc(new Date(mail.received_at).toLocaleString((document.documentElement.lang==='en'?'en-GB':'it-IT')))}</small></div><a href="${esc(mail.provider_url)}" target="_blank" rel="noopener noreferrer">Apri email ↗</a><button class="text-button" data-hide-mail="${esc(mail.message_id)}" data-connection="${esc(mail.connection_id)}">Nascondi notifica</button></article>`).join('') || (data.connections.some(item=>item.provider==='infomaniak'&&item.status==='connected')?'<p class="muted">Nessuna notifica recente. Premi Controlla ora nella scheda Infomaniak per aggiornare.</p>':'<p class="muted">Nessuna notifica da mostrare.</p>');
     main.querySelectorAll('[data-hide-mail]').forEach(button => button.onclick = async () => {
       button.disabled = true;
       try { await api(`/api/connect/mail/connections/${button.dataset.connection}/dismiss`, { method: 'POST', body: JSON.stringify({ message_id: button.dataset.hideMail }) }); data.mail = data.mail.filter(mail => !(mail.connection_id === button.dataset.connection && mail.message_id === button.dataset.hideMail)); draw(); }
@@ -64,14 +72,6 @@ export async function renderMail({ state, main, api, pageHeader, esc }) {
   }
   main.querySelector('#mail-search').oninput = draw;
   draw();
-  for (const form of main.querySelectorAll('[data-mail-form]')) form.onsubmit = async event => {
-    event.preventDefault();
-    const button = form.querySelector('button[type=submit]');
-    const status = form.querySelector('[role=status]');
-    button.disabled = true;
-    try { await api(`/api/connect/settings/${form.dataset.mailForm}`, { method: 'PUT', body: JSON.stringify(Object.fromEntries(new FormData(form))) }); await renderMail({ state, main, api, pageHeader, esc }); }
-    catch (error) { status.textContent = error.message; button.disabled = false; }
-  };
   main.querySelectorAll('[data-mail-account]').forEach(card => card.querySelectorAll('[data-mailbox-mode]').forEach(button => button.onclick = async () => {
     const oldType = card.dataset.mailboxType || 'personal', nextType = button.dataset.mailboxMode;
     if (nextType === oldType) return;
@@ -84,9 +84,15 @@ export async function renderMail({ state, main, api, pageHeader, esc }) {
   }));
   main.querySelectorAll('[data-mail-connect]').forEach(button => button.onclick = async () => {
     const card = button.closest('[data-mail-account]');
+    if (state.me.customer_demo) { card.querySelector('.connect-feedback').textContent = 'Il collegamento reale della posta non è attivo nella demo.'; return; }
     button.disabled = true;
-    try { const result = await api(`/api/connect/mail/authorize/${button.dataset.mailConnect}`, { method: 'POST', body: JSON.stringify({ mailbox_type: button.dataset.mailConnect==='outlook'?'personal':card.dataset.mailboxType||'personal' }) }); location.assign(result.url); }
+    try { const result = await api(`/api/connect/mail/authorize/${button.dataset.mailConnect}`, { method: 'POST', body: JSON.stringify({ mailbox_type: card.dataset.mailboxType||'personal' }) }); location.assign(result.url); }
     catch (error) { card.querySelector('.connect-feedback').textContent = error.message; button.disabled = false; }
+  });
+  main.querySelectorAll('[data-trustpilot-test]').forEach(button => button.onclick = async () => {
+    const card=button.closest('[data-mail-account]'),feedback=card.querySelector('.connect-feedback');button.disabled=true;feedback.textContent='Invio del test in corso…';
+    try { const result=await api('/api/trustpilot/test',{method:'POST',body:JSON.stringify({to:'deruvomichele@gmail.com'})});feedback.textContent=`Test inviato a ${result.to}. Ricevuta di lettura richiesta.`; }
+    catch(error){feedback.textContent=error.message;button.disabled=false;}
   });
   const run = async (button, action) => {
     button.disabled = true;
